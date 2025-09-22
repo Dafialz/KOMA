@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Відеочат — КОМА</title>
+<link rel="icon" href="../icon/favicon.ico">
+<style>
+  :root{--brand:#0f5257;--border:#e5e7eb}
+  body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  header{background:linear-gradient(135deg,#0b2e33,#0f5257 60%,#6fc8b8);color:#fff;padding:12px 18px}
+  .wrap{max-width:1100px;margin:16px auto;padding:0 18px;display:grid;grid-template-columns:2fr 1fr;gap:16px}
+  @media (max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);background:#fff}
+  .video{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px}
+  video{width:100%;background:#000;border-radius:10px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-top:1px solid var(--border)}
+  button{padding:.7rem 1rem;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer}
+  .primary{background:var(--brand);color:#fff;border-color:transparent}
+  .muted{opacity:.6}
+  .side{display:flex;flex-direction:column}
+  .side > *{padding:12px}
+  .chat{display:flex;flex-direction:column;height:360px;border-top:1px solid var(--border);gap:8px}
+  .chatlog{flex:1;overflow:auto;background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px}
+  .row{display:flex;gap:8px}
+  input{flex:1;padding:.6rem;border:1px solid var(--border);border-radius:8px}
+  .sys{color:#6b7280;font-size:.9rem;margin:.2rem 0}
+  .me{ text-align:right }
+</style>
+</head>
+<body>
+<header><strong>КОМА • Відеозустріч</strong> <span id="roomLabel" style="opacity:.8"></span></header>
+
+<div class="wrap">
+  <section class="card">
+    <div class="video">
+      <video id="remote" autoplay playsinline></video>
+      <video id="local" autoplay playsinline muted></video>
+    </div>
+    <div class="controls">
+      <button id="btnStart" class="primary">Під’єднатися</button>
+      <button id="btnMic">🎙️ Мікрофон</button>
+      <button id="btnCam">📷 Камера</button>
+      <button id="btnScreen">🖥️ Поділитися екраном</button>
+      <span id="status" class="muted">Не під’єднано</span>
+    </div>
+  </section>
+
+  <aside class="card side">
+    <div><strong>Чат</strong></div>
+    <div class="chat">
+      <div id="chatlog" class="chatlog"></div>
+      <div class="row">
+        <input id="msg" placeholder="Написати повідомлення…">
+        <button id="send">Надіслати</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border)">
+      <div class="muted" id="hint">Очікування підключення…</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ===== Конфіг/параметри ===== */
+const qs = new URLSearchParams(location.search);
+const room = qs.get('room') ||
+             `${(qs.get('consultant')||'room')}_${qs.get('date')||''}_${qs.get('time')||''}`.replace(/\s+/g,'');
+document.getElementById('roomLabel').textContent = `• Кімната: ${room}`;
+
+// адреса сигналінгу на Render
+const RENDER_WSS = 'wss://koma-uaue.onrender.com';
+const SIGNAL_URL = location.hostname === 'localhost' ? 'ws://localhost:3001' : RENDER_WSS;
+
+/* ===== Елементи ===== */
+const els = {
+  local: document.getElementById('local'),
+  remote: document.getElementById('remote'),
+  start: document.getElementById('btnStart'),
+  mic: document.getElementById('btnMic'),
+  cam: document.getElementById('btnCam'),
+  screen: document.getElementById('btnScreen'),
+  status: document.getElementById('status'),
+  chatlog: document.getElementById('chatlog'),
+  msg: document.getElementById('msg'),
+  send: document.getElementById('send'),
+  hint: document.getElementById('hint'),
+};
+
+function logChat(text, who='sys'){
+  const p = document.createElement('div');
+  p.className = who === 'me' ? 'me' : (who === 'sys' ? 'sys' : '');
+  p.textContent = text;
+  els.chatlog.appendChild(p);
+  els.chatlog.scrollTop = els.chatlog.scrollHeight; // автопрокрутка вниз
+}
+
+/* ===== WebRTC ===== */
+const pc = new RTCPeerConnection({
+  iceServers: [{ urls:'stun:stun.l.google.com:19302' }]
+  // Для продакшн-стабільності можна додати TURN-сервер.
+});
+let localStream, screenTrack, dc;
+
+// прийом вхідного DataChannel (коли ініціатор інший)
+pc.ondatachannel = (e) => {
+  dc = e.channel;
+  bindDataChannel();
+};
+pc.onicecandidate = ({candidate}) => {
+  if (candidate) wsSend({ type:'ice', room, payload: candidate });
+};
+pc.ontrack = ({streams}) => {
+  els.remote.srcObject = streams[0];
+  els.status.textContent = 'З’єднано';
+};
+pc.onconnectionstatechange = () => {
+  els.status.textContent = 'Статус: ' + pc.connectionState;
+  if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+    logChat('З’єднання перервано', 'sys');
+  }
+};
+
+async function startLocal(){
+  if (localStream) return;
+  localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  els.local.srcObject = localStream;
+}
+
+async function makeOffer(){
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  wsSend({ type:'offer', room, payload: pc.localDescription });
+}
+
+/* ===== WebSocket (сигналінг) ===== */
+let ws;
+function wsSend(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
+
+function connectWS(){
+  ws = new WebSocket(SIGNAL_URL);
+
+  ws.addEventListener('open', () => {
+    wsSend({ type:'join', room });
+    els.hint.textContent = 'Під’єднуйтесь і чекайте на співрозмовника.';
+    logChat('Під’єднано до сигналінгу', 'sys');
+  });
+
+  ws.addEventListener('message', async (e) => {
+    const msg = JSON.parse(e.data);
+    switch(msg.type){
+      case 'joined':
+        break;
+      case 'offer': {
+        await startLocalIfNeeded();
+        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        wsSend({ type:'answer', room, payload: pc.localDescription });
+        break;
+      }
+      case 'answer': {
+        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        break;
+      }
+      case 'ice': {
+        try { await pc.addIceCandidate(msg.payload); } catch {}
+        break;
+      }
+      case 'bye': {
+        els.remote.srcObject = null;
+        logChat('Співрозмовник покинув кімнату', 'sys');
+        break;
+      }
+    }
+  });
+
+  ws.addEventListener('close', () => {
+    logChat('Сигналінг відключено', 'sys');
+  });
+}
+
+connectWS();
+
+/* ===== DataChannel/чат ===== */
+function bindDataChannel(){
+  if (!dc) return;
+  dc.onmessage = (e)=> logChat(e.data, 'peer');
+  dc.onopen    = ()=> { els.hint.textContent = 'Чат підключено'; logChat('Чат підключено', 'sys'); };
+  dc.onclose   = ()=> logChat('Чат закрито', 'sys');
+}
+
+function sendChat(){
+  const txt = els.msg.value.trim();
+  if (!txt || !dc || dc.readyState!=='open') return;
+  dc.send(txt);
+  logChat(txt, 'me');
+  els.msg.value = '';
+}
+els.send.onclick = sendChat;
+els.msg.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendChat(); }});
+
+/* ===== UI події ===== */
+async function startLocalIfNeeded(){
+  if (!localStream) await startLocal();
+}
+
+els.start.onclick = async () => {
+  await startLocalIfNeeded();
+  // створюємо власний DataChannel і ініціюємо виклик
+  if (!dc) {
+    dc = pc.createDataChannel('chat');
+    bindDataChannel();
+  }
+  await makeOffer();
+  els.start.disabled = true;
+};
+
+els.mic.onclick = () => {
+  if (!localStream) return;
+  const track = localStream.getAudioTracks()[0];
+  if (track){
+    track.enabled = !track.enabled;
+    els.mic.textContent = track.enabled ? '🎙️ Мікрофон' : '🔇 Мікрофон';
+  }
+};
+
+els.cam.onclick = () => {
+  if (!localStream) return;
+  const track = localStream.getVideoTracks()[0];
+  if (track){
+    track.enabled = !track.enabled;
+    els.cam.textContent = track.enabled ? '📷 Камера' : '🚫 Камера';
+  }
+};
+
+els.screen.onclick = async () => {
+  try{
+    const stream = await navigator.mediaDevices.getDisplayMedia({video:true});
+    screenTrack = stream.getVideoTracks()[0];
+    const sender = pc.getSenders().find(s=>s.track && s.track.kind==='video');
+    if (sender) sender.replaceTrack(screenTrack);
+    screenTrack.onended = () => {
+      const cam = localStream && localStream.getVideoTracks()[0];
+      if (sender && cam) sender.replaceTrack(cam);
+    };
+  }catch{}
+};
+
+/* ===== Cleanup ===== */
+window.addEventListener('beforeunload', () => {
+  try { wsSend({ type:'bye', room }); } catch {}
+  if (dc) dc.close();
+  pc.getSenders().forEach(s => s.track && s.track.stop());
+  pc.close();
+  ws && ws.close();
+});
+</script>
+</body>
+</html>

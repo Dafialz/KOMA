@@ -1,0 +1,9 @@
+# render.yaml
+services:
+  - type: web
+    name: koma-signal
+    env: node
+    rootDir: render
+    buildCommand: ""
+    startCommand: "npm start"
+    plan: free

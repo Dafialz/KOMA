@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Знайти консультанта — КОМА</title>
+  <meta name="description" content="Сертифіковані консультанти КОМА. Оберіть фахівця та запишіться на консультацію онлайн." />
+
+  <!-- Favicon / OpenGraph -->
+  <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
+  <meta property="og:title" content="Знайти консультанта — КОМА" />
+  <meta property="og:description" content="Обирайте серед сертифікованих консультантів та записуйтеся онлайн." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="../icon/baner.jpg" />
+  <meta name="theme-color" content="#0f5257" />
+
+  <style>
+    :root{
+      --page-bg:#ffffff; --text:#111827; --muted:#4b5563;
+      --brand:#0f5257; --brand-2:#1f7a80; --accent:#6fc8b8;
+      --border:#e5e7eb; --panel:#ffffff; --radius:16px;
+      --shadow:0 10px 30px rgba(0,0,0,.08); --shadow-sm:0 6px 18px rgba(0,0,0,.06);
+      --max:1200px; --ring:0 0 0 3px rgba(15,82,87,.18);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--page-bg);color:var(--text);
+      font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;text-rendering:optimizeLegibility}
+    img{max-width:100%;height:auto;display:block}
+    a{color:var(--brand);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:var(--max);margin:0 auto;padding:0 20px}
+
+    /* Кнопки */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.1rem;border-radius:999px;
+      background:var(--brand);color:#fff;font-weight:700;letter-spacing:.2px;border:1px solid transparent;
+      box-shadow:var(--shadow-sm);transition:.2s; cursor:pointer}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.outline{background:#fff;color:var(--brand);border-color:var(--brand)}
+    .btn.ghost{background:transparent;border-color:#d1d5db;color:#111}
+    .btn.small{padding:.55rem .9rem; font-weight:600}
+
+    .section{padding:72px 0}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .grid{display:grid;gap:24px}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media (max-width:1024px){.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:640px){.grid-3{grid-template-columns:1fr}}
+
+    /* Header */
+    .header{position:sticky;top:0;z-index:50;
+      background:linear-gradient(135deg,#0b2e33 0%,#0f5257 55%,#6fc8b8 120%); border-bottom:1px solid rgba(255,255,255,.15); color:#fff}
+    .nav{display:flex;align-items:center;justify-content:space-between;height:72px}
+    .brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}
+    .brand img{height:40px;width:auto;border-radius:8px}
+    .brand span{font-weight:800;letter-spacing:.2px}
+    .menu{display:flex;gap:18px;align-items:center}
+    .menu a{color:#fff;opacity:.95;padding:.5rem .6rem;border-radius:10px;text-decoration:none}
+    .menu a:hover{background:rgba(255,255,255,.12)}
+    .hamb{display:none}
+    @media (max-width:960px){
+      .menu{display:none}
+      .hamb{display:inline-flex;align-items:center;justify-content:center;height:40px;width:44px;border-radius:10px;
+        border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff}
+      #mobile.open{max-height:500px;padding:12px 0}
+    }
+    .mobile{overflow:hidden;max-height:0;transition:max-height .25s ease,padding .25s ease;border-bottom:1px solid rgba(255,255,255,.15);
+      background:linear-gradient(135deg,#0b2e33 0%,#0f5257 80%)}
+    .mobile a{display:block;padding:12px 0;color:#fff;border-bottom:1px dashed rgba(255,255,255,.18);text-decoration:none}
+
+    /* Шапка сторінки */
+    .pagehead{padding:48px 0 24px;background:#f8fafc;border-bottom:1px solid var(--border)}
+    .lead{color:#4b5563}
+
+    /* Картки консультантів */
+    .person{display:flex;flex-direction:column;overflow:hidden}
+    .photo{aspect-ratio: 4 / 3; background:#eef2f7; position:relative; overflow:hidden}
+    .photo img{width:100%;height:100%;object-fit:cover}
+    .badge{position:absolute;left:12px;top:12px;background:#fff;border:1px solid var(--border);
+      color:#065f46;border-radius:999px;padding:4px 10px;font-size:.78rem;box-shadow:var(--shadow-sm)}
+    .p-body{padding:18px}
+    .p-name{margin:0 0 4px;font-weight:800;font-size:1.1rem}
+    .p-role{margin:0 0 10px;color:var(--muted)}
+    .p-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+    /* Прайс */
+    .prices{display:none; margin-top:12px; border:1px solid var(--border); border-radius:12px; padding:12px; background:#f9fafb}
+    .prices.open{display:block}
+    .prices ul{margin:0; padding-left:18px}
+    .prices li{margin:6px 0; color:#374151}
+
+    /* Модальне вікно */
+    dialog::backdrop{background:rgba(0,0,0,.45)}
+    dialog{border:none;border-radius:16px;max-width:520px;width:96%;padding:0;box-shadow:var(--shadow)}
+    .modal{padding:20px}
+    .modal header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .modal h3{margin:0}
+    .input{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px;color:#111}
+    .input:focus{outline:none;box-shadow:var(--ring)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="КОМА Головна">
+        <img src="../icon/logo.png" alt="КОМА logo">
+        <span>КОМА</span>
+      </a>
+      <nav class="menu" aria-label="Primary">
+        <a href="pro-nas.html">Про нас</a>
+        <a href="navchannia.html">Навчання</a>
+        <a href="podii.html">Події</a>
+        <a href="pozhertvy.html">Пожертви</a>
+        <a href="kontakty.html">Контакти</a>
+        <a class="btn outline" href="directory.html" aria-current="page">Знайти консультанта</a>
+        <a class="btn" href="zapis.html">Записатися</a>
+      </nav>
+      <button class="hamb" id="hamb" aria-label="Меню" aria-expanded="false" aria-controls="mobile">☰</button>
+    </div>
+    <div class="container mobile" id="mobile">
+      <a href="pro-nas.html">Про нас</a>
+      <a href="navchannia.html">Навчання</a>
+      <a href="podii.html">Події</a>
+      <a href="pozhertvy.html">Пожертви</a>
+      <a href="kontakty.html">Контакти</a>
+      <a href="directory.html" aria-current="page">Знайти консультанта</a>
+      <a href="zapis.html">Записатися</a>
+    </div>
+  </header>
+
+  <!-- Заголовок сторінки -->
+  <section class="pagehead">
+    <div class="container">
+      <h1 style="margin:0 0 6px">Знайти консультанта</h1>
+      <p class="lead">Оберіть фахівця та запишіться на зручний час.</p>
+    </div>
+  </section>
+
+  <!-- Список консультантів -->
+  <main class="section" aria-label="Перелік консультантів">
+    <div class="container grid grid-3">
+
+      <!-- Шаблонна розмітка консультанта (1..6) -->
+      <!-- 1 -->
+      <article class="card person">
+        <div class="photo">
+          <img src="../icon/consultants/oksana.jpg" alt="Оксана Кокотень">
+          <span class="badge">Сімейне консультування</span>
+        </div>
+        <div class="p-body">
+          <h3 class="p-name">Оксана Кокотень</h3>
+          <p class="p-role">Консультант-психолог, MA</p>
+          <div class="p-actions">
+            <button class="btn" onclick="openBooking('Оксана Кокотень')">Записатись</button>
+            <a class="btn ghost" href="mailto:oksana@example.org">Написати</a>
+            <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
+          </div>
+          <div class="prices">
+            <ul>
+              <li>Діагностична консультація — <strong>1200 грн</strong></li>
+              <li>Індивідуальна сесія — <strong>1000 грн</strong> (курс від 6 зустрічей)</li>
+              <li>Психотерапевтична сесія — <strong>1000 грн</strong></li>
+              <li>Логопедична сесія — <strong>500 грн</strong></li>
+              <li>Парна терапія — <strong>1200 грн</strong></li>
+              <li>Групова терапія — <strong>700 грн</strong></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2 -->
+      <article class="card person">
+        <div class="photo">
+          <img src="../icon/consultants/andrii.jpg" alt="Андрій Савчук">
+          <span class="badge">Травма, ПТСР</span>
+        </div>
+        <div class="p-body">
+          <h3 class="p-name">Андрій Савчук</h3>
+          <p class="p-role">Душеопікун, капелан</p>
+          <div class="p-actions">
+            <button class="btn" onclick="openBooking('Андрій Савчук')">Записатись</button>
+            <a class="btn ghost" href="mailto:andrii@example.org">Написати</a>
+            <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
+          </div>
+          <div class="prices">
+            <ul>
+              <li>Діагностична консультація — <strong>1200 грн</strong></li>
+              <li>Індивідуальна сесія — <strong>1000 грн</strong> (курс від 6 зустрічей)</li>
+              <li>Психотерапевтична сесія — <strong>1000 грн</strong></li>
+              <li>Парна терапія — <strong>1200 грн</strong></li>
+              <li>Групова терапія — <strong>700 грн</strong></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 3 -->
+      <article class="card person">
+        <div class="photo">
+          <img src="../icon/consultants/iryna.jpg" alt="Ірина Шевченко">
+          <span class="badge">Депресія, тривога</span>
+        </div>
+        <div class="p-body">
+          <h3 class="p-name">Ірина Шевченко</h3>
+          <p class="p-role">Психолог, КПТ</p>
+          <div class="p-actions">
+            <button class="btn" onclick="openBooking('Ірина Шевченко')">Записатись</button>
+            <a class="btn ghost" href="mailto:iryna@example.org">Написати</a>
+            <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
+          </div>
+          <div class="prices">
+            <ul>
+              <li>Діагностична консультація — <strong>1200 грн</strong></li>
+              <li>Індивідуальна сесія — <strong>1000 грн</strong> (курс від 6 зустрічей)</li>
+              <li>Психотерапевтична сесія — <strong>1000 грн</strong></li>
+              <li>Парна терапія — <strong>1200 грн</strong></li>
+              <li>Групова терапія — <strong>700 грн</strong></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 4 -->
+      <article class="card person">
+        <div class="photo">
+          <img src="../icon/consultants/maksym.jpg" alt="Максим Коваль">
+          <span class="badge">Підлітки</span>
+        </div>
+        <div class="p-body">
+          <h3 class="p-name">Максим Коваль</h3>
+          <p class="p-role">Дитячий та підлітковий психолог</p>
+          <div class="p-actions">
+            <button class="btn" onclick="openBooking('Максим Коваль')">Записатись</button>
+            <a class="btn ghost" href="mailto:maksym@example.org">Написати</a>
+            <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
+          </div>
+          <div class="prices">
+            <ul>
+              <li>Діагностична консультація — <strong>1200 грн</strong></li>
+              <li>Індивідуальна сесія — <strong>1000 грн</strong> (курс від 6 зустрічей)</li>
+              <li>Психотерапевтична сесія — <strong>1000 грн</strong></li>
+              <li>Парна терапія — <strong>1200 грн</strong></li>
+              <li>Групова терапія — <strong>700 грн</strong></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 5 -->
+      <article class="card person">
+        <div class="photo">
+          <img src="../icon/consultants/nadiia.jpg" alt="Надія Романюк">
+          <span class="badge">Шлюб і сім’я</span>
+        </div>
+        <div class="p-body">
+          <h3 class="p-name">Надія Романюк</h3>
+          <p class="p-role">Сімейний консультант</p>
+          <div class="p-actions">
+            <button class="btn" onclick="openBooking('Надія Романюк')">Записатись</button>
+            <a class="btn ghost" href="mailto:nadiia@example.org">Написати</a>
+            <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
+          </div>
+          <div class="prices">
+            <ul>
+              <li>Діагностична консультація — <strong>1200 грн</strong></li>
+              <li>Індивідуальна сесія — <strong>1000 грн</strong> (курс від 6 зустрічей)</li>
+              <li>Психотерапевтична сесія — <strong>1000 грн</strong></li>
+              <li>Парна терапія — <strong>1200 грн</strong></li>
+              <li>Групова терапія — <strong>700 грн</strong></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 6 -->
+      <article class="card person">
+        <div class="photo">
+          <img src="../icon/consultants/oleh.jpg" alt="Олег Литвин">
+          <span class="badge">Емоції, вигорання</span>
+        </div>
+        <div class="p-body">
+          <h3 class="p-name">Олег Литвин</h3>
+          <p class="p-role">Психотерапевт</p>
+          <div class="p-actions">
+            <button class="btn" onclick="openBooking('Олег Литвин')">Записатись</button>
+            <a class="btn ghost" href="mailto:oleh@example.org">Написати</a>
+            <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
+          </div>
+          <div class="prices">
+            <ul>
+              <li>Діагностична консультація — <strong>1200 грн</strong></li>
+              <li>Індивідуальна сесія — <strong>1000 грн</strong> (курс від 6 зустрічей)</li>
+              <li>Психотерапевтична сесія — <strong>1000 грн</strong></li>
+              <li>Парна терапія — <strong>1200 грн</strong></li>
+              <li>Групова терапія — <strong>700 грн</strong></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <!-- Модальне вікно бронювання -->
+  <dialog id="booking">
+    <form method="dialog" class="modal" id="bookingForm">
+      <header>
+        <h3 id="modalTitle">Запис на консультацію</h3>
+        <!-- важливо: type="button" -->
+        <button type="button" class="btn ghost" id="closeX" aria-label="Закрити">✕</button>
+      </header>
+
+      <input type="hidden" id="cName" />
+
+      <div class="row">
+        <div>
+          <label for="fullName">Ваше ім’я</label>
+          <input class="input" id="fullName" name="fullName" required placeholder="Ім’я та прізвище">
+        </div>
+        <div>
+          <label for="email">Ел. пошта</label>
+          <input class="input" id="email" type="email" name="email" required placeholder="name@email.com">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label for="date">Дата</label>
+          <input class="input" id="date" type="date" name="date" required>
+        </div>
+        <div>
+          <label for="time">Час</label>
+          <input class="input" id="time" type="time" name="time" required>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label for="notes">Коментар (необов’язково)</label>
+        <textarea class="input" id="notes" rows="3" placeholder="Ваш номер телефону, коротко про запит або зручний формат (онлайн/офлайн)…"></textarea>
+      </div>
+
+      <div class="actions">
+        <!-- важливо: type="button" -->
+        <button type="button" class="btn ghost" id="cancelBtn">Скасувати</button>
+        <button class="btn" value="submit" id="confirmBtn">Підтвердити</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="section" style="padding:32px 0;border-top:1px solid var(--border)">
+    <div class="container" style="display:flex;align-items:center;gap:12px;color:#4b5563">
+      <img src="../icon/logo.png" alt="" style="height:28px;border-radius:8px">
+      <span>© <span id="y"></span> КОМА. Усі права захищені.</span>
+    </div>
+  </footer>
+
+  <script>
+    // Мобільне меню
+    const hamb = document.getElementById('hamb');
+    const mobile = document.getElementById('mobile');
+    hamb?.addEventListener('click', () => {
+      const open = mobile.classList.toggle('open');
+      hamb.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Прайс (показати/сховати)
+    function togglePrice(btn){
+      const box = btn.closest('.p-body').querySelector('.prices');
+      box.classList.toggle('open');
+      btn.textContent = box.classList.contains('open') ? 'Приховати ціну' : 'Ціна';
+    }
+
+    // Модалка
+    const dlg = document.getElementById('booking');
+    const closeX = document.getElementById('closeX');
+    const cancelBtn = document.getElementById('cancelBtn');
+    closeX.addEventListener('click', ()=> dlg.close());
+    cancelBtn.addEventListener('click', ()=> dlg.close());
+
+    function openBooking(name){
+      document.getElementById('modalTitle').textContent = 'Запис до: ' + name;
+      document.getElementById('cName').value = name;
+
+      // дефолтна дата/час
+      const d = new Date(); d.setDate(d.getDate()+1);
+      document.getElementById('date').value = d.toISOString().slice(0,10);
+      const t = new Date(); t.setMinutes(0,0,0);
+      document.getElementById('time').value = t.toTimeString().slice(0,5);
+
+      dlg.showModal();
+    }
+
+    // Ліміт 4 записи/день/консультант (localStorage)
+    function bookingKey(consultant, date){
+      return `${consultant}_${date}`; // простий ключ
+    }
+
+    function canBook(consultant, date){
+      const key = bookingKey(consultant, date);
+      const count = parseInt(localStorage.getItem(key) || '0', 10);
+      return count < 4;
+    }
+
+    function registerBooking(consultant, date){
+      const key = bookingKey(consultant, date);
+      const count = parseInt(localStorage.getItem(key) || '0', 10);
+      localStorage.setItem(key, String(count + 1));
+    }
+
+    // Підтвердження (з перевіркою ліміту)
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.addEventListener('click', (e)=>{
+      e.preventDefault(); // не закривати форму автоматично
+
+      const name = document.getElementById('cName').value;
+      const fullName = document.getElementById('fullName').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const date = document.getElementById('date').value;
+      const time = document.getElementById('time').value;
+
+      if(!fullName || !email || !date || !time){ return; }
+
+      if(!canBook(name, date)){
+        alert('На цю дату у консультанта вже 4 записи. Оберіть, будь ласка, інший день.');
+        return;
+      }
+
+      // реєструємо локально
+      registerBooking(name, date);
+
+      // можеш замінити на реальний бекенд або редірект
+      const params = new URLSearchParams({ consultant: name, fullName, email, date, time }).toString();
+      // alert для демо, можна одразу редіректити:
+      // window.location.href = 'zapis.html?' + params;
+      window.location.href = 'zapis.html?' + params;
+    });
+  </script>
+</body>
+</html>

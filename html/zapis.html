@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Запис на консультацію — КОМА</title>
+  <meta name="description" content="Підтвердження запису, підключення до відеочату КОМА та вбудований чат із консультантом у призначений час." />
+
+  <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
+  <meta property="og:title" content="Запис на консультацію — КОМА" />
+  <meta property="og:description" content="Деталі вашого запису, відеочат та вбудований чат повідомлень." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="../icon/baner.jpg" />
+  <meta name="theme-color" content="#0f5257" />
+
+  <style>
+    :root{
+      --page-bg:#ffffff; --text:#111827; --muted:#4b5563;
+      --brand:#0f5257; --brand-2:#1f7a80; --accent:#6fc8b8;
+      --border:#e5e7eb; --panel:#ffffff; --radius:16px;
+      --shadow:0 10px 30px rgba(0,0,0,.08); --shadow-sm:0 6px 18px rgba(0,0,0,.06);
+      --max:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--page-bg);color:var(--text);
+      font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;text-rendering:optimizeLegibility}
+    img{max-width:100%;height:auto;display:block}
+    a{color:var(--brand);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:var(--max);margin:0 auto;padding:0 20px}
+    .header{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#0b2e33 0%,#0f5257 55%,#6fc8b8 120%);color:#fff;border-bottom:1px solid rgba(255,255,255,.15)}
+    .nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+    .brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}
+    .brand img{height:40px;width:auto;border-radius:8px}
+    h1{font-size:clamp(24px,3.4vw,32px);margin:0}
+    .lead{color:#374151}
+    .section{padding:56px 0}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:24px}
+    @media (max-width:900px){.wrap{grid-template-columns:1fr;}}
+    .box{padding:22px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:640px){.row{grid-template-columns:1fr}}
+    .muted{color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#f8fafc;border-radius:999px;padding:8px 12px}
+    .bigtime{font-weight:800;font-size:clamp(22px,4vw,34px);letter-spacing:.3px}
+    .count{font-variant-numeric:tabular-nums}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.55rem;padding:.9rem 1.2rem;border-radius:999px;
+      background:var(--brand);color:#fff;font-weight:700;border:1px solid transparent;box-shadow:var(--shadow-sm);transition:.2s}
+    .btn:hover{transform:translateY(-1px)}
+    .btn[aria-disabled="true"]{opacity:.55;pointer-events:none}
+    .btn.ghost{background:#fff;color:var(--brand);border-color:var(--brand)}
+    .btn.gray{background:#eef2f7;color:#111;border-color:#e5e7eb}
+    .grid{display:grid;gap:10px}
+    .list{margin:0;padding-left:18px}
+    .foot{padding:28px 0;border-top:1px solid var(--border);color:#4b5563}
+    .danger{color:#b91c1c}
+    .ok{color:#065f46}
+    .tag{display:inline-block;padding:.2rem .55rem;border-radius:999px;background:#e6fffa;border:1px solid #b6f4ea;color:#065f46;font-size:.78rem}
+
+    /* ===== Chat ===== */
+    .chat {display:flex;flex-direction:column;gap:12px;}
+    .chat-head {display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .chat-room {font-size:.9rem;color:#065f46;background:#ecfeff;border:1px solid #a5f3fc;border-radius:999px;padding:4px 10px}
+    .chat-box {display:flex;flex-direction:column;height:420px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+    .chat-msgs {flex:1 1 auto;overflow:auto;padding:14px;background:#fbfbfd}
+    .msg {max-width:78%; margin:6px 0; padding:10px 12px; border-radius:14px; box-shadow:var(--shadow-sm); word-wrap:break-word}
+    .me {align-self:flex-end; background:#0f5257; color:#fff; border-bottom-right-radius:6px}
+    .them {align-self:flex-start; background:#ffffff; border:1px solid var(--border); border-bottom-left-radius:6px}
+    .meta {font-size:.75rem; opacity:.8; margin-top:4px}
+    .chat-input {display:flex;gap:10px;padding:10px;border-top:1px solid var(--border);background:#fff}
+    .chat-input textarea {flex:1; resize:none; max-height:140px; min-height:42px; border:1px solid var(--border); border-radius:12px; padding:10px; font:inherit}
+    .chat-input textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(15,82,87,.18)}
+    .new-indicator {position:sticky; bottom:8px; display:inline-flex; align-self:center; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; padding:6px 10px; border-radius:999px; cursor:pointer; font-size:.85rem}
+    .badge {display:inline-flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #bbf7d0;color:#065f46;border-radius:999px;padding:4px 8px;font-size:.8rem}
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="КОМА — Головна">
+        <img src="../icon/logo.png" alt="КОМА logo"><strong>КОМА</strong>
+      </a>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn ghost" href="directory.html">← Повернутися до консультантів</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page -->
+  <section class="section">
+    <div class="container wrap">
+      <!-- LEFT: Booking details -->
+      <div class="card box">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <h1 id="title">Підтвердження запису</h1>
+          <span class="tag" id="statusTag">Очікує на час</span>
+        </div>
+        <p class="lead" id="subtitle" style="margin:6px 0 18px">Деталі вашої зустрічі нижче.</p>
+
+        <div class="grid">
+          <div class="row">
+            <div class="card box" style="padding:14px">
+              <div class="muted">Консультант</div>
+              <div id="consultant" style="font-weight:700;margin-top:2px">—</div>
+            </div>
+            <div class="card box" style="padding:14px">
+              <div class="muted">Клієнт</div>
+              <div id="client" style="font-weight:700;margin-top:2px">—</div>
+            </div>
+          </div>
+
+          <div class="card box" style="padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div class="muted">Призначений час (Київ)</div>
+              <div class="bigtime" id="dtText">—</div>
+              <div class="muted" id="tzText" style="font-size:.92rem"></div>
+            </div>
+            <div>
+              <div class="pill">
+                ⏳ <span class="count" id="countdown">—:—:—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <a id="videoBtn" class="btn" href="#" target="_blank" rel="noopener" aria-disabled="true">Приєднатися до відеочату</a>
+            <a id="gcalBtn" class="btn gray" href="#" target="_blank" rel="noopener">Додати в Google Calendar</a>
+          </div>
+
+          <div class="card box" style="padding:14px">
+            <div class="muted" style="margin-bottom:6px">Нотатка клієнта</div>
+            <div id="notes">—</div>
+          </div>
+
+          <div class="muted" style="font-size:.92rem">
+            Порада: перевірте інтернет, мікрофон і камеру заздалегідь. Кнопка відеочату стане активною
+            <strong>за 10 хв</strong> до початку і буде доступна ще <strong>1 годину</strong> після старту.
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Chat + Help -->
+      <aside class="card box">
+        <div class="chat">
+          <div class="chat-head">
+            <h3 style="margin:0">Чат із консультантом</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="chat-room" id="roomBadge">Кімната: —</span>
+              <button id="clearChat" class="btn gray" style="padding:.45rem .8rem;font-weight:600">Очистити</button>
+            </div>
+          </div>
+
+          <div class="chat-box">
+            <div id="msgs" class="chat-msgs"></div>
+            <div id="newBar" class="new-indicator" style="display:none">Нові повідомлення — натисніть, щоб перейти вниз</div>
+            <div class="chat-input">
+              <textarea id="msgInput" rows="2" placeholder="Напишіть повідомлення… (Enter — надіслати)"></textarea>
+              <button id="sendBtn" class="btn">Надіслати</button>
+            </div>
+          </div>
+
+          <div class="muted" style="font-size:.9rem; display:flex; justify-content:space-between; align-items:center;">
+            <span>Ви: <strong id="whoAmI">client</strong></span>
+            <span id="unread" class="badge" style="display:none">Нові: <b id="unreadCount">0</b></span>
+          </div>
+
+          <div class="card box" style="padding:14px">
+            <div class="muted">Як це працює?</div>
+            <ol class="list">
+              <li>Чат прив’язаний до цієї зустрічі (кімната). Відкрийте сторінку у двох вкладках/браузерах (клієнт і консультант) — повідомлення синхронізуються.</li>
+              <li>Використовується локальне збереження (localStorage) для синхронізації у реальному часі між вкладками.</li>
+              <li>Для продакшену рекомендуємо WebSocket/Signal-сервер або DataChannel WebRTC.</li>
+            </ol>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="container" style="display:flex;align-items:center;gap:10px">
+      <img src="../icon/logo.png" alt="" style="height:26px;border-radius:8px"><span>© <span id="y"></span> КОМА</span>
+    </div>
+  </footer>
+
+  <script>
+    // ===== Helpers
+    const $ = (s)=>document.querySelector(s);
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Київський час — сервісні форматери
+    const KYIV_TZ = 'Europe/Kyiv';
+    const dtFmtKyiv = new Intl.DateTimeFormat('uk-UA', {
+      timeZone: KYIV_TZ, weekday:'long', year:'numeric', month:'long', day:'numeric'
+    });
+    const tmFmtKyiv = new Intl.DateTimeFormat('uk-UA', {
+      timeZone: KYIV_TZ, hour:'2-digit', minute:'2-digit'
+    });
+
+    // Отримати часовий зсув з UTC для конкретного моменту (ms)
+    function getZoneOffsetMs(zone, utcDate){
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: zone, hour12:false, year:'numeric', month:'2-digit', day:'2-digit',
+        hour:'2-digit', minute:'2-digit', second:'2-digit'
+      }).formatToParts(utcDate).reduce((a,p)=>{a[p.type]=p.value; return a;}, {});
+      const zonedAsUTCms = Date.UTC(parts.year, parts.month-1, parts.day, parts.hour, parts.minute, parts.second);
+      return zonedAsUTCms - utcDate.getTime();
+    }
+
+    // Побудувати UTC-дату з локальних полів КИЇВського часу
+    function makeUtcFromKyiv(y,m,d,H,M){
+      const guessUTC = new Date(Date.UTC(y, m-1, d, H, M, 0, 0)); // припущення
+      const offset = getZoneOffsetMs(KYIV_TZ, guessUTC);
+      return new Date(guessUTC.getTime() - offset); // реальний UTC момент, коли в Києві y-m-d H:M
+    }
+
+    // ----- Read URL params
+    const q = new URLSearchParams(location.search);
+    const params = {
+      consultant: q.get('consultant') || 'Консультант',
+      fullName: q.get('fullName') || 'Клієнт',
+      email:    q.get('email') || '',
+      date:     q.get('date'),               // YYYY-MM-DD (Київ)
+      time:     q.get('time'),               // HH:MM (Київ)
+      notes:    q.get('notes') || '',
+      role:     q.get('role') || 'client'    // client | consultant
+    };
+
+    // ----- Render basic info
+    $('#consultant').textContent = params.consultant;
+    $('#client').textContent = params.fullName + (params.email ? ` • ${params.email}` : '');
+    $('#notes').textContent = params.notes || '—';
+    $('#title').textContent = `Запис до: ${params.consultant}`;
+    $('#whoAmI').textContent = params.role;
+
+    // ----- Compose UTC moment from Kyiv local date/time
+    const [yy,mm,dd] = params.date ? params.date.split('-').map(n=>+n) : [NaN,NaN,NaN];
+    const [HH,MM]    = params.time ? params.time.split(':').map(n=>+n) : [NaN,NaN];
+    const startUTC   = makeUtcFromKyiv(yy, mm, dd, HH, MM);
+
+    // ----- Show datetime (Kyiv)
+    $('#dtText').textContent = `${dtFmtKyiv.format(startUTC)}, ${tmFmtKyiv.format(startUTC)}`;
+    $('#tzText').textContent = `Часовий пояс: ${KYIV_TZ}`;
+
+    // ----- Meeting link (власний відеочат)
+    const rawRoom = (`${params.consultant}-${params.date}-${params.time}`).replace(/\s+/g,'');
+    const roomId = encodeURIComponent(rawRoom);
+    const meetingUrl = `video.html?room=${roomId}`;
+    const videoBtn = $('#videoBtn');
+    videoBtn.href = meetingUrl;
+    videoBtn.setAttribute('aria-disabled','true'); // спочатку неактивна
+    $('#roomBadge').textContent = `Кімната: ${rawRoom}`;
+
+    // ----- Google Calendar link (UTC інтервал)
+    const pad = (n)=>String(n).padStart(2,'0');
+    const toUTC = (d)=>`${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+    const endUTC = new Date(startUTC.getTime() + 60*60*1000); // 1h duration
+    const text = encodeURIComponent(`Сесія з консультантом: ${params.consultant}`);
+    const basePath = location.pathname.replace(/[^/]+$/,'');
+    const meetAbs = `${location.origin}${basePath}video.html?room=${roomId}`;
+    const details = encodeURIComponent(`Клієнт: ${params.fullName}${params.email? ' ('+params.email+')':''}\nПосилання на відеочат: ${meetAbs}`);
+    const locationStr = encodeURIComponent('Онлайн (КОМА відеочат)');
+    $('#gcalBtn').href = `https://calendar.google.com/calendar/u/0/r/eventedit?text=${text}&dates=${toUTC(startUTC)}/${toUTC(endUTC)}&details=${details}&location=${locationStr}`;
+
+    // ----- Schedule logic (Kyiv time). Кнопка активна: -10 хв .. +1 година від старту
+    const statusTag = $('#statusTag');
+    const countdown = $('#countdown');
+
+    const OPEN_BEFORE_MIN = 10;   // за 10 хв до
+    const OPEN_AFTER_MIN  = 60;   // ще 1 год після
+
+    const openFromUTC = new Date(startUTC.getTime() - OPEN_BEFORE_MIN*60*1000);
+    const openTillUTC = new Date(startUTC.getTime() + OPEN_AFTER_MIN*60*1000);
+
+    function tick(){
+      const nowUTC = new Date(); // поточний момент у UTC (незалежно від місцевого TZ)
+      if(nowUTC < openFromUTC){
+        const ms = openFromUTC - nowUTC;
+        countdown.textContent = fmtDuration(ms);
+        statusTag.textContent = 'Очікування';
+        statusTag.className = 'tag';
+        setVideoDisabled(true);
+      }else if(nowUTC >= openFromUTC && nowUTC <= openTillUTC){
+        countdown.textContent = 'Доступно зараз';
+        statusTag.textContent = 'Онлайн';
+        statusTag.className = 'tag ok';
+        setVideoDisabled(false);
+      }else{
+        countdown.textContent = 'Час зустрічі минув';
+        statusTag.textContent = 'Завершено';
+        statusTag.className = 'tag danger';
+        setVideoDisabled(true);
+      }
+    }
+    function setVideoDisabled(disabled){
+      if(disabled){ videoBtn.setAttribute('aria-disabled','true'); }
+      else { videoBtn.removeAttribute('aria-disabled'); }
+    }
+    function fmtDuration(ms){
+      const s = Math.max(0, Math.floor(ms/1000));
+      const h = Math.floor(s/3600);
+      const m = Math.floor((s%3600)/60);
+      const sec = s%60;
+      const p = (n)=>String(n).padStart(2,'0');
+      return `${p(h)}:${p(m)}:${p(sec)}`;
+    }
+    tick(); setInterval(tick, 1000);
+
+    // ===== CHAT (localStorage sync per room)
+    const CHAT_KEY = `koma_chat_${rawRoom}`;
+    const msgsEl   = $('#msgs');
+    const inputEl  = $('#msgInput');
+    const sendBtn  = $('#sendBtn');
+    const newBar   = $('#newBar');
+    const unreadEl = $('#unread');
+    const unreadCountEl = $('#unreadCount');
+
+    // load initial
+    let messages = loadChat();
+    render(true);
+
+    // send
+    function send(){
+      const text = inputEl.value.trim();
+      if(!text) return;
+      const msg = {
+        id: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math.random()),
+        role: params.role,
+        name: params.role === 'consultant' ? params.consultant : (params.fullName || 'Клієнт'),
+        text,
+        ts: Date.now()
+      };
+      messages.push(msg);
+      saveChat(messages);
+      inputEl.value = '';
+      autoGrow();
+      render(true);
+    }
+
+    sendBtn.addEventListener('click', send);
+    inputEl.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault(); send();
+      }
+    });
+
+    // autosize textarea
+    function autoGrow(){
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
+    }
+    inputEl.addEventListener('input', autoGrow);
+    autoGrow();
+
+    // storage sync (інша вкладка)
+    window.addEventListener('storage', (ev)=>{
+      if(ev.key === CHAT_KEY){
+        messages = loadChat();
+        const atBottom = isAtBottom();
+        render(atBottom ? false : null);
+      }
+    });
+
+    // прокрутка та індикатор нових
+    function isAtBottom(){
+      return Math.abs(msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight) < 60;
+    }
+    function scrollToBottom(){
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      newBar.style.display = 'none';
+      unreadEl.style.display = 'none';
+      unreadCountEl.textContent = '0';
+    }
+    msgsEl.addEventListener('scroll', ()=>{
+      if(isAtBottom()){
+        newBar.style.display = 'none';
+        unreadEl.style.display = 'none';
+        unreadCountEl.textContent = '0';
+      }
+    });
+    newBar.addEventListener('click', scrollToBottom);
+
+    // render
+    function render(forceScroll){
+      msgsEl.innerHTML = '';
+      let lastDate = '';
+      messages.forEach(m=>{
+        const d = new Date(m.ts);
+        const day = d.toLocaleDateString('uk-UA');
+        if(day !== lastDate){
+          const sep = document.createElement('div');
+          sep.className = 'muted';
+          sep.style.textAlign = 'center';
+          sep.style.margin = '6px 0';
+          sep.textContent = day;
+          msgsEl.appendChild(sep);
+          lastDate = day;
+        }
+        const wrap = document.createElement('div');
+        wrap.style.display = 'flex';
+        wrap.style.flexDirection = 'column';
+        wrap.style.alignItems = m.role === params.role ? 'flex-end' : 'flex-start';
+
+        const bubble = document.createElement('div');
+        bubble.className = `msg ${m.role === params.role ? 'me' : 'them'}`;
+        bubble.innerText = m.text;
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.style.textAlign = m.role === params.role ? 'right' : 'left';
+        meta.textContent = `${m.name || m.role} • ${d.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})}`;
+
+        wrap.appendChild(bubble);
+        wrap.appendChild(meta);
+        msgsEl.appendChild(wrap);
+      });
+
+      if(forceScroll === true){
+        scrollToBottom();
+      } else if(forceScroll === null){
+        newBar.style.display = 'inline-flex';
+        unreadEl.style.display = 'inline-flex';
+        unreadCountEl.textContent = String(+unreadCountEl.textContent + 1);
+      }
+    }
+
+    function loadChat(){
+      try { return JSON.parse(localStorage.getItem(CHAT_KEY)) || []; }
+      catch{ return []; }
+    }
+    function saveChat(data){
+      localStorage.setItem(CHAT_KEY, JSON.stringify(data));
+      // manual trigger for same-tab updates
+      window.dispatchEvent(new StorageEvent('storage', {key: CHAT_KEY}));
+    }
+
+    // clear chat (локально для цієї кімнати на цьому пристрої)
+    $('#clearChat').addEventListener('click', ()=>{
+      if(confirm('Очистити історію чату лише на цьому пристрої?')){
+        localStorage.removeItem(CHAT_KEY);
+        messages = [];
+        render(true);
+      }
+    });
+  </script>
+</body>
+</html>

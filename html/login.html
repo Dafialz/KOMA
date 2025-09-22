@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Вхід — КОМА</title>
+  <meta name="description" content="Вхід до кабінету консультанта КОМА." />
+  <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
+  <meta name="theme-color" content="#0f5257" />
+
+  <style>
+    :root{
+      --page-bg:#ffffff; --text:#111827; --muted:#4b5563;
+      --brand:#0f5257; --brand-2:#1f7a80; --border:#e5e7eb; --panel:#ffffff;
+      --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.08); --shadow-sm:0 6px 18px rgba(0,0,0,.06);
+      --ring:0 0 0 3px rgba(15,82,87,.18); --max:420px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:linear-gradient(135deg,#0b2e33 0%,#0f5257 55%,#6fc8b8 120%);min-height:100%;color:#111}
+    a{color:#0f5257;text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:var(--max);margin:8vh auto;padding:20px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .logo img{height:40px;border-radius:10px}
+    h1{margin:0 0 4px;font-size:clamp(22px,3.5vw,28px)}
+    p.muted{margin:.2rem 0 16px;color:#4b5563}
+
+    label{display:block;font-weight:600;margin:.4rem 0 .35rem}
+    .input{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    .input:focus{outline:none;box-shadow:var(--ring)}
+    .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+    .hint{font-size:.9rem;color:#6b7280;margin-top:8px}
+
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.55rem;padding:.9rem 1.15rem;border-radius:999px;
+      background:#0f5257;color:#fff;border:1px solid transparent;font-weight:700;cursor:pointer;box-shadow:var(--shadow-sm);transition:.2s;width:100%}
+    .btn:hover{transform:translateY(-1px)}
+    .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none}
+
+    .error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px 12px;margin:8px 0;display:none}
+    .ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;border-radius:12px;padding:10px 12px;margin:8px 0;display:none}
+
+    .footer{margin-top:12px;text-align:center;color:#e8fbf8}
+    .footer a{color:#baf7e6}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="logo">
+        <img src="../icon/logo.png" alt="КОМА">
+        <div>
+          <strong>КОМА</strong><br>
+          <span style="color:#6b7280;font-size:.9rem">Вхід для консультантів</span>
+        </div>
+      </div>
+
+      <h1>Вхід</h1>
+      <p class="muted">Увійдіть за корпоративною електронною поштою та паролем.</p>
+
+      <div id="err" class="error"></div>
+      <div id="ok" class="ok"></div>
+
+      <form id="form" autocomplete="on" novalidate>
+        <label for="email">Ел. пошта</label>
+        <input class="input" id="email" name="email" type="email" placeholder="name@example.com" required autofocus>
+
+        <label for="password">Пароль</label>
+        <div class="row">
+          <input class="input" id="password" name="password" type="password" placeholder="Ваш пароль" required>
+          <button type="button" id="toggle" aria-label="Показати/сховати пароль" style="border:none;background:#eef2f7;border-radius:12px;padding:10px 12px;cursor:pointer">Показати</button>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:500">
+            <input type="checkbox" id="remember"> Запам’ятати мене (30 днів)
+          </label>
+          <a href="#" id="clearSession" title="Вийти всюди">Вийти</a>
+        </div>
+
+        <button class="btn" type="submit" id="submit" style="margin-top:14px">Увійти</button>
+        <div class="hint">Проблеми зі входом? Напишіть на <a href="mailto:info@nacc.example">info@nacc.example</a></div>
+      </form>
+    </div>
+
+    <div class="footer">
+      © <span id="y"></span> КОМА • <a href="index.html">На головну</a>
+    </div>
+  </div>
+
+<script>
+  // Рік у футері
+  document.getElementById('y').textContent = new Date().getFullYear();
+
+  // Мінімальна «сесія» в localStorage
+  const SESSION_KEY = 'koma_session';
+  function setSession(email, days){
+    const exp = Date.now() + days*24*60*60*1000;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({email, exp}));
+  }
+  function clearSession(){
+    localStorage.removeItem(SESSION_KEY);
+    showOk('Сесію очищено.');
+  }
+  document.getElementById('clearSession').onclick = (e)=>{ e.preventDefault(); clearSession(); };
+
+  // Показ/приховати пароль
+  document.getElementById('toggle').onclick = ()=>{
+    const p = document.getElementById('password');
+    p.type = (p.type === 'password') ? 'text' : 'password';
+    document.getElementById('toggle').textContent = (p.type === 'password') ? 'Показати' : 'Сховати';
+  };
+
+  // Повідомлення
+  const errBox = document.getElementById('err');
+  const okBox  = document.getElementById('ok');
+  function showErr(t){ errBox.textContent = t; errBox.style.display='block'; okBox.style.display='none'; }
+  function showOk(t){ okBox.textContent = t; okBox.style.display='block'; errBox.style.display='none'; }
+
+  // Параметри редіректу після входу (можете змінити на admin.html)
+  const redirectTarget = 'admin.html';
+
+  // Крипто-хелпер: SHA-256 у hex через Web Crypto API
+  async function sha256Hex(str){
+    const enc = new TextEncoder().encode(str);
+    const digest = await crypto.subtle.digest('SHA-256', enc);
+    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // Завантажити файл із користувачами
+  let users = [];
+  fetch('./js/users.json', {cache:'no-store'})
+    .then(r=> r.ok ? r.json() : Promise.reject('Не вдалося завантажити users.json'))
+    .then(j=> users = j)
+    .catch(()=> showErr('Помилка завантаження даних користувачів.'));
+
+  // Обробка форми
+  document.getElementById('form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    errBox.style.display='none'; okBox.style.display='none';
+
+    const email = (document.getElementById('email').value || '').trim().toLowerCase();
+    const pass  = document.getElementById('password').value || '';
+    const remember = document.getElementById('remember').checked;
+
+    if(!email || !pass){ showErr('Введіть пошту та пароль.'); return; }
+
+    const u = users.find(x => x.email.toLowerCase() === email);
+    if(!u){ showErr('Користувача не знайдено або немає доступу.'); return; }
+
+    // Перевірка: hash(salt + password)
+    const calc = await sha256Hex(u.salt + pass);
+    if(calc !== u.hash){
+      showErr('Невірний пароль.');
+      return;
+    }
+
+    // Успіх — створюємо «сесію» та редірект
+    setSession(email, remember ? 30 : 1);
+    showOk('Вхід виконано. Перехід…');
+    setTimeout(()=>{ location.href = redirectTarget; }, 400);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# netlify.toml
+[build]
+  publish = "html"
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=600"
