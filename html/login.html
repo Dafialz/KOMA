@@ -63,11 +63,11 @@
 
       <form id="form" autocomplete="on" novalidate>
         <label for="email">Ел. пошта</label>
-        <input class="input" id="email" name="email" type="email" placeholder="name@example.com" required autofocus>
+        <input class="input" id="email" name="email" type="email" placeholder="name@example.com" required autofocus autocomplete="email">
 
         <label for="password">Пароль</label>
         <div class="row">
-          <input class="input" id="password" name="password" type="password" placeholder="Ваш пароль" required>
+          <input class="input" id="password" name="password" type="password" placeholder="Ваш пароль" required autocomplete="current-password">
           <button type="button" id="toggle" aria-label="Показати/сховати пароль" style="border:none;background:#eef2f7;border-radius:12px;padding:10px 12px;cursor:pointer">Показати</button>
         </div>
 
@@ -127,12 +127,12 @@
     return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
   }
 
-  // Завантажити файл із користувачами
+  // Завантажити файл із користувачами (АБСОЛЮТНИЙ шлях від кореня сайту)
   let users = [];
-  fetch('./js/users.json', {cache:'no-store'})
-    .then(r=> r.ok ? r.json() : Promise.reject('Не вдалося завантажити users.json'))
-    .then(j=> users = j)
-    .catch(()=> showErr('Помилка завантаження даних користувачів.'));
+  fetch('/js/users.json', { cache:'no-store' })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
+    .then(j => users = j)
+    .catch((e)=> showErr('Помилка завантаження даних користувачів. Перевірте, що файл доступний за адресою /js/users.json. Деталі: '+e.message));
 
   // Обробка форми
   document.getElementById('form').addEventListener('submit', async (e)=>{
