@@ -7,11 +7,11 @@
   <meta name="description" content="Навчання, сертифікація, консультації та ресурси Християнського центру ментального здоров’я «КОМА»." />
 
   <!-- Favicon / OpenGraph -->
-  <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="КОМА — Християнський центр ментального здоров’я «КОМА»" />
   <meta property="og:description" content="Навчання, сертифікація, консультації та ресурси." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="icon/baner.jpg" />
+  <meta property="og:image" content="../icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
 
   <style>
@@ -76,12 +76,13 @@
 
     /* HERO BANNER */
     .hero-banner{
-      position:relative; isolation:isolate; min-height:56vh;
+      position:relative; isolation:isolate;
+      min-height:72vh; /* вище і просторіше */
       display:flex; align-items:stretch; justify-content:center;
       text-align:center; color:#fff;
       background-image:
         linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.35)),
-        url('icon/baner.jpg');
+        url('../icon/baner.jpg');
       background-size:cover;
       background-position:center 36%;
       background-repeat:no-repeat;
@@ -91,18 +92,21 @@
     .hero-grid{
       display:grid;
       grid-template-rows:auto 1fr auto;
-      min-height:56vh;
-      padding:18px 20px 140px; /* більше простору внизу для кнопки */
+      min-height:72vh;
+      padding:8px 20px 180px;   /* мінімум падінгу зверху, більший знизу */
       align-items:start;
       justify-items:center;
     }
     .hero-title{
-      margin:8px 0 0; text-transform:uppercase; font-weight:800;
-      font-size:clamp(20px,3.1vw,33px);
+      margin:0; text-transform:uppercase; font-weight:800;
+      font-size:clamp(22px,3.2vw,36px);
       letter-spacing:.4px; line-height:1.2;
       text-shadow:0 2px 16px rgba(0,0,0,.35);
     }
-    .hero-cta{ margin-top:0; align-self:end; }
+    .hero-cta{
+      align-self:end;            /* тримаємо кнопку внизу */
+      margin-top:0;
+    }
 
     /* Texts */
     h1{font-size:clamp(28px,4.4vw,52px);line-height:1.15;margin:0 0 10px}
@@ -137,7 +141,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="index.html" aria-label="КОМА Головна">
-        <img src="icon/logo.png" alt="КОМА logo">
+        <img src="../icon/logo.png" alt="КОМА logo">
         <span>КОМА</span>
       </a>
 
@@ -173,7 +177,7 @@
     <div class="hero-inner">
       <div class="container hero-grid">
         <h1 class="hero-title">“КОМА” ХРИСТИЯНСЬКИЙ <br/> ЦЕНТР МЕНТАЛЬНОГО ЗДОРОВ’Я</h1>
-        <div></div> <!-- spacer (середній рядок) -->
+        <div></div> <!-- spacer -->
         <a class="btn invert hero-cta" href="zapis.html">Консультація</a>
       </div>
     </div>
@@ -295,7 +299,7 @@
   <footer class="footer">
     <div class="container footgrid">
       <div style="display:flex;gap:12px;align-items:center">
-        <img src="icon/logo.png" alt="КОМА logo" style="height:36px;border-radius:8px">
+        <img src="../icon/logo.png" alt="КОМА logo" style="height:36px;border-radius:8px">
         <div>
           <strong>КОМА</strong>
           <div class="small">Християнський центр ментального здоров’я «КОМА»</div>
