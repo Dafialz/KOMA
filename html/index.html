@@ -88,7 +88,7 @@
       background-repeat:no-repeat;
     }
 
-    /* Сітка: заголовок зверху, пустий простір, і фіксована кнопка внизу */
+    /* Grid: заголовок зверху, простір, а кнопка фіксована знизу */
     .hero-inner{width:100%; position:relative;}
     .hero-grid{
       display:grid;
@@ -105,8 +105,12 @@
       text-shadow:0 2px 16px rgba(0,0,0,.35);
     }
     .hero-cta{
-      position:absolute; left:50%; transform:translateX(-50%);
-      bottom:36px; /* ← опусти/підніми цим значенням */
+      position:absolute; left:50%; bottom:32px;
+      transform:translate(-50%,0); /* центр */
+    }
+    .hero-cta:hover{
+      /* зберігаємо центр на ховері, щоб кнопка не тікала */
+      transform:translate(-50%,-1px);
     }
 
     /* Texts */
@@ -178,7 +182,7 @@
     <div class="hero-inner">
       <div class="container hero-grid">
         <h1 class="hero-title">“КОМА” ХРИСТИЯНСЬКИЙ <br/> ЦЕНТР МЕНТАЛЬНОГО ЗДОРОВ’Я</h1>
-        <!-- пустий другий рядок займає весь простір -->
+        <!-- простір між заголовком і кнопкою займає весь банер -->
         <a class="btn invert hero-cta" href="zapis.html">Консультація</a>
       </div>
     </div>
