@@ -24,8 +24,9 @@ function initHeaderFooterLogic() {
     hamb.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
-  // рік у футері
-  document.getElementById('y')?.append(new Date().getFullYear());
+  // рік у футері (перезаписуємо, а не append — щоб не дублювалось)
+  const y = document.getElementById('y');
+  if (y) y.textContent = new Date().getFullYear();
 
   // auth UI (якщо guard є)
   try {
@@ -74,7 +75,8 @@ function initHeaderFooterLogic() {
       time: b.time
     }).toString();
 
-    enable(`/zapis.html?${params}`);
+    // ВАЖЛИВО: без початкового /, бо всі сторінки в /html/
+    enable(`zapis.html?${params}`);
   }
 
   updateJoin();
