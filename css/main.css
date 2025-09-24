@@ -17,6 +17,7 @@ img{max-width:100%;height:auto;display:block}
 a{color:var(--brand);text-decoration:none}
 a:hover{text-decoration:underline}
 .container{max-width:var(--max);margin:0 auto;padding:0 20px}
+.lead{color:var(--muted)}
 
 /* ========== Buttons & chips ========== */
 .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 1.25rem;border-radius:999px;
@@ -28,6 +29,7 @@ a:hover{text-decoration:underline}
 .btn.green{background:var(--brand-2)}
 .btn.invert{background:transparent;color:#fff;border-color:#fff}
 .btn.invert:hover{background:rgba(255,255,255,.12)}
+.btn.gray{background:#eef2f7;color:#111;border-color:#e5e7eb}
 .btn[aria-disabled="true"]{opacity:.55; pointer-events:none}
 
 .tag{display:inline-block;padding:.25rem .6rem;border:1px solid var(--border);border-radius:999px;
@@ -78,7 +80,7 @@ a:hover{text-decoration:underline}
   text-align:center; color:#fff;
   background-image:
     linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.35)),
-    url('../icon/baner.jpg');            /* шлях відносно css/ */
+    url('../html/icon/baner.jpg'); /* ВАЖЛИВО: правильний шлях відносно /css */
   background-size:cover; background-position:center 36%; background-repeat:no-repeat;
 }
 .hero-inner{width:100%; position:relative;}
