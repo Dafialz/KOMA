@@ -3,6 +3,7 @@
 // 1) WebSocket signaling server (для video.html)
 // 2) REST API для бронювань з автозбереженням у bookings.json
 //    POST /api/bookings, GET /api/bookings?consultantEmail=..., DELETE /api/bookings/:id
+//    Підтримка файлів (multipart/form-data, поле "file"), збереження у /uploads
 //    Автоочистка: запис видаляється через 60 хв після старту
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -12,11 +13,33 @@ const WebSocket = require("ws");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const multer = require("multer");
 
 // ── Конфіг ───────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*"; // напр.: "https://koma-hcmz.netlify.app"
 const DATA_DIR = process.env.DATA_DIR || ".";             // напр.: "/data" на Render
 const BOOK_FILE = path.join(DATA_DIR, "bookings.json");
+const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
+
+// гарантовано створюємо директорії
+try { fs.mkdirSync(DATA_DIR,  { recursive: true }); } catch {}
+try { fs.mkdirSync(UPLOAD_DIR,{ recursive: true }); } catch {}
+
+// ── Multer (завантаження файлів) ─────────────────────────────────────────────
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const safe = (file.originalname || "file")
+      .replace(/[^a-zA-Z0-9.\-_]+/g, "_")
+      .slice(0, 80);
+    const stamp = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+    cb(null, `${stamp}-${safe}`);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 // ── App / HTTP / WS ──────────────────────────────────────────────────────────
 const app = express();
@@ -32,6 +55,9 @@ app.use(
   )
 );
 app.use(express.json());
+
+// віддавати завантажені файли
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 // ── СИГНАЛІНГ: кімнати для відеодзвінків ─────────────────────────────────────
 const rooms = new Map(); // { roomId: Set<ws> }
@@ -79,9 +105,6 @@ function broadcast(room, message, exceptWs) {
 }
 
 // ── БРОНЮВАННЯ: збереження у файлі ───────────────────────────────────────────
-// гарантовано створюємо директорію
-try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
-
 let bookings = [];
 try {
   if (fs.existsSync(BOOK_FILE)) {
@@ -111,8 +134,9 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, rooms: rooms.size, bookings: bookings.length });
 });
 
-// створити бронювання
-app.post("/api/bookings", (req, res) => {
+// створити бронювання (підтримка JSON та multipart/form-data з полем "file")
+app.post("/api/bookings", upload.single("file"), (req, res) => {
+  // якщо multipart — поля у req.body приходять як строки; якщо JSON — express.json() вже їх розпарсив
   let {
     consultantEmail,
     consultantName,
@@ -132,16 +156,29 @@ app.post("/api/bookings", (req, res) => {
   note            = String(note            || "").trim();
 
   if (!consultantEmail || !consultantName || !fullName || !date || !time) {
+    // при помилці видалимо тимчасово збережений файл (якщо був)
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Missing required fields" });
   }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Bad email" });
   }
 
-  // Київський локальний час (достатньо для нашого юзкейсу)
+  // Київський локальний час
   const startTS = Date.parse(`${date}T${time}:00+03:00`);
   if (Number.isNaN(startTS)) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Bad date/time" });
+  }
+
+  // інформація про файл (якщо був)
+  let fileName = "";
+  let fileUrl  = "";
+  if (req.file) {
+    fileName = req.file.originalname || req.file.filename;
+    // віддаємо як шлях відносно цього сервера
+    fileUrl  = `/uploads/${req.file.filename}`;
   }
 
   const id = Math.random().toString(36).slice(2);
@@ -156,6 +193,8 @@ app.post("/api/bookings", (req, res) => {
     time,
     startTS,
     createdAt: Date.now(),
+    fileName,
+    fileUrl, // напр.: /uploads/abc123-file.pdf
   };
 
   bookings.push(rec);
@@ -180,6 +219,13 @@ app.get("/api/bookings", (req, res) => {
 // видалити бронювання вручну (після дзвінка)
 app.delete("/api/bookings/:id", (req, res) => {
   const id = String(req.params.id || "");
+  // якщо у записі був файл — видалимо і його
+  const found = bookings.find((b) => b.id === id);
+  if (found && found.fileUrl) {
+    const p = path.join(UPLOAD_DIR, path.basename(found.fileUrl));
+    try { fs.unlinkSync(p); } catch {}
+  }
+
   const before = bookings.length;
   bookings = bookings.filter((b) => b.id !== id);
   if (before !== bookings.length) saveBookings();

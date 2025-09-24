@@ -98,6 +98,11 @@
     .input:focus{outline:none;box-shadow:var(--ring)}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+
+    /* Прикріпити файл */
+    .attach{display:flex;align-items:center;gap:10px;margin-top:8px}
+    .file-note{font-size:.9rem;color:#6b7280}
+    .file-name{font-size:.9rem;color:#374151;word-break:break-all}
   </style>
 </head>
 
@@ -305,7 +310,7 @@
 
   <!-- Модальне вікно бронювання -->
   <dialog id="booking">
-    <form method="dialog" class="modal" id="bookingForm">
+    <form method="dialog" class="modal" id="bookingForm" enctype="multipart/form-data">
       <header>
         <h3 id="modalTitle">Запис на консультацію</h3>
         <button type="button" class="btn ghost" id="closeX" aria-label="Закрити">✕</button>
@@ -338,6 +343,14 @@
       <div style="margin-top:12px">
         <label for="notes">Коментар (необов’язково)</label>
         <textarea class="input" id="notes" rows="3" placeholder="Ваш номер телефону, коротко про запит або зручний формат (онлайн/офлайн)…"></textarea>
+
+        <!-- Прикріпити файл -->
+        <div class="attach">
+          <input id="receipt" type="file" accept=".jpg,.jpeg,.png,.pdf,.heic,image/*,application/pdf" style="display:none">
+          <button type="button" class="btn gray small" id="attachBtn">📎 Прикріпити файл</button>
+          <span class="file-name" id="receiptName">Файл не вибрано</span>
+        </div>
+        <div class="file-note">Підтримуються JPG/PNG/PDF (до 10 МБ). Необов’язково.</div>
       </div>
 
       <div class="actions">
@@ -401,6 +414,11 @@
       const t = new Date(); t.setMinutes(0,0,0);
       document.getElementById('time').value = t.toTimeString().slice(0,5);
 
+      // скинути попередній файл/назву
+      receiptInput.value = "";
+      receiptFile = null;
+      receiptName.textContent = "Файл не вибрано";
+
       dlg.showModal();
     }
 
@@ -416,6 +434,28 @@
       const count = parseInt(localStorage.getItem(key) || '0', 10);
       localStorage.setItem(key, String(count + 1));
     }
+
+    // ====== Прикріпити файл (чек)
+    const attachBtn   = document.getElementById('attachBtn');
+    const receiptInput= document.getElementById('receipt');
+    const receiptName = document.getElementById('receiptName');
+    let receiptFile   = null;
+
+    attachBtn.addEventListener('click', ()=> receiptInput.click());
+    receiptInput.addEventListener('change', ()=>{
+      const f = receiptInput.files?.[0];
+      if(!f){ receiptFile=null; receiptName.textContent="Файл не вибрано"; return; }
+      // обмеження ~10 МБ
+      if(f.size > 10 * 1024 * 1024){
+        alert("Файл завеликий. Максимум 10 МБ.");
+        receiptInput.value = "";
+        receiptFile = null;
+        receiptName.textContent = "Файл не вибрано";
+        return;
+      }
+      receiptFile = f;
+      receiptName.textContent = f.name;
+    });
 
     // Відправка на бекенд + редірект
     const confirmBtn = document.getElementById('confirmBtn');
@@ -441,23 +481,30 @@
       // локальна реєстрація для ліміту
       registerBooking(consultantName, date);
 
-      // спроба записати на бекенд
+      // спроба записати на бекенд (FormData, якщо є файл)
       try{
-        await fetch(`${API_BASE}/api/bookings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            consultantEmail,
-            consultantName,
-            fullName,
-            email,
-            date,
-            time,
-            note
-          })
-        });
+        let res;
+        if (receiptFile) {
+          const fd = new FormData();
+          fd.append("consultantEmail", consultantEmail);
+          fd.append("consultantName", consultantName);
+          fd.append("fullName", fullName);
+          fd.append("email", email);
+          fd.append("date", date);
+          fd.append("time", time);
+          fd.append("note", note);
+          fd.append("file", receiptFile);
+          res = await fetch(`${API_BASE}/api/bookings`, { method: 'POST', body: fd });
+        } else {
+          res = await fetch(`${API_BASE}/api/bookings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ consultantEmail, consultantName, fullName, email, date, time, note })
+          });
+        }
+        // не кидаємо помилку, навіть якщо не 2xx — все одно робимо редірект як фолбек
+        console.log('Booking API status:', res.status);
       }catch(err){
-        // ігноруємо — все одно робимо редірект як фолбек
         console.warn('Booking API failed, fallback redirect:', err);
       }
 
