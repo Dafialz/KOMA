@@ -6,7 +6,7 @@
   <title>КОМА — Християнський центр ментального здоров’я «КОМА»</title>
   <meta name="description" content="Навчання, сертифікація, консультації та ресурси Християнського центру ментального здоров’я «КОМА»." />
 
-  <!-- Favicon / OpenGraph (відносні шляхи зсередини папки html) -->
+  <!-- Favicon / OpenGraph -->
   <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="КОМА — Християнський центр ментального здоров’я «КОМА»" />
   <meta property="og:description" content="Навчання, сертифікація, консультації та ресурси." />
@@ -14,14 +14,12 @@
   <meta property="og:image" content="icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
 
-  <!-- УВАГА: раніше тут був main.css, якого немає — тому 404.
-       Коли винесеш стилі в файл, підключи його тут як-от:
-       <link rel="stylesheet" href="css/main.css"> -->
+  <!-- CSS: папка css знаходиться вище за html/, тому ../ -->
+  <link rel="stylesheet" href="../css/main.css" />
 </head>
 
 <body>
-  <!-- header partial вставиться сюди -->
-  <!-- ВАЖЛИВО: цей шлях очікує, що partials лежить у html/partials/ -->
+  <!-- header partial -->
   <div id="site-header" data-include="partials/header.html"></div>
 
   <!-- HERO BANNER -->
@@ -122,11 +120,10 @@
     </div>
   </section>
 
-  <!-- footer partial вставиться сюди -->
-  <!-- ВАЖЛИВО: цей шлях очікує, що partials лежить у html/partials/ -->
+  <!-- footer partial -->
   <div id="site-footer" data-include="partials/footer.html"></div>
 
-  <!-- Скрипти відносно html/ -->
+  <!-- Scripts (усі лежать у html/js/) -->
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
 </body>

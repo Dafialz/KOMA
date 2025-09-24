@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Знайти консультанта — КОМА</title>
   <meta name="description" content="Сертифіковані консультанти КОМА. Оберіть фахівця та запишіться на консультацію онлайн." />
-  <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
+
+  <!-- Іконки/OG з папки html/icon -->
+  <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Знайти консультанта — КОМА" />
   <meta property="og:description" content="Обирайте серед сертифікованих консультантів та записуйтеся онлайн." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="../icon/baner.jpg" />
+  <meta property="og:image" content="icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
-  <link rel="stylesheet" href="css/directory.css">
+
+  <!-- CSS: папка css лежить вище за html/, тому ../ -->
+  <link rel="stylesheet" href="../css/directory.css" />
 </head>
 
 <body>
@@ -19,7 +23,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="index.html" aria-label="КОМА Головна">
-        <img src="../icon/logo.png" alt="КОМА logo">
+        <img src="icon/logo.png" alt="КОМА logo" />
         <span>КОМА</span>
       </a>
       <nav class="menu" aria-label="Primary">
@@ -29,7 +33,7 @@
         <a href="pozhertvy.html">Пожертви</a>
         <a href="kontakty.html">Контакти</a>
         <a class="btn outline" href="directory.html" aria-current="page">Знайти консультанта</a>
-        <!-- ТУТ КНОПКА ПРИЄДНАТИСЬ -->
+        <!-- КНОПКА «ПРИЄДНАТИСЬ» — активується, якщо є майбутній запис -->
         <a class="btn" id="joinBtn" href="#" aria-disabled="true">Приєднатись</a>
       </nav>
       <button class="hamb" id="hamb" aria-label="Меню" aria-expanded="false" aria-controls="mobile">☰</button>
@@ -53,14 +57,14 @@
     </div>
   </section>
 
-  <!-- Перелік консультантів (БЕЗ «Записатися») -->
+  <!-- Перелік консультантів (без «Записатися») -->
   <main class="section" aria-label="Перелік консультантів">
     <div class="container grid grid-3">
 
       <!-- 1 -->
       <article class="card person">
         <div class="photo">
-          <img src="../icon/consultants/oksana.jpg" alt="Оксана Кокотень">
+          <img src="icon/consultants/oksana.jpg" alt="Оксана Кокотень" />
           <span class="badge">Сімейне консультування</span>
         </div>
         <div class="p-body">
@@ -86,7 +90,7 @@
       <!-- 2 -->
       <article class="card person">
         <div class="photo">
-          <img src="../icon/consultants/andrii.jpg" alt="Андрій Савчук">
+          <img src="icon/consultants/andrii.jpg" alt="Андрій Савчук" />
           <span class="badge">Травма, ПТСР</span>
         </div>
         <div class="p-body">
@@ -111,7 +115,7 @@
       <!-- 3 -->
       <article class="card person">
         <div class="photo">
-          <img src="../icon/consultants/iryna.jpg" alt="Ірина Шевченко">
+          <img src="icon/consultants/iryna.jpg" alt="Ірина Шевченко" />
           <span class="badge">Депресія, тривога</span>
         </div>
         <div class="p-body">
@@ -136,7 +140,7 @@
       <!-- 4 -->
       <article class="card person">
         <div class="photo">
-          <img src="../icon/consultants/maksym.jpg" alt="Максим Коваль">
+          <img src="icon/consultants/maksym.jpg" alt="Максим Коваль" />
           <span class="badge">Підлітки</span>
         </div>
         <div class="p-body">
@@ -161,7 +165,7 @@
       <!-- 5 -->
       <article class="card person">
         <div class="photo">
-          <img src="../icon/consultants/nadiia.jpg" alt="Надія Романюк">
+          <img src="icon/consultants/nadiia.jpg" alt="Надія Романюк" />
           <span class="badge">Шлюб і сім’я</span>
         </div>
         <div class="p-body">
@@ -186,7 +190,7 @@
       <!-- 6 -->
       <article class="card person">
         <div class="photo">
-          <img src="../icon/consultants/oleh.jpg" alt="Олег Литвин">
+          <img src="icon/consultants/oleh.jpg" alt="Олег Литвин" />
           <span class="badge">Емоції, вигорання</span>
         </div>
         <div class="p-body">
@@ -213,11 +217,12 @@
 
   <footer class="section" style="padding:32px 0;border-top:1px solid var(--border)">
     <div class="container" style="display:flex;align-items:center;gap:12px;color:#4b5563">
-      <img src="../icon/logo.png" alt="" style="height:28px;border-radius:8px">
+      <img src="icon/logo.png" alt="" style="height:28px;border-radius:8px" />
       <span>© <span id="y"></span> КОМА. Усі права захищені.</span>
     </div>
   </footer>
 
+  <!-- Локальний JS сторінки -->
   <script src="js/directory.js" type="module"></script>
 </body>
 </html>

@@ -5,18 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Запис на консультацію — КОМА</title>
   <meta name="description" content="Підтвердження запису, підключення до відеочату КОМА та вбудований чат із консультантом у призначений час." />
-  <link rel="icon" href="/icon/favicon.ico" type="image/x-icon" />
+
+  <!-- Favicon / OpenGraph (все з папки html/icon) -->
+  <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Запис на консультацію — КОМА" />
   <meta property="og:description" content="Деталі вашого запису, відеочат та вбудований чат повідомлень." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/icon/baner.jpg" />
+  <meta property="og:image" content="icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
-  <link rel="stylesheet" href="/css/main.css">
-  <link rel="stylesheet" href="/css/zapis.css">
+
+  <!-- CSS (папка css лежить рівнем вище за html/) -->
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="stylesheet" href="../css/zapis.css" />
 </head>
 <body>
   <!-- header partial -->
-  <div id="site-header" data-include="/partials/header.html"></div>
+  <!-- partials живуть у html/partials/ -->
+  <div id="site-header" data-include="partials/header.html"></div>
 
   <!-- PAGE CONTENT -->
   <section class="section">
@@ -108,10 +113,11 @@
   </section>
 
   <!-- footer partial -->
-  <div id="site-footer" data-include="/partials/footer.html"></div>
+  <div id="site-footer" data-include="partials/footer.html"></div>
 
-  <script src="/js/guard.js"></script>
-  <script type="module" src="/js/partials.js"></script>
-  <script type="module" src="/js/zapis.js"></script>
+  <!-- JS (усі відносно html/) -->
+  <script src="js/guard.js"></script>
+  <script type="module" src="js/partials.js"></script>
+  <script type="module" src="js/zapis.js"></script>
 </body>
 </html>
