@@ -6,7 +6,7 @@
   <title>КОМА — Християнський центр ментального здоров’я «КОМА»</title>
   <meta name="description" content="Навчання, сертифікація, консультації та ресурси Християнського центру ментального здоров’я «КОМА»." />
 
-  <!-- Favicon / OpenGraph -->
+  <!-- Favicon / OpenGraph (шляхи відносно html/) -->
   <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="КОМА — Християнський центр ментального здоров’я «КОМА»" />
   <meta property="og:description" content="Навчання, сертифікація, консультації та ресурси." />
@@ -14,12 +14,12 @@
   <meta property="og:image" content="icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
 
-  <!-- CSS: папка css знаходиться вище за html/, тому ../ -->
+  <!-- CSS лежить у /css, тому з html/ піднімаємось на рівень вище -->
   <link rel="stylesheet" href="../css/main.css" />
 </head>
 
 <body>
-  <!-- header partial -->
+  <!-- Header (partials/header.html з каталогу html/partials) -->
   <div id="site-header" data-include="partials/header.html"></div>
 
   <!-- HERO BANNER -->
@@ -120,10 +120,10 @@
     </div>
   </section>
 
-  <!-- footer partial -->
+  <!-- Footer (partials/footer.html з каталогу html/partials) -->
   <div id="site-footer" data-include="partials/footer.html"></div>
 
-  <!-- Scripts (усі лежать у html/js/) -->
+  <!-- Скрипти (лежать у html/js) -->
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
 </body>
