@@ -1,8 +1,27 @@
 # netlify.toml
 [build]
-  publish = "html"
+  publish = "."
   command = ""
 
+# Перенаправляємо корінь на /html/index.html (щоб відносні шляхи в html працювали)
+[[redirects]]
+  from = "/"
+  to = "/html/index.html"
+  status = 301
+
+# Якщо хтось потрапив на /index.html у корені — теж ведемо в html/
+[[redirects]]
+  from = "/index.html"
+  to = "/html/index.html"
+  status = 301
+
+# Дозволяємо відкривати сторінки без префікса /html (необов’язково, але зручно)
+[[redirects]]
+  from = "/:page.html"
+  to = "/html/:page.html"
+  status = 301
+
+# Кеш заголовки (опційно залишив)
 [[headers]]
   for = "/*"
   [headers.values]
