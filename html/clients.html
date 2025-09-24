@@ -18,6 +18,7 @@
     .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.1rem;border-radius:999px;background:#0f5257;color:#fff;font-weight:700;border:1px solid transparent;box-shadow:var(--shadow);cursor:pointer}
     .btn.ghost{background:#fff;color:#0f5257;border-color:#0f5257}
     .btn.gray{background:#eef2f7;color:#111;border-color:#e5e7eb}
+    .btn.light{background:#fff;color:#111;border-color:#e5e7eb}
     .section{padding:28px 0}
     .grid{display:grid;gap:16px}
     .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
@@ -28,6 +29,11 @@
     .item{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff}
     .when{font-weight:700}
     .empty{padding:20px;border:1px dashed var(--border);border-radius:12px;text-align:center;background:#fff}
+    .badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font-size:.78rem;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46}
+    .danger{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+    .tools{display:flex;gap:8px;align-items:center}
+    .spinner{width:18px;height:18px;border:2px solid rgba(0,0,0,.15);border-top-color:#0f5257;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
@@ -50,11 +56,16 @@
             <h2 style="margin:0">Мої клієнти на найближчий час</h2>
             <div class="muted" id="meLine">—</div>
           </div>
-          <div class="pill">Автоочистка записів: <strong>+60 хв</strong> після початку</div>
+          <div class="tools">
+            <span class="pill">Автоочистка записів: <strong>+60 хв</strong> після початку</span>
+            <button id="refresh" class="btn light" title="Оновити">Оновити</button>
+            <span id="spin" class="spinner" style="display:none"></span>
+          </div>
         </div>
 
         <div id="list" class="list" style="margin-top:14px"></div>
         <div id="empty" class="empty" style="display:none">Поки немає бронювань.</div>
+        <div id="error" class="empty danger" style="display:none">Помилка завантаження.</div>
       </div>
     </div>
   </section>
@@ -71,29 +82,41 @@
     guard.protect();
     const me = guard.getSession();
     const myName = guard.emailToName(me.email) || 'Консультант';
-    document.getElementById('meLine').textContent = `Користувач: ${me.email} (${myName})`;
+    const myEmail = String(me.email || '').toLowerCase();
+    document.getElementById('meLine').textContent = `Користувач: ${myEmail} (${myName})`;
     document.getElementById('y').textContent = new Date().getFullYear();
-
     document.getElementById('logout').onclick = () => guard.logout();
 
-    const listEl = document.getElementById('list');
+    const listEl  = document.getElementById('list');
     const emptyEl = document.getElementById('empty');
+    const errEl   = document.getElementById('error');
+    const spinEl  = document.getElementById('spin');
+    const refreshBtn = document.getElementById('refresh');
 
     function fmt(date, time) {
-      // YYYY-MM-DD -> DD.MM.YYYY
+      // YYYY-MM-DD -> DD.MM.YYYY HH:MM
       const p = date.split('-'); return `${p[2]}.${p[1]}.${p[0]} ${time}`;
+    }
+
+    function minsLeft(startTS){
+      const ms = (Number(startTS) + 60*60*1000) - Date.now();
+      return Math.max(0, Math.ceil(ms/60000));
     }
 
     function render(items) {
       listEl.innerHTML = '';
-      if (!items.length) { emptyEl.style.display='block'; return; }
-      emptyEl.style.display='none';
+      if (!items.length) { emptyEl.style.display='block'; errEl.style.display='none'; return; }
+      emptyEl.style.display='none'; errEl.style.display='none';
+
       for (const b of items) {
+        const left = minsLeft(b.startTS);
         const div = document.createElement('div');
         div.className = 'item';
         div.innerHTML = `
           <div>
-            <div class="when">${fmt(b.date, b.time)}</div>
+            <div class="when">${fmt(b.date, b.time)}
+              <span class="badge${left<=5 ? ' danger' : ''}">зникне через ${left} хв</span>
+            </div>
             <div><strong>${b.fullName}</strong> ${b.email ? `• <a href="mailto:${b.email}">${b.email}</a>` : ''}</div>
             ${b.note ? `<div class="muted">${b.note}</div>` : ''}
           </div>
@@ -104,23 +127,37 @@
         `;
         div.querySelector('button[data-id]').onclick = async (e) => {
           const id = e.currentTarget.getAttribute('data-id');
-          try { await deleteBooking(id); await load(); } catch {}
+          try {
+            e.currentTarget.disabled = true;
+            await deleteBooking(id);
+            await load();
+          } catch {
+            e.currentTarget.disabled = false;
+            alert('Не вдалося видалити запис. Спробуйте ще раз.');
+          }
         };
         listEl.appendChild(div);
       }
     }
 
-    async function load(){
+    async function load(showSpinner=true){
       try {
-        const { list } = await fetchBookings(me.email);
+        if(showSpinner) spinEl.style.display = 'inline-block';
+        const { list } = await fetchBookings(myEmail);
         render(list);
       } catch {
-        listEl.innerHTML = '<div class="empty">Помилка завантаження.</div>';
+        listEl.innerHTML = '';
+        emptyEl.style.display='none';
+        errEl.style.display='block';
+      } finally {
+        spinEl.style.display = 'none';
       }
     }
 
+    refreshBtn.onclick = () => load();
+
     // первинне завантаження + оновлення щохвилини
-    await load();
+    await load(false);
     setInterval(load, 60*1000);
   </script>
 </body>

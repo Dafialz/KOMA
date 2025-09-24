@@ -212,9 +212,9 @@
 
     // Побудувати UTC-дату з локальних полів КИЇВського часу
     function makeUtcFromKyiv(y,m,d,H,M){
-      const guessUTC = new Date(Date.UTC(y, m-1, d, H, M, 0, 0)); // припущення
+      const guessUTC = new Date(Date.UTC(y, m-1, d, H, M, 0, 0));
       const offset = getZoneOffsetMs(KYIV_TZ, guessUTC);
-      return new Date(guessUTC.getTime() - offset); // реальний UTC момент, коли в Києві y-m-d H:M
+      return new Date(guessUTC.getTime() - offset);
     }
 
     // ----- Read URL params
@@ -223,17 +223,28 @@
       consultant: q.get('consultant') || 'Консультант',
       fullName: q.get('fullName') || 'Клієнт',
       email:    q.get('email') || '',
-      date:     q.get('date'),               // YYYY-MM-DD (Київ)
-      time:     q.get('time'),               // HH:MM (Київ)
+      date:     q.get('date'),
+      time:     q.get('time'),
       notes:    q.get('notes') || '',
       role:     q.get('role') || 'client'    // client | consultant
     };
+
+    // Мапа ім'я → email для бекенду
+    const nameToEmail = {
+      'Оксана Кокотень': 'oksanakokoten@gmail.com',
+      'Андрій Савчук': 'andriysavchuk@gmail.com',
+      'Ірина Шевченко': 'irynashevchenko@gmail.com',
+      'Максим Коваль': 'maksymkoval@gmail.com',
+      'Надія Романюк': 'nadiyaromaniyk@gmail.com',
+      'Олег Литвин':   'oleglitvin@gmail.com'
+    };
+    const consultantEmail = nameToEmail[params.consultant] || '';
 
     // ----- Render basic info
     $('#consultant').textContent = params.consultant;
     $('#client').textContent = params.fullName + (params.email ? ` • ${params.email}` : '');
     $('#notes').textContent = params.notes || '—';
-    $('#title').textContent = `Запис до: ${params.consultant}`;
+    $('#title').textContent = `Запис до: ${params.consultант ?? params.consultant}`;
     $('#whoAmI').textContent = params.role;
 
     // ----- Compose UTC moment from Kyiv local date/time
@@ -245,14 +256,13 @@
     $('#dtText').textContent = `${dtFmtKyiv.format(startUTC)}, ${tmFmtKyiv.format(startUTC)}`;
     $('#tzText').textContent = `Часовий пояс: ${KYIV_TZ}`;
 
-    // ----- Meeting link (власний відеочат)
-    const rawRoom = (`${params.consultant}-${params.date}-${params.time}`).replace(/\s+/g,'');
-    const roomId = encodeURIComponent(rawRoom);
+    // ===== ВАЖЛИВО: однакова кімната для обох сторін — ІМ'Я КОНСУЛЬТАНТА
+    const roomId = encodeURIComponent(params.consultant);
     const meetingUrl = `video.html?room=${roomId}`;
     const videoBtn = $('#videoBtn');
     videoBtn.href = meetingUrl;
     videoBtn.setAttribute('aria-disabled','true'); // спочатку неактивна
-    $('#roomBadge').textContent = `Кімната: ${rawRoom}`;
+    $('#roomBadge').textContent = `Кімната: ${params.consultant}`;
 
     // ----- Google Calendar link (UTC інтервал)
     const pad = (n)=>String(n).padStart(2,'0');
@@ -276,7 +286,7 @@
     const openTillUTC = new Date(startUTC.getTime() + OPEN_AFTER_MIN*60*1000);
 
     function tick(){
-      const nowUTC = new Date(); // поточний момент у UTC (незалежно від місцевого TZ)
+      const nowUTC = new Date();
       if(nowUTC < openFromUTC){
         const ms = openFromUTC - nowUTC;
         countdown.textContent = fmtDuration(ms);
@@ -309,8 +319,52 @@
     }
     tick(); setInterval(tick, 1000);
 
+    // ====== АВТО-СТВОРЕННЯ БРОНЮВАННЯ НА БЕКЕНДІ ======
+    const API_BASE = (()=>{
+      // якщо на нетліфаї/проді — штовхаємо на Render
+      const host = location.hostname;
+      if (host.endsWith('netlify.app')) return 'https://koma-uaue.onrender.com';
+      return location.origin;
+    })();
+
+    async function postBooking(){
+      if(!params.date || !params.time || !consultantEmail) return;
+
+      // Уникнення дубля на цьому пристрої
+      const key = `koma_posted_${consultantEmail}_${params.date}_${params.time}_${params.email||''}`;
+      if(localStorage.getItem(key)) return;
+
+      try{
+        const body = {
+          consultantEmail,
+          consultantName: params.consultant,
+          fullName: params.fullName,
+          email: params.email || '',
+          date: params.date,
+          time: params.time,
+          note: params.notes || ''
+        };
+        const r = await fetch(`${API_BASE}/api/bookings`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await r.json();
+        if(data && data.ok){
+          localStorage.setItem(key, data.id || '1');
+          // відобразимо підтвердження
+          document.getElementById('subtitle').textContent = 'Ваш запис збережено. Очікуємо на зустріч у призначений час.';
+          document.getElementById('statusTag').textContent = 'Підтверджено';
+          document.getElementById('statusTag').className = 'tag ok';
+        }
+      }catch(e){
+        // тихо ігноруємо (користувач все одно має посилання й час)
+      }
+    }
+    postBooking();
+
     // ===== CHAT (localStorage sync per room)
-    const CHAT_KEY = `koma_chat_${rawRoom}`;
+    const CHAT_KEY = `koma_chat_${params.consultant}`;
     const msgsEl   = $('#msgs');
     const inputEl  = $('#msgInput');
     const sendBtn  = $('#sendBtn');
