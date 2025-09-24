@@ -6,7 +6,6 @@
   <title>Знайти консультанта — КОМА</title>
   <meta name="description" content="Сертифіковані консультанти КОМА. Оберіть фахівця та запишіться на консультацію онлайн." />
 
-  <!-- Favicon / OpenGraph -->
   <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Знайти консультанта — КОМА" />
   <meta property="og:description" content="Обирайте серед сертифікованих консультантів та записуйтеся онлайн." />
@@ -30,7 +29,6 @@
     a:hover{text-decoration:underline}
     .container{max-width:var(--max);margin:0 auto;padding:0 20px}
 
-    /* Кнопки */
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.1rem;border-radius:999px;
       background:var(--brand);color:#fff;font-weight:700;letter-spacing:.2px;border:1px solid transparent;
       box-shadow:var(--shadow-sm);transition:.2s; cursor:pointer}
@@ -38,6 +36,7 @@
     .btn.outline{background:#fff;color:var(--brand);border-color:var(--brand)}
     .btn.ghost{background:transparent;border-color:#d1d5db;color:#111}
     .btn.small{padding:.55rem .9rem; font-weight:600}
+    .btn[aria-disabled="true"]{opacity:.55;pointer-events:none}
 
     .section{padding:72px 0}
     .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -46,7 +45,6 @@
     @media (max-width:1024px){.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:640px){.grid-3{grid-template-columns:1fr}}
 
-    /* Header */
     .header{position:sticky;top:0;z-index:50;
       background:linear-gradient(135deg,#0b2e33 0%,#0f5257 55%,#6fc8b8 120%); border-bottom:1px solid rgba(255,255,255,.15); color:#fff}
     .nav{display:flex;align-items:center;justify-content:space-between;height:72px}
@@ -67,11 +65,9 @@
       background:linear-gradient(135deg,#0b2e33 0%,#0f5257 80%)}
     .mobile a{display:block;padding:12px 0;color:#fff;border-bottom:1px dashed rgba(255,255,255,.18);text-decoration:none}
 
-    /* Шапка сторінки */
     .pagehead{padding:48px 0 24px;background:#f8fafc;border-bottom:1px solid var(--border)}
     .lead{color:#4b5563}
 
-    /* Картки консультантів */
     .person{display:flex;flex-direction:column;overflow:hidden}
     .photo{aspect-ratio: 4 / 3; background:#eef2f7; position:relative; overflow:hidden}
     .photo img{width:100%;height:100%;object-fit:cover}
@@ -81,33 +77,14 @@
     .p-name{margin:0 0 4px;font-weight:800;font-size:1.1rem}
     .p-role{margin:0 0 10px;color:var(--muted)}
     .p-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-
-    /* Прайс */
     .prices{display:none; margin-top:12px; border:1px solid var(--border); border-radius:12px; padding:12px; background:#f9fafb}
     .prices.open{display:block}
     .prices ul{margin:0; padding-left:18px}
     .prices li{margin:6px 0; color:#374151}
-
-    /* Модальне вікно */
-    dialog::backdrop{background:rgba(0,0,0,.45)}
-    dialog{border:none;border-radius:16px;max-width:520px;width:96%;padding:0;box-shadow:var(--shadow)}
-    .modal{padding:20px}
-    .modal header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .modal h3{margin:0}
-    .input{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px;color:#111}
-    .input:focus{outline:none;box-shadow:var(--ring)}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
-
-    /* Прикріпити файл */
-    .attach{display:flex;align-items:center;gap:10px;margin-top:8px}
-    .file-note{font-size:.9rem;color:#6b7280}
-    .file-name{font-size:.9rem;color:#374151;word-break:break-all}
   </style>
 </head>
 
 <body>
-  <!-- Header -->
   <header class="header">
     <div class="container nav">
       <a class="brand" href="index.html" aria-label="КОМА Головна">
@@ -121,7 +98,8 @@
         <a href="pozhertvy.html">Пожертви</a>
         <a href="kontakty.html">Контакти</a>
         <a class="btn outline" href="directory.html" aria-current="page">Знайти консультанта</a>
-        <a class="btn" href="zapis.html">Записатися</a>
+        <!-- НОВА КНОПКА: Приєднатись (активна, якщо є збережений запис) -->
+        <a class="btn" id="joinBtn" href="#" aria-disabled="true">Приєднатись</a>
       </nav>
       <button class="hamb" id="hamb" aria-label="Меню" aria-expanded="false" aria-controls="mobile">☰</button>
     </div>
@@ -132,11 +110,11 @@
       <a href="pozhertvy.html">Пожертви</a>
       <a href="kontakty.html">Контакти</a>
       <a href="directory.html" aria-current="page">Знайти консультанта</a>
-      <a href="zapis.html">Записатися</a>
+      <!-- У мобільному меню теж тільки «Приєднатись» -->
+      <a id="joinBtnM" class="btn" href="#" aria-disabled="true">Приєднатись</a>
     </div>
   </header>
 
-  <!-- Заголовок сторінки -->
   <section class="pagehead">
     <div class="container">
       <h1 style="margin:0 0 6px">Знайти консультанта</h1>
@@ -144,10 +122,10 @@
     </div>
   </section>
 
-  <!-- Список консультантів -->
   <main class="section" aria-label="Перелік консультантів">
     <div class="container grid grid-3">
 
+      <!-- Карти консультантів (без змін) -->
       <!-- 1 -->
       <article class="card person">
         <div class="photo">
@@ -310,7 +288,7 @@
 
   <!-- Модальне вікно бронювання -->
   <dialog id="booking">
-    <form method="dialog" class="modal" id="bookingForm" enctype="multipart/form-data">
+    <form method="dialog" class="modal" id="bookingForm">
       <header>
         <h3 id="modalTitle">Запис на консультацію</h3>
         <button type="button" class="btn ghost" id="closeX" aria-label="Закрити">✕</button>
@@ -343,14 +321,6 @@
       <div style="margin-top:12px">
         <label for="notes">Коментар (необов’язково)</label>
         <textarea class="input" id="notes" rows="3" placeholder="Ваш номер телефону, коротко про запит або зручний формат (онлайн/офлайн)…"></textarea>
-
-        <!-- Прикріпити файл -->
-        <div class="attach">
-          <input id="receipt" type="file" accept=".jpg,.jpeg,.png,.pdf,.heic,image/*,application/pdf" style="display:none">
-          <button type="button" class="btn gray small" id="attachBtn">📎 Прикріпити файл</button>
-          <span class="file-name" id="receiptName">Файл не вибрано</span>
-        </div>
-        <div class="file-note">Підтримуються JPG/PNG/PDF (до 10 МБ). Необов’язково.</div>
       </div>
 
       <div class="actions">
@@ -381,6 +351,13 @@
       "Олег Литвин": "oleglitvin@gmail.com",
     };
 
+    // ====== ХЕЛПЕРИ ЧАСУ (для кнопки «Приєднатись») ======
+    function startTSFromKyiv(date, time){
+      // достатньо грубо, але стабільно: Київ зараз UTC+3
+      return Date.parse(`${date}T${time}:00+03:00`);
+    }
+    const JOIN_OPEN_AFTER_MIN = 60; // тримаємо «активним» ще 60 хв після старту
+
     // ====== ШАПКА / РІК ======
     const hamb = document.getElementById('hamb');
     const mobile = document.getElementById('mobile');
@@ -408,16 +385,10 @@
       document.getElementById('modalTitle').textContent = 'Запис до: ' + name;
       document.getElementById('cName').value = name;
 
-      // дефолтна дата/час (завтра, ціла година)
       const d = new Date(); d.setDate(d.getDate()+1);
       document.getElementById('date').value = d.toISOString().slice(0,10);
       const t = new Date(); t.setMinutes(0,0,0);
       document.getElementById('time').value = t.toTimeString().slice(0,5);
-
-      // скинути попередній файл/назву
-      receiptInput.value = "";
-      receiptFile = null;
-      receiptName.textContent = "Файл не вибрано";
 
       dlg.showModal();
     }
@@ -435,29 +406,41 @@
       localStorage.setItem(key, String(count + 1));
     }
 
-    // ====== Прикріпити файл (чек)
-    const attachBtn   = document.getElementById('attachBtn');
-    const receiptInput= document.getElementById('receipt');
-    const receiptName = document.getElementById('receiptName');
-    let receiptFile   = null;
+    // ====== КНОПКА «ПРИЄДНАТИСЬ» (із локальним збереженням запису) ======
+    const joinBtn  = document.getElementById('joinBtn');
+    const joinBtnM = document.getElementById('joinBtnM');
 
-    attachBtn.addEventListener('click', ()=> receiptInput.click());
-    receiptInput.addEventListener('change', ()=>{
-      const f = receiptInput.files?.[0];
-      if(!f){ receiptFile=null; receiptName.textContent="Файл не вибрано"; return; }
-      // обмеження ~10 МБ
-      if(f.size > 10 * 1024 * 1024){
-        alert("Файл завеликий. Максимум 10 МБ.");
-        receiptInput.value = "";
-        receiptFile = null;
-        receiptName.textContent = "Файл не вибрано";
+    function setJoinLinkFromStorage(){
+      const raw = localStorage.getItem('koma_last_booking');
+      if(!raw){ joinBtn.setAttribute('aria-disabled','true'); joinBtnM.setAttribute('aria-disabled','true'); return; }
+      let b; try{ b = JSON.parse(raw); }catch{ b=null; }
+      if(!b){ joinBtn.setAttribute('aria-disabled','true'); joinBtnM.setAttribute('aria-disabled','true'); return; }
+
+      const now = Date.now();
+      const validTill = Number(b.startTS) + JOIN_OPEN_AFTER_MIN*60*1000;
+      if (!b.consultant || !b.fullName || !b.email || !b.date || !b.time || isNaN(validTill)) {
+        joinBtn.setAttribute('aria-disabled','true'); joinBtnM.setAttribute('aria-disabled','true'); return;
+      }
+      if (now > validTill){ // зустріч відбулась — прибираємо
+        joinBtn.setAttribute('aria-disabled','true'); joinBtnM.setAttribute('aria-disabled','true');
         return;
       }
-      receiptFile = f;
-      receiptName.textContent = f.name;
-    });
 
-    // Відправка на бекенд + редірект
+      const params = new URLSearchParams({
+        consultant: b.consultant,
+        fullName:   b.fullName,
+        email:      b.email,
+        date:       b.date,
+        time:       b.time,
+        notes:      b.notes || ''
+      }).toString();
+      const url = `zapis.html?${params}`;
+      joinBtn.href = url; joinBtn.removeAttribute('aria-disabled');
+      joinBtnM.href = url; joinBtnM.removeAttribute('aria-disabled');
+    }
+    setJoinLinkFromStorage(); // при завантаженні
+
+    // ====== Відправка на бекенд + збереження локально + редірект ======
     const confirmBtn = document.getElementById('confirmBtn');
     confirmBtn.addEventListener('click', async (e)=>{
       e.preventDefault();
@@ -481,29 +464,29 @@
       // локальна реєстрація для ліміту
       registerBooking(consultantName, date);
 
-      // спроба записати на бекенд (FormData, якщо є файл)
+      // зберегти "останній запис" для кнопки «Приєднатись»
+      const startTS = startTSFromKyiv(date, time);
+      localStorage.setItem('koma_last_booking', JSON.stringify({
+        consultant: consultantName,
+        fullName, email, date, time, notes: note, startTS
+      }));
+      setJoinLinkFromStorage(); // одразу активуємо кнопку в хедері
+
+      // спроба записати на бекенд
       try{
-        let res;
-        if (receiptFile) {
-          const fd = new FormData();
-          fd.append("consultantEmail", consultantEmail);
-          fd.append("consultantName", consultantName);
-          fd.append("fullName", fullName);
-          fd.append("email", email);
-          fd.append("date", date);
-          fd.append("time", time);
-          fd.append("note", note);
-          fd.append("file", receiptFile);
-          res = await fetch(`${API_BASE}/api/bookings`, { method: 'POST', body: fd });
-        } else {
-          res = await fetch(`${API_BASE}/api/bookings`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ consultantEmail, consultantName, fullName, email, date, time, note })
-          });
-        }
-        // не кидаємо помилку, навіть якщо не 2xx — все одно робимо редірект як фолбек
-        console.log('Booking API status:', res.status);
+        await fetch(`${API_BASE}/api/bookings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            consultantEmail,
+            consultantName,
+            fullName,
+            email,
+            date,
+            time,
+            note
+          })
+        });
       }catch(err){
         console.warn('Booking API failed, fallback redirect:', err);
       }
