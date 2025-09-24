@@ -1,8 +1,8 @@
 // html/js/guard.js
-(function(global){
+(function (global) {
   const SESSION_KEY = 'koma_session';
 
-  // Дозволені користувачі
+  // Дозволені користувачі (email у нижньому регістрі)
   const allowlist = [
     'oksanakokoten@gmail.com',
     'andriysavchuk@gmail.com',
@@ -10,9 +10,9 @@
     'maksymkoval@gmail.com',
     'nadiyaromaniyk@gmail.com',
     'oleglitvin@gmail.com'
-  ];
+  ].map(e => e.toLowerCase());
 
-  // Відображення email -> ім'я для генерації кімнати
+  // Email → ім'я для зручного відображення/генерації лінків
   const names = {
     'oksanakokoten@gmail.com': 'Оксана Кокотень',
     'andriysavchuk@gmail.com': 'Андрій Савчук',
@@ -22,35 +22,82 @@
     'oleglitvin@gmail.com': 'Олег Литвин'
   };
 
-  function getSession(){
-    try{
-      const raw = localStorage.getItem(SESSION_KEY);
-      if(!raw) return null;
-      const s = JSON.parse(raw);
-      if(!s.email || !s.exp) return null;
-      if(Date.now() > s.exp) { localStorage.removeItem(SESSION_KEY); return null; }
-      return s;
-    }catch{ return null; }
+  // -------- helpers --------
+  function basePath() {
+    // /html/page.html -> /html/
+    return location.pathname.replace(/[^/]+$/, '');
   }
 
-  function protect(){
+  function getSession() {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s?.email || !s?.exp) return null;
+      if (Date.now() > s.exp) { localStorage.removeItem(SESSION_KEY); return null; }
+      return { email: String(s.email), exp: Number(s.exp) };
+    } catch { return null; }
+  }
+
+  function isLoggedIn() {
+    return !!getSession();
+  }
+
+  function hasAccess(email) {
+    if (!email) return false;
+    return allowlist.includes(String(email).toLowerCase());
+  }
+
+  function protect() {
     const s = getSession();
-    if(!s || !allowlist.includes(s.email.toLowerCase())){
-      // якщо нема доступу — на логін
-      const base = location.pathname.replace(/[^/]+$/,'');
-      location.replace(`${base}login.html`);
+    if (!s || !hasAccess(s.email)) {
+      location.replace(`${basePath()}login.html`);
     }
   }
 
-  function logout(){
+  function logout() {
     localStorage.removeItem(SESSION_KEY);
-    const base = location.pathname.replace(/[^/]+$/,'');
-    location.replace(`${base}login.html`);
+    // Переходимо на головну, щоб одразу оновилась шапка
+    location.replace(`${basePath()}index.html`);
   }
 
-  function emailToName(email){
-    return names[email.toLowerCase()];
+  function emailToName(email) {
+    if (!email) return '';
+    return names[String(email).toLowerCase()] || '';
   }
 
-  global.guard = { protect, logout, getSession, emailToName };
+  /**
+   * Автоматично перемикає кнопки авторизації у шапці.
+   * Викликається на будь-якій публічній сторінці.
+   * options = { desktop: '#authBtn', mobile: '#authBtnMobile' }
+   */
+  function applyAuthUI(options = {}) {
+    const desktopSel = options.desktop || '#authBtn';
+    const mobileSel = options.mobile || '#authBtnMobile';
+
+    const desk = document.querySelector(desktopSel);
+    const mob  = document.querySelector(mobileSel);
+
+    const s = getSession();
+    if (s && hasAccess(s.email)) {
+      // Залогінений консультант → показуємо «Кабінет»
+      if (desk) { desk.textContent = 'Кабінет'; desk.setAttribute('href', `${basePath()}admin.html`); desk.classList.remove('green'); desk.classList.add('outline'); }
+      if (mob)  { mob.textContent  = 'Кабінет'; mob.setAttribute('href',  `${basePath()}admin.html`);  mob.classList.remove('green');  mob.classList.add('outline');  }
+    } else {
+      // Гість → показуємо «Вхід»
+      if (desk) { desk.textContent = 'Вхід'; desk.setAttribute('href', `${basePath()}login.html`); desk.classList.add('green'); desk.classList.remove('outline'); }
+      if (mob)  { mob.textContent  = 'Вхід'; mob.setAttribute('href',  `${basePath()}login.html`);  mob.classList.add('green');  mob.classList.remove('outline');  }
+    }
+  }
+
+  // Експорт у глобал
+  global.guard = {
+    protect,
+    logout,
+    getSession,
+    isLoggedIn,
+    hasAccess,
+    emailToName,
+    applyAuthUI
+  };
 })(window);

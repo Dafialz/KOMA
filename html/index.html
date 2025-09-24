@@ -7,11 +7,11 @@
   <meta name="description" content="Навчання, сертифікація, консультації та ресурси Християнського центру ментального здоров’я «КОМА»." />
 
   <!-- Favicon / OpenGraph -->
-  <link rel="icon" href="../icon/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="КОМА — Християнський центр ментального здоров’я «КОМА»" />
   <meta property="og:description" content="Навчання, сертифікація, консультації та ресурси." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="../icon/baner.jpg" />
+  <meta property="og:image" content="icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
 
   <style>
@@ -82,7 +82,7 @@
       text-align:center; color:#fff;
       background-image:
         linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.35)),
-        url('../icon/baner.jpg');
+        url('icon/baner.jpg');
       background-size:cover;
       background-position:center 36%;
       background-repeat:no-repeat;
@@ -106,12 +106,9 @@
     }
     .hero-cta{
       position:absolute; left:50%; bottom:32px;
-      transform:translate(-50%,0); /* центр */
+      transform:translate(-50%,0);
     }
-    .hero-cta:hover{
-      /* зберігаємо центр на ховері, щоб кнопка не тікала */
-      transform:translate(-50%,-1px);
-    }
+    .hero-cta:hover{ transform:translate(-50%,-1px); }
 
     /* Texts */
     h1{font-size:clamp(28px,4.4vw,52px);line-height:1.15;margin:0 0 10px}
@@ -146,7 +143,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="index.html" aria-label="КОМА Головна">
-        <img src="../icon/logo.png" alt="КОМА logo">
+        <img src="icon/logo.png" alt="КОМА logo">
         <span>КОМА</span>
       </a>
 
@@ -157,7 +154,7 @@
         <a href="pozhertvy.html">Пожертви</a>
         <a href="kontakty.html">Контакти</a>
         <a class="btn outline" href="directory.html">Знайти консультанта</a>
-        <a class="btn green" href="login.html">Вхід</a>
+        <a id="authBtn" class="btn green" href="login.html">Вхід</a>
       </nav>
 
       <button class="hamb" id="hamb" aria-label="Меню" aria-expanded="false">☰</button>
@@ -172,7 +169,7 @@
       <a href="kontakty.html">Контакти</a>
       <div style="display:flex;gap:10px;margin-top:10px">
         <a class="btn outline" href="directory.html">Знайти консультанта</a>
-        <a class="btn green" href="login.html">Вхід</a>
+        <a id="authBtnMobile" class="btn green" href="login.html">Вхід</a>
       </div>
     </div>
   </header>
@@ -182,7 +179,6 @@
     <div class="hero-inner">
       <div class="container hero-grid">
         <h1 class="hero-title">“КОМА” ХРИСТИЯНСЬКИЙ <br/> ЦЕНТР МЕНТАЛЬНОГО ЗДОРОВ’Я</h1>
-        <!-- простір між заголовком і кнопкою займає весь банер -->
         <a class="btn invert hero-cta" href="zapis.html">Консультація</a>
       </div>
     </div>
@@ -304,7 +300,7 @@
   <footer class="footer">
     <div class="container footgrid">
       <div style="display:flex;gap:12px;align-items:center">
-        <img src="../icon/logo.png" alt="КОМА logo" style="height:36px;border-radius:8px">
+        <img src="icon/logo.png" alt="КОМА logo" style="height:36px;border-radius:8px">
         <div>
           <strong>КОМА</strong>
           <div class="small">Християнський центр ментального здоров’я «КОМА»</div>
@@ -326,6 +322,7 @@
     </div>
   </footer>
 
+  <script src="js/guard.js"></script>
   <script>
     // Мобільне меню
     const hamb = document.getElementById('hamb');
@@ -337,6 +334,9 @@
 
     // Рік у футері
     document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Перемикаємо «Вхід» ↔ «Кабінет» залежно від сесії
+    guard.applyAuthUI({ desktop: '#authBtn', mobile: '#authBtnMobile' });
   </script>
 </body>
 </html>

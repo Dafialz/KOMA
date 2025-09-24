@@ -45,6 +45,7 @@
       <a class="brand" href="index.html"><img src="../icon/logo.png" alt=""><strong>КОМА</strong></a>
       <div class="row">
         <a class="btn ghost" href="directory.html">Каталог консультантів</a>
+        <a class="btn ghost" href="clients.html" title="Перегляд/ведення клієнтів">Клієнти</a>
         <button id="logout" class="btn gray">Вийти</button>
       </div>
     </div>
@@ -106,7 +107,7 @@
     document.getElementById('who').textContent = `Користувач: ${me.email}`;
     const myName = guard.emailToName(me.email) || 'Консультант';
 
-    // дефолтна дата/час (сьогодні + 1 день) — часова зона Києва для зручності
+    // дефолтна дата/час (сьогодні + 1 день) — часова зона Києва
     const kyivNow = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Kyiv' }));
     kyivNow.setDate(kyivNow.getDate()+1);
     document.getElementById('date').value = kyivNow.toISOString().slice(0,10);
@@ -114,7 +115,7 @@
     const mm = String(kyivNow.getMinutes()).padStart(2,'0');
     document.getElementById('time').value = `${hh}:${mm}`;
 
-    // генерація лінка у форматі вашого сайту
+    // генерація лінка
     const out = document.getElementById('out');
     const openBtn = document.getElementById('open');
     const copyBtn = document.getElementById('copy');
@@ -135,7 +136,6 @@
         time
       }).toString();
 
-      // сторінка з деталями і кнопкою відеочату
       const zapisUrl = `${location.origin}${location.pathname.replace(/[^/]+$/,'')}zapis.html?${q}`;
       out.textContent = zapisUrl;
 
