@@ -1,104 +1,170 @@
-import http from 'http';
-import { WebSocketServer } from 'ws';
+// server.js
+// ─────────────────────────────────────────────────────────────────────────────
+// 1) WebSocket signaling server (для video.html)
+// 2) REST API для бронювань з автозбереженням у bookings.json
+//    Маршрути: POST /api/bookings, GET /api/bookings?consultantEmail=...,
+//              DELETE /api/bookings/:id
+//    Автоочистка: запис видаляється через 60 хв після старту
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Для Render порт приходить з process.env.PORT
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type':'text/plain' });
-  res.end('KOMA signaling server is running\n');
+const express = require("express");
+const http = require("http");
+const WebSocket = require("ws");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+
+// ── App / HTTP / WS ──────────────────────────────────────────────────────────
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// ── Middlewares ──────────────────────────────────────────────────────────────
+app.use(cors()); // за потреби можеш обмежити домени: cors({ origin: ["https://koma-hcmz.netlify.app"] })
+app.use(express.json());
+
+// ── СИГНАЛІНГ: кімнати для відеодзвінків ─────────────────────────────────────
+const rooms = new Map(); // { roomId: Set<ws> }
+
+wss.on("connection", (ws) => {
+  ws.on("message", (raw) => {
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return; }
+
+    if (msg.type === "join") {
+      ws.room = msg.room;
+      if (!rooms.has(ws.room)) rooms.set(ws.room, new Set());
+      rooms.get(ws.room).add(ws);
+      broadcast(ws.room, { type: "peer-join" }, ws);
+      return;
+    }
+
+    if (
+      ws.room &&
+      (msg.type === "offer" || msg.type === "answer" || msg.type === "ice")
+    ) {
+      broadcast(ws.room, msg, ws);
+    }
+  });
+
+  ws.on("close", () => {
+    if (ws.room && rooms.has(ws.room)) {
+      rooms.get(ws.room).delete(ws);
+      broadcast(ws.room, { type: "peer-leave" }, ws);
+      if (rooms.get(ws.room).size === 0) rooms.delete(ws.room);
+    }
+  });
 });
 
-const wss = new WebSocketServer({ server });
-
-/**
- * Проста модель “кімнат”:
- * roomId -> Set<WebSocket>
- */
-const rooms = new Map();
-
-function joinRoom(ws, room) {
-  if (!rooms.has(room)) rooms.set(room, new Set());
-  rooms.get(room).add(ws);
-  ws.room = room;
-}
-
-function leaveRoom(ws) {
-  const { room } = ws;
-  if (!room) return;
-  const set = rooms.get(room);
-  if (set) {
-    set.delete(ws);
-    if (set.size === 0) rooms.delete(room);
-  }
-  ws.room = null;
-}
-
-function broadcastToRoom(room, data, except) {
-  const set = rooms.get(room);
-  if (!set) return;
+function broadcast(room, message, exceptWs) {
+  const set = rooms.get(room) || [];
+  const data = JSON.stringify(message);
   for (const client of set) {
-    if (client.readyState === 1 && client !== except) {
+    if (client !== exceptWs && client.readyState === WebSocket.OPEN) {
       client.send(data);
     }
   }
 }
 
-// keepalive (Render іноді засинає; пінгуємо клієнтів)
-function heartbeat() { this.isAlive = true; }
+// ── БРОНЮВАННЯ: збереження у файлі ───────────────────────────────────────────
+const DATA_DIR = process.env.DATA_DIR || ".";
+const BOOK_FILE = path.join(DATA_DIR, "bookings.json");
 
-wss.on('connection', (ws) => {
-  ws.isAlive = true;
-  ws.on('pong', heartbeat);
+// завантажити існуючі
+let bookings = [];
+try {
+  if (fs.existsSync(BOOK_FILE)) {
+    bookings = JSON.parse(fs.readFileSync(BOOK_FILE, "utf-8"));
+  }
+} catch {
+  bookings = [];
+}
 
-  ws.on('message', (buf) => {
-    let msg = {};
-    try { msg = JSON.parse(buf.toString()); } catch { return; }
+function saveBookings() {
+  try {
+    fs.writeFileSync(BOOK_FILE, JSON.stringify(bookings, null, 2), "utf-8");
+  } catch {}
+}
 
-    // очікуємо формат: { type, room, payload }
-    switch (msg.type) {
-      case 'join': {
-        leaveRoom(ws);
-        joinRoom(ws, msg.room);
-        ws.send(JSON.stringify({ type:'joined', room: msg.room }));
-        break;
-      }
-      case 'leave': {
-        leaveRoom(ws);
-        break;
-      }
-      // прокидаємо сигнальні повідомлення усім іншим у кімнаті
-      case 'offer':
-      case 'answer':
-      case 'ice':
-      case 'bye': {
-        if (!ws.room) return;
-        broadcastToRoom(ws.room, JSON.stringify({
-          type: msg.type,
-          from: msg.from || null,
-          payload: msg.payload
-        }), ws);
-        break;
-      }
-      default:
-        // no-op
-        break;
-    }
+// автоочистка: старше за 60 хв від запланованого часу
+function cleanup() {
+  const now = Date.now();
+  const before = bookings.length;
+  bookings = bookings.filter((b) => now < b.startTS + 60 * 60 * 1000);
+  if (bookings.length !== before) saveBookings();
+}
+setInterval(cleanup, 60 * 1000);
+
+// ── API ──────────────────────────────────────────────────────────────────────
+app.get("/", (req, res) => {
+  cleanup();
+  res.json({
+    ok: true,
+    wsRooms: rooms.size,
+    futureBookings: bookings.length,
   });
-
-  ws.on('close', () => leaveRoom(ws));
 });
 
-// перевірка коннектів
-const interval = setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) return ws.terminate();
-    ws.isAlive = false;
-    ws.ping();
-  });
-}, 30000);
+// створити бронювання
+app.post("/api/bookings", (req, res) => {
+  const { consultantEmail, consultantName, fullName, email, date, time, note } =
+    req.body || {};
 
-wss.on('close', () => clearInterval(interval));
+  if (!consultantEmail || !consultantName || !fullName || !date || !time) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log('Signaling server on :' + PORT);
+  // Парсимо локальний час Києва (UTC+3 умовно; достатньо для наших цілей)
+  const startTS = Date.parse(`${date}T${time}:00+03:00`);
+  if (Number.isNaN(startTS)) {
+    return res.status(400).json({ error: "Bad date/time" });
+  }
+
+  const id = Math.random().toString(36).slice(2);
+  const rec = {
+    id,
+    consultantEmail: String(consultantEmail).toLowerCase(),
+    consultantName,
+    fullName,
+    email: email || "",
+    note: note || "",
+    date,
+    time,
+    startTS,
+    createdAt: Date.now(),
+  };
+
+  bookings.push(rec);
+  saveBookings();
+
+  res.json({ ok: true, id, rec });
 });
+
+// отримати список для консультанта
+app.get("/api/bookings", (req, res) => {
+  cleanup();
+  const c = String(req.query.consultantEmail || "").toLowerCase();
+  if (!c) return res.status(400).json({ error: "consultantEmail required" });
+  const list = bookings
+    .filter((b) => b.consultantEmail === c)
+    .sort((a, b) => a.startTS - b.startTS);
+  res.json({ ok: true, list });
+});
+
+// видалити бронювання вручну (після дзвінка)
+app.delete("/api/bookings/:id", (req, res) => {
+  const id = req.params.id;
+  const before = bookings.length;
+  bookings = bookings.filter((b) => b.id !== id);
+  if (before !== bookings.length) saveBookings();
+  res.json({ ok: true });
+});
+
+// ── Статика (віддаємо /html як корінь сайту) ─────────────────────────────────
+app.use(express.static("html"));
+
+// ── START ────────────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () =>
+  console.log(`Server on http://localhost:${PORT}  |  API and WS ready`)
+);

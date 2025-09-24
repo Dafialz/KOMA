@@ -143,7 +143,6 @@
   <main class="section" aria-label="Перелік консультантів">
     <div class="container grid grid-3">
 
-      <!-- Шаблонна розмітка консультанта (1..6) -->
       <!-- 1 -->
       <article class="card person">
         <div class="photo">
@@ -154,8 +153,8 @@
           <h3 class="p-name">Оксана Кокотень</h3>
           <p class="p-role">Консультант-психолог, MA</p>
           <div class="p-actions">
-            <button class="btn" onclick="openBooking('Оксана Кокотень')">Записатись</button>
-            <a class="btn ghost" href="mailto:oksana@example.org">Написати</a>
+            <button class="btn" onclick="openBooking('Оксана Кокотень')">Записатися</button>
+            <a class="btn ghost" href="mailto:oksanakokoten@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -181,8 +180,8 @@
           <h3 class="p-name">Андрій Савчук</h3>
           <p class="p-role">Душеопікун, капелан</p>
           <div class="p-actions">
-            <button class="btn" onclick="openBooking('Андрій Савчук')">Записатись</button>
-            <a class="btn ghost" href="mailto:andrii@example.org">Написати</a>
+            <button class="btn" onclick="openBooking('Андрій Савчук')">Записатися</button>
+            <a class="btn ghost" href="mailto:andriysavchuk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -207,8 +206,8 @@
           <h3 class="p-name">Ірина Шевченко</h3>
           <p class="p-role">Психолог, КПТ</p>
           <div class="p-actions">
-            <button class="btn" onclick="openBooking('Ірина Шевченко')">Записатись</button>
-            <a class="btn ghost" href="mailto:iryna@example.org">Написати</a>
+            <button class="btn" onclick="openBooking('Ірина Шевченко')">Записатися</button>
+            <a class="btn ghost" href="mailto:irynashevchenko@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -233,8 +232,8 @@
           <h3 class="p-name">Максим Коваль</h3>
           <p class="p-role">Дитячий та підлітковий психолог</p>
           <div class="p-actions">
-            <button class="btn" onclick="openBooking('Максим Коваль')">Записатись</button>
-            <a class="btn ghost" href="mailto:maksym@example.org">Написати</a>
+            <button class="btn" onclick="openBooking('Максим Коваль')">Записатися</button>
+            <a class="btn ghost" href="mailto:maksymkoval@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -259,8 +258,8 @@
           <h3 class="p-name">Надія Романюк</h3>
           <p class="p-role">Сімейний консультант</p>
           <div class="p-actions">
-            <button class="btn" onclick="openBooking('Надія Романюк')">Записатись</button>
-            <a class="btn ghost" href="mailto:nadiia@example.org">Написати</a>
+            <button class="btn" onclick="openBooking('Надія Романюк')">Записатися</button>
+            <a class="btn ghost" href="mailto:nadiyaromaniyk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -285,8 +284,8 @@
           <h3 class="p-name">Олег Литвин</h3>
           <p class="p-role">Психотерапевт</p>
           <div class="p-actions">
-            <button class="btn" onclick="openBooking('Олег Литвин')">Записатись</button>
-            <a class="btn ghost" href="mailto:oleh@example.org">Написати</a>
+            <button class="btn" onclick="openBooking('Олег Литвин')">Записатися</button>
+            <a class="btn ghost" href="mailto:oleglitvin@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -309,7 +308,6 @@
     <form method="dialog" class="modal" id="bookingForm">
       <header>
         <h3 id="modalTitle">Запис на консультацію</h3>
-        <!-- важливо: type="button" -->
         <button type="button" class="btn ghost" id="closeX" aria-label="Закрити">✕</button>
       </header>
 
@@ -343,7 +341,6 @@
       </div>
 
       <div class="actions">
-        <!-- важливо: type="button" -->
         <button type="button" class="btn ghost" id="cancelBtn">Скасувати</button>
         <button class="btn" value="submit" id="confirmBtn">Підтвердити</button>
       </div>
@@ -358,7 +355,20 @@
   </footer>
 
   <script>
-    // Мобільне меню
+    // ====== НАЛАШТУВАННЯ API ======
+    const API_BASE = "https://koma-uaue.onrender.com";
+
+    // Ім'я консультанта → email (для API)
+    const CONSULTANT_EMAIL = {
+      "Оксана Кокотень": "oksanakokoten@gmail.com",
+      "Андрій Савчук": "andriysavchuk@gmail.com",
+      "Ірина Шевченко": "irynashevchenko@gmail.com",
+      "Максим Коваль": "maksymkoval@gmail.com",
+      "Надія Романюк": "nadiyaromaniyk@gmail.com",
+      "Олег Литвин": "oleglitvin@gmail.com",
+    };
+
+    // ====== ШАПКА / РІК ======
     const hamb = document.getElementById('hamb');
     const mobile = document.getElementById('mobile');
     hamb?.addEventListener('click', () => {
@@ -367,14 +377,14 @@
     });
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Прайс (показати/сховати)
+    // Прайс
     function togglePrice(btn){
       const box = btn.closest('.p-body').querySelector('.prices');
       box.classList.toggle('open');
       btn.textContent = box.classList.contains('open') ? 'Приховати ціну' : 'Ціна';
     }
 
-    // Модалка
+    // ====== МОДАЛКА ======
     const dlg = document.getElementById('booking');
     const closeX = document.getElementById('closeX');
     const cancelBtn = document.getElementById('cancelBtn');
@@ -385,7 +395,7 @@
       document.getElementById('modalTitle').textContent = 'Запис до: ' + name;
       document.getElementById('cName').value = name;
 
-      // дефолтна дата/час
+      // дефолтна дата/час (завтра, ціла година)
       const d = new Date(); d.setDate(d.getDate()+1);
       document.getElementById('date').value = d.toISOString().slice(0,10);
       const t = new Date(); t.setMinutes(0,0,0);
@@ -394,48 +404,65 @@
       dlg.showModal();
     }
 
-    // Ліміт 4 записи/день/консультант (localStorage)
-    function bookingKey(consultant, date){
-      return `${consultant}_${date}`; // простий ключ
-    }
-
+    // Ліміт 4 записи/день/консультант (локально)
+    function bookingKey(consultant, date){ return `${consultant}_${date}`; }
     function canBook(consultant, date){
       const key = bookingKey(consultant, date);
       const count = parseInt(localStorage.getItem(key) || '0', 10);
       return count < 4;
     }
-
     function registerBooking(consultant, date){
       const key = bookingKey(consultant, date);
       const count = parseInt(localStorage.getItem(key) || '0', 10);
       localStorage.setItem(key, String(count + 1));
     }
 
-    // Підтвердження (з перевіркою ліміту)
+    // Відправка на бекенд + редірект
     const confirmBtn = document.getElementById('confirmBtn');
-    confirmBtn.addEventListener('click', (e)=>{
-      e.preventDefault(); // не закривати форму автоматично
+    confirmBtn.addEventListener('click', async (e)=>{
+      e.preventDefault();
 
-      const name = document.getElementById('cName').value;
+      const consultantName = document.getElementById('cName').value;
+      const consultantEmail = CONSULTANT_EMAIL[consultantName] || "";
       const fullName = document.getElementById('fullName').value.trim();
       const email = document.getElementById('email').value.trim();
       const date = document.getElementById('date').value;
       const time = document.getElementById('time').value;
+      const note = document.getElementById('notes').value.trim();
 
-      if(!fullName || !email || !date || !time){ return; }
-
-      if(!canBook(name, date)){
+      if(!consultantName || !fullName || !email || !date || !time){
+        return;
+      }
+      if(!canBook(consultantName, date)){
         alert('На цю дату у консультанта вже 4 записи. Оберіть, будь ласка, інший день.');
         return;
       }
 
-      // реєструємо локально
-      registerBooking(name, date);
+      // локальна реєстрація для ліміту
+      registerBooking(consultantName, date);
 
-      // можеш замінити на реальний бекенд або редірект
-      const params = new URLSearchParams({ consultant: name, fullName, email, date, time }).toString();
-      // alert для демо, можна одразу редіректити:
-      // window.location.href = 'zapis.html?' + params;
+      // спроба записати на бекенд
+      try{
+        await fetch(`${API_BASE}/api/bookings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            consultantEmail,
+            consultantName,
+            fullName,
+            email,
+            date,
+            time,
+            note
+          })
+        });
+      }catch(err){
+        // ігноруємо — все одно робимо редірект як фолбек
+        console.warn('Booking API failed, fallback redirect:', err);
+      }
+
+      // редірект на сторінку підтвердження/деталей
+      const params = new URLSearchParams({ consultant: consultantName, fullName, email, date, time }).toString();
       window.location.href = 'zapis.html?' + params;
     });
   </script>
