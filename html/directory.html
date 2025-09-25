@@ -45,7 +45,7 @@
           <h3 class="p-name">Оксана Кокотень</h3>
           <p class="p-role">Консультант-психолог, MA</p>
           <div class="p-actions">
-            <button class="btn" data-name="Оксана Кокотень" onclick="openConsultation(this)">Консультація</button>
+            <button class="btn" data-name="Оксана Кокотень" onclick="openConsultation(this)">Записатись</button>
             <a class="btn ghost" href="mailto:oksanakokoten@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -73,7 +73,7 @@
           <h3 class="p-name">Андрій Савчук</h3>
           <p class="p-role">Душеопікун, капелан</p>
           <div class="p-actions">
-            <button class="btn" data-name="Андрій Савчук" onclick="openConsultation(this)">Консультація</button>
+            <button class="btn" data-name="Андрій Савчук" onclick="openConsultation(this)">Записатись</button>
             <a class="btn ghost" href="mailto:andriysavchuk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -100,7 +100,7 @@
           <h3 class="p-name">Ірина Шевченко</h3>
           <p class="p-role">Психолог, КПТ</p>
           <div class="p-actions">
-            <button class="btn" data-name="Ірина Шевченко" onclick="openConsultation(this)">Консультація</button>
+            <button class="btn" data-name="Ірина Шевченко" onclick="openConsultation(this)">Записатись</button>
             <a class="btn ghost" href="mailto:irynashevchenko@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -127,7 +127,7 @@
           <h3 class="p-name">Максим Коваль</h3>
           <p class="p-role">Дитячий та підлітковий психолог</p>
           <div class="p-actions">
-            <button class="btn" data-name="Максим Коваль" onclick="openConsultation(this)">Консультація</button>
+            <button class="btn" data-name="Максим Коваль" onclick="openConsultation(this)">Записатись</button>
             <a class="btn ghost" href="mailto:maksymkoval@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -154,7 +154,7 @@
           <h3 class="p-name">Надія Романюк</h3>
           <p class="p-role">Сімейний консультант</p>
           <div class="p-actions">
-            <button class="btn" data-name="Надія Романюк" onclick="openConsultation(this)">Консультація</button>
+            <button class="btn" data-name="Надія Романюк" onclick="openConsultation(this)">Записатись</button>
             <a class="btn ghost" href="mailto:nadiyaromaniyk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -181,7 +181,7 @@
           <h3 class="p-name">Олег Литвин</h3>
           <p class="p-role">Психотерапевт</p>
           <div class="p-actions">
-            <button class="btn" data-name="Олег Литвин" onclick="openConsultation(this)">Консультація</button>
+            <button class="btn" data-name="Олег Литвин" onclick="openConsultation(this)">Записатись</button>
             <a class="btn ghost" href="mailto:oleglitvin@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -208,9 +208,9 @@
   <script src="/js/partials.js" type="module"></script>
 
   <!-- Локальний JS сторінки -->
-  <script src="/js/directory.js"></script>
+  <script type="module" src="/js/directory.js"></script>
 
-  <!-- МОДАЛКА «Консультація» -->
+  <!-- МОДАЛКА «Запис на консультацію» -->
   <div id="consultModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" onclick="closeConsultation()"></div>
     <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="consultTitle">
@@ -230,15 +230,19 @@
             <label>E-mail</label>
             <input id="c_email" type="email" required />
           </div>
-          <div>
-            <label>Дата</label>
-            <input id="c_date" type="date" required />
+
+          <!-- НОВЕ: календар + вибір слоту часу -->
+          <div class="col-span-2">
+            <label>Дата і час</label>
+            <div class="slots-wrap">
+              <input id="c_date" type="date" required />
+              <div id="slotGrid" class="slots" aria-label="Доступні часові слоти"></div>
+              <input id="c_time" type="hidden" required />
+            </div>
+            <div class="hint muted">Доступно 4 сеанси/день: 08:00, 12:00, 16:00, 20:00.</div>
           </div>
-          <div>
-            <label>Час</label>
-            <input id="c_time" type="time" required />
-          </div>
-          <div>
+
+          <div class="col-span-2">
             <label>Коментар</label>
             <textarea id="c_notes" rows="3" placeholder="Коротко опишіть запит…"></textarea>
             <div style="margin-top:8px">
@@ -251,7 +255,7 @@
         </div>
         <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
           <button type="button" class="btn outline" onclick="closeConsultation()">Скасувати</button>
-          <button type="submit" class="btn">Записатися</button>
+          <button id="submitBtn" type="submit" class="btn">Записатися</button>
         </div>
       </form>
     </div>

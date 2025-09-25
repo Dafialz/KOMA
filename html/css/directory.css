@@ -71,3 +71,14 @@ a:hover{text-decoration:underline}
 .prices.open{display:block}
 .prices ul{margin:0;padding-left:18px}
 .prices li{margin:6px 0;color:#374151}
+
+/* ====== Modal slots (нове) ====== */
+.col-span-2{grid-column:1 / -1}
+.slots-wrap{display:grid;gap:8px}
+.slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.slot{padding:.65rem .9rem;border:1px solid var(--border);border-radius:10px;background:#fff;text-align:center;cursor:pointer}
+.slot:hover{box-shadow:var(--shadow-sm)}
+.slot.taken{opacity:.45;cursor:not-allowed;background:#f3f4f6}
+.slot.selected{border-color:var(--brand);box-shadow:var(--ring)}
+.hint{margin-top:6px;font-size:.9rem}

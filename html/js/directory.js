@@ -28,7 +28,6 @@ window.togglePrice = function (btn) {
   var open = !box.classList.contains('open');
   if (open) {
     box.classList.add('open');
-    // спочатку прибираємо, щоб перерахувати висоту контенту
     box.style.maxHeight = box.scrollHeight + 'px';
     btn.textContent = 'Приховати ціну';
   } else {
@@ -38,24 +37,56 @@ window.togglePrice = function (btn) {
   }
 };
 
-// ====== Допоміжні функції для модалки
+// ===== Допоміжні
 function $(sel, root) { return (root || document).querySelector(sel); }
 function getModal() { return document.getElementById('consultModal'); }
 function getForm()  { return document.getElementById('consultForm'); }
+function getSubmit(){ return document.getElementById('submitBtn'); }
 
-// мінімальна дата = сьогодні
-function setMinToday(input) {
-  if (!input) return;
-  var d = new Date();
+// Мінімальна дата = сьогодні
+function kyivTodayStr(){
+  var d = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Kyiv' }));
   var yyyy = d.getFullYear();
   var mm = String(d.getMonth() + 1).padStart(2, '0');
   var dd = String(d.getDate()).padStart(2, '0');
-  var today = yyyy + '-' + mm + '-' + dd;
+  return yyyy + '-' + mm + '-' + dd;
+}
+function setMinToday(input) {
+  if (!input) return;
+  var today = kyivTodayStr();
   input.min = today;
   if (!input.value) input.value = today;
 }
 
-// ===== МОДАЛКА "Консультація"
+// TS з урахуванням Києва
+function tsKyiv(date, time) { return Date.parse(date + 'T' + time + ':00+03:00'); }
+
+// Мапа імен → email (для підрахунків бронювань)
+const NAME_TO_EMAIL = {
+  'Оксана Кокотень': 'oksanakokoten@gmail.com',
+  'Андрій Савчук':   'andriysavchuk@gmail.com',
+  'Ірина Шевченко':  'irynashevchenko@gmail.com',
+  'Максим Коваль':   'maksymkoval@gmail.com',
+  'Надія Романюк':   'nadiyaromaniyk@gmail.com',
+  'Олег Литвин':     'oleglitvin@gmail.com'
+};
+
+// 4 фіксованих слоти між 08:00 та 20:00
+const SLOTS = ['08:00','12:00','16:00','20:00'];
+
+// Динамічний імпорт API бронювань (працює локально + Netlify)
+async function getBookings(email){
+  try{
+    if (!window.__bk) window.__bk = await import('/js/bookings.js');
+    const res = await window.__bk.fetchBookings(email);
+    return (res && res.list) ? res.list : [];
+  }catch(e){
+    console.warn('bookings API недоступний:', e);
+    return [];
+  }
+}
+
+// ===== МОДАЛКА "Записатись"
 window.openConsultation = function (el) {
   var modal = getModal();
   if (!modal) { console.warn('Modal not found'); return; }
@@ -64,7 +95,7 @@ window.openConsultation = function (el) {
   var c_consultant = $('#c_consultant');
   if (c_consultant) c_consultant.value = name;
 
-  // дані з guard, якщо є
+  // автозаповнення з guard
   try {
     if (window.guard && window.guard.user) {
       var u = window.guard.user;
@@ -73,12 +104,21 @@ window.openConsultation = function (el) {
     }
   } catch {}
 
-  setMinToday($('#c_date'));
+  // дата й слоти
+  var dateInput = $('#c_date');
+  setMinToday(dateInput);
+  renderSlots(); // первинний рендер
+
+  // під час зміни дати — оновити слоти
+  if (dateInput && !dateInput._bound){
+    dateInput.addEventListener('change', renderSlots);
+    dateInput._bound = true;
+  }
 
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('modal-open');
-  // фокус
+
   var focusEl = $('#c_fullName');
   if (focusEl) setTimeout(function(){ focusEl.focus(); }, 0);
 };
@@ -92,18 +132,61 @@ window.closeConsultation = function () {
 
   var form = getForm();
   if (form) form.reset();
+  var grid = $('#slotGrid');
+  if (grid) grid.innerHTML = '';
 };
 
-// ESC для закриття
+// Побудова слотів з урахуванням зайнятості
+async function renderSlots(){
+  var grid = $('#slotGrid');
+  var date = ($('#c_date') || {}).value;
+  var consultant = ($('#c_consultant') || {}).value;
+  var timeHidden = $('#c_time');
+  var submitBtn = getSubmit();
+  if (!grid || !date || !consultant) return;
+
+  grid.innerHTML = '';
+  timeHidden.value = '';
+
+  // взяти бронювання для цього консультанта на обрану дату
+  const email = NAME_TO_EMAIL[consultant] || '';
+  let takenSet = new Set();
+  if (email){
+    const list = await getBookings(email);
+    for (const b of list){
+      if (b.date === date && b.time) takenSet.add(b.time);
+    }
+  }
+
+  let freeCount = 0;
+  SLOTS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = t;
+    btn.className = 'slot' + (takenSet.has(t) ? ' taken' : '');
+    btn.disabled = takenSet.has(t);
+    if (!btn.disabled) freeCount++;
+
+    btn.onclick = () => {
+      // зняти попередню позначку
+      grid.querySelectorAll('.slot.selected').forEach(x => x.classList.remove('selected'));
+      btn.classList.add('selected');
+      timeHidden.value = t;
+      if (submitBtn) submitBtn.disabled = false;
+    };
+    grid.appendChild(btn);
+  });
+
+  // якщо всі 4 зайняті — блокуємо сабміт
+  if (submitBtn) submitBtn.disabled = (freeCount === 0);
+}
+
+// ESC закриття
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') window.closeConsultation();
 });
 
-// обчислення timestamp (Київ, +03:00)
-function tsKyiv(date, time) {
-  return Date.parse(date + 'T' + time + ':00+03:00');
-}
-
+// Сабміт форми
 window.submitConsultation = function (e) {
   if (e && e.preventDefault) e.preventDefault();
 
@@ -120,7 +203,7 @@ window.submitConsultation = function (e) {
   notes      = notes.trim();
 
   if (!consultant || !fullName || !email || !date || !time) {
-    alert('Будь ласка, заповніть усі обовʼязкові поля.');
+    alert('Будь ласка, оберіть дату і час та заповніть обовʼязкові поля.');
     return false;
   }
 
@@ -134,17 +217,11 @@ window.submitConsultation = function (e) {
     startTS:    tsKyiv(date, time)
   };
 
-  try {
-    localStorage.setItem('koma_last_booking', JSON.stringify(booking));
-  } catch {}
+  try { localStorage.setItem('koma_last_booking', JSON.stringify(booking)); } catch {}
 
-  // файл відмітимо прапорцем (фактичне завантаження робиться на сторінці запису/сервері)
   var fileInput = $('#c_file');
-  if (fileInput && fileInput.files && fileInput.files.length) {
-    booking.hasFile = true;
-  }
+  if (fileInput && fileInput.files && fileInput.files.length) booking.hasFile = true;
 
-  // редирект на сторінку запису
   var params = new URLSearchParams({
     consultant: booking.consultant,
     fullName:   booking.fullName,
@@ -159,10 +236,10 @@ window.submitConsultation = function (e) {
   return false;
 };
 
-// ===== Вбудовані стилі для модалки (на випадок, якщо в CSS не додано)
+// ===== Вбудовані стилі для модалки (fallback)
 (function injectModalStyles() {
   var css = [
-    '.modal[aria-hidden="true"]{display:none}',
+    '.modal[aria-hidden=\"true\"]{display:none}',
     '.modal{position:fixed;inset:0;z-index:70}',
     '.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}',
     '.modal-dialog{position:relative;z-index:1;max-width:720px;margin:6vh auto;background:#fff;',
@@ -173,4 +250,26 @@ window.submitConsultation = function (e) {
   var s = document.createElement('style');
   s.textContent = css;
   document.head.appendChild(s);
+})();
+
+// ===== Автоблокування картки, якщо на СЬОГОДНІ вже 4 записи
+(async function autoDisableIfFullToday(){
+  const today = kyivTodayStr();
+  const cards = document.querySelectorAll('.card.person');
+  for (const card of cards){
+    const nameEl = card.querySelector('.p-name');
+    const btn = card.querySelector('.p-actions .btn');
+    if (!nameEl || !btn) continue;
+    const name = nameEl.textContent.trim();
+    const email = NAME_TO_EMAIL[name] || '';
+    if (!email) continue;
+
+    const list = await getBookings(email);
+    const countToday = list.filter(b => b.date === today).length;
+    if (countToday >= 4){
+      btn.setAttribute('aria-disabled','true');
+      btn.textContent = 'Немає місць';
+      btn.onclick = null;
+    }
+  }
 })();
