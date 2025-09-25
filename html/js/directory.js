@@ -39,11 +39,14 @@ window.togglePrice = function (btn) {
 
 // ===== Допоміжні
 function $(sel, root) { return (root || document).querySelector(sel); }
+function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 function getModal() { return document.getElementById('consultModal'); }
 function getForm()  { return document.getElementById('consultForm'); }
 function getSubmit(){ return document.getElementById('submitBtn'); }
 
-// Мінімальна дата = сьогодні
+const MAX_PER_DAY = 4;
+
+// Мінімальна дата = сьогодні (Europe/Kyiv)
 function kyivTodayStr(){
   var d = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Kyiv' }));
   var yyyy = d.getFullYear();
@@ -58,10 +61,24 @@ function setMinToday(input) {
   if (!input.value) input.value = today;
 }
 
-// TS з урахуванням Києва
-function tsKyiv(date, time) { return Date.parse(date + 'T' + time + ':00+03:00'); }
+// Поточний офсет Києва у форматі +02:00 / +03:00 (спрощено)
+function kyivOffsetISO() {
+  try {
+    var fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Kyiv', timeZoneName: 'shortOffset' });
+    var parts = fmt.formatToParts(new Date());
+    var off = (parts.find(p => p.type === 'timeZoneName') || {}).value || 'GMT+03';
+    var m = off.match(/GMT?([+-]\d{1,2})/i);
+    var h = m ? parseInt(m[1],10) : 3;
+    var sign = h >= 0 ? '+' : '-';
+    var abs = Math.abs(h);
+    return sign + String(abs).padStart(2,'0') + ':00';
+  } catch { return '+03:00'; }
+}
 
-// Мапа імен → email (для підрахунків бронювань)
+// TS з урахуванням Києва (приблизно, з поточним офсетом)
+function tsKyiv(date, time) { return Date.parse(date + 'T' + time + ':00' + kyivOffsetISO()); }
+
+// Мапа імен → email (фолбек; основне джерело — data-атрибути у картках)
 const NAME_TO_EMAIL = {
   'Оксана Кокотень': 'oksanakokoten@gmail.com',
   'Андрій Савчук':   'andriysavchuk@gmail.com',
@@ -71,10 +88,16 @@ const NAME_TO_EMAIL = {
   'Олег Литвин':     'oleglitvin@gmail.com'
 };
 
-// 4 фіксованих слоти між 08:00 та 20:00
-const SLOTS = ['08:00','12:00','16:00','20:00'];
+// Слоти щогодини 08:00–20:00
+function hourSlots() {
+  var arr = [];
+  for (var h = 8; h <= 20; h++) {
+    arr.push(String(h).padStart(2,'0') + ':00');
+  }
+  return arr;
+}
 
-// Динамічний імпорт API бронювань (працює локально + Netlify)
+// Динамічний імпорт API бронювань
 async function getBookings(email){
   try{
     if (!window.__bk) window.__bk = await import('/js/bookings.js');
@@ -83,6 +106,46 @@ async function getBookings(email){
   }catch(e){
     console.warn('bookings API недоступний:', e);
     return [];
+  }
+}
+
+function findEmailByName(name){
+  // шукаємо по data-name у картці; якщо немає — фолбек з мапи
+  var card = $all('.card.person').find(function(c){
+    return (c.dataset.name || '').trim() === String(name||'').trim();
+  });
+  return (card && card.dataset.email) || NAME_TO_EMAIL[name] || '';
+}
+
+// ===== ОНОВЛЕННЯ ЛІЧИЛЬНИКІВ 0/4 ТА БЛОКУВАННЯ КНОПОК
+async function updateQuotaBadges(dateStr){
+  const cards = $all('.card.person');
+  for (const card of cards){
+    const email = (card.dataset && card.dataset.email) || '';
+    const name  = (card.dataset && card.dataset.name)  || (card.querySelector('.p-name') || {}).textContent || '';
+    const btn   = card.querySelector('.p-actions .btn');
+    const badge = card.querySelector('.quota-badge');
+    if (!email || !btn || !badge) continue;
+
+    try{
+      const list = await getBookings(email);
+      const count = list.filter(b => b.date === dateStr).length;
+      badge.textContent = count + '/' + MAX_PER_DAY;
+      badge.classList.toggle('full', count >= MAX_PER_DAY);
+
+      if (count >= MAX_PER_DAY){
+        btn.setAttribute('aria-disabled','true');
+        btn.textContent = 'Немає місць';
+        btn.onclick = null;
+      } else {
+        btn.removeAttribute('aria-disabled');
+        btn.textContent = 'Записатись';
+        // відновимо клік, якщо втрачено
+        if (!btn.onclick) btn.onclick = function(){ openConsultation(btn); };
+      }
+    }catch(e){
+      console.warn('quota update fail for', name, e);
+    }
   }
 }
 
@@ -109,11 +172,17 @@ window.openConsultation = function (el) {
   setMinToday(dateInput);
   renderSlots(); // первинний рендер
 
-  // під час зміни дати — оновити слоти
+  // під час зміни дати — оновити слоти + лічильники в картках
   if (dateInput && !dateInput._bound){
-    dateInput.addEventListener('change', renderSlots);
+    dateInput.addEventListener('change', function(){
+      renderSlots();
+      updateQuotaBadges(dateInput.value);
+    });
     dateInput._bound = true;
   }
+
+  // прев’ю файлу
+  bindFilePreview();
 
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
@@ -134,6 +203,8 @@ window.closeConsultation = function () {
   if (form) form.reset();
   var grid = $('#slotGrid');
   if (grid) grid.innerHTML = '';
+  var prev = $('#filePreview');
+  if (prev) prev.innerHTML = '';
 };
 
 // Побудова слотів з урахуванням зайнятості
@@ -147,29 +218,53 @@ async function renderSlots(){
 
   grid.innerHTML = '';
   timeHidden.value = '';
+  if (submitBtn) submitBtn.disabled = true;
 
   // взяти бронювання для цього консультанта на обрану дату
-  const email = NAME_TO_EMAIL[consultant] || '';
+  const email = findEmailByName(consultant);
   let takenSet = new Set();
+  let countForDay = 0;
+
   if (email){
     const list = await getBookings(email);
     for (const b of list){
-      if (b.date === date && b.time) takenSet.add(b.time);
+      if (b.date === date && b.time){
+        takenSet.add(b.time);
+        countForDay++;
+      }
     }
   }
 
-  let freeCount = 0;
-  SLOTS.forEach(t => {
+  const slots = hourSlots();
+
+  // якщо ліміт 4/4 — блокуємо всі слоти
+  if (countForDay >= MAX_PER_DAY){
+    slots.forEach(function(t){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = t;
+      btn.className = 'slot taken';
+      btn.disabled = true;
+      grid.appendChild(btn);
+    });
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  let anyFree = false;
+  slots.forEach(function(t){
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = t;
-    btn.className = 'slot' + (takenSet.has(t) ? ' taken' : '');
-    btn.disabled = takenSet.has(t);
-    if (!btn.disabled) freeCount++;
+    const isTaken = takenSet.has(t);
+    btn.className = 'slot' + (isTaken ? ' taken' : '');
+    btn.disabled = isTaken;
 
-    btn.onclick = () => {
+    if (!isTaken) anyFree = true;
+
+    btn.onclick = function () {
       // зняти попередню позначку
-      grid.querySelectorAll('.slot.selected').forEach(x => x.classList.remove('selected'));
+      grid.querySelectorAll('.slot.selected').forEach(function(x){ x.classList.remove('selected'); });
       btn.classList.add('selected');
       timeHidden.value = t;
       if (submitBtn) submitBtn.disabled = false;
@@ -177,8 +272,36 @@ async function renderSlots(){
     grid.appendChild(btn);
   });
 
-  // якщо всі 4 зайняті — блокуємо сабміт
-  if (submitBtn) submitBtn.disabled = (freeCount === 0);
+  if (submitBtn) submitBtn.disabled = !anyFree;
+}
+
+// Прев’ю прикріпленого фото
+function bindFilePreview(){
+  var inp = $('#c_file');
+  var box = $('#filePreview');
+  if (!inp || !box) return;
+
+  if (inp._bound) return; // вже підключено
+  inp._bound = true;
+
+  inp.addEventListener('change', function(){
+    box.innerHTML = '';
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    if (!/^image\//i.test(f.type)){
+      box.textContent = 'Невідомий файл';
+      return;
+    }
+    var r = new FileReader();
+    r.onload = function(){
+      var img = document.createElement('img');
+      img.alt = 'Прев’ю';
+      img.src = r.result;
+      box.innerHTML = '';
+      box.appendChild(img);
+    };
+    r.readAsDataURL(f);
+  });
 }
 
 // ESC закриття
@@ -252,24 +375,8 @@ window.submitConsultation = function (e) {
   document.head.appendChild(s);
 })();
 
-// ===== Автоблокування картки, якщо на СЬОГОДНІ вже 4 записи
-(async function autoDisableIfFullToday(){
+// ===== Ініціалізація лічильників 0/4 на сьогодні + періодичне оновлення
+(async function initQuotas(){
   const today = kyivTodayStr();
-  const cards = document.querySelectorAll('.card.person');
-  for (const card of cards){
-    const nameEl = card.querySelector('.p-name');
-    const btn = card.querySelector('.p-actions .btn');
-    if (!nameEl || !btn) continue;
-    const name = nameEl.textContent.trim();
-    const email = NAME_TO_EMAIL[name] || '';
-    if (!email) continue;
-
-    const list = await getBookings(email);
-    const countToday = list.filter(b => b.date === today).length;
-    if (countToday >= 4){
-      btn.setAttribute('aria-disabled','true');
-      btn.textContent = 'Немає місць';
-      btn.onclick = null;
-    }
-  }
+  await updateQuotaBadges(today);
 })();

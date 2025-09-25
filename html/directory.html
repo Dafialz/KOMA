@@ -35,11 +35,12 @@
     <div class="container grid grid-3">
 
       <!-- 1 -->
-      <article class="card person">
+      <article class="card person" data-name="Оксана Кокотень" data-email="oksanakokoten@gmail.com">
         <div class="photo">
           <img src="/icon/consultants/oksana.jpg" alt="Оксана Кокотень"
                onerror="this.src='/icon/logo.png'" />
           <span class="badge">Сімейне консультування</span>
+          <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Оксана Кокотень</h3>
@@ -63,11 +64,12 @@
       </article>
 
       <!-- 2 -->
-      <article class="card person">
+      <article class="card person" data-name="Андрій Савчук" data-email="andriysavchuk@gmail.com">
         <div class="photo">
           <img src="/icon/consultants/andrii.jpg" alt="Андрій Савчук"
                onerror="this.src='/icon/logo.png'" />
           <span class="badge">Травма, ПТСР</span>
+          <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Андрій Савчук</h3>
@@ -90,11 +92,12 @@
       </article>
 
       <!-- 3 -->
-      <article class="card person">
+      <article class="card person" data-name="Ірина Шевченко" data-email="irynashevchenko@gmail.com">
         <div class="photo">
           <img src="/icon/consultants/iryna.jpg" alt="Ірина Шевченко"
                onerror="this.src='/icon/logo.png'" />
           <span class="badge">Депресія, тривога</span>
+          <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Ірина Шевченко</h3>
@@ -117,11 +120,12 @@
       </article>
 
       <!-- 4 -->
-      <article class="card person">
+      <article class="card person" data-name="Максим Коваль" data-email="maksymkoval@gmail.com">
         <div class="photo">
           <img src="/icon/consultants/maksym.jpg" alt="Максим Коваль"
                onerror="this.src='/icon/logo.png'" />
           <span class="badge">Підлітки</span>
+          <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Максим Коваль</h3>
@@ -144,11 +148,12 @@
       </article>
 
       <!-- 5 -->
-      <article class="card person">
+      <article class="card person" data-name="Надія Романюк" data-email="nadiyaromaniyk@gmail.com">
         <div class="photo">
           <img src="/icon/consultants/nadiia.jpg" alt="Надія Романюк"
                onerror="this.src='/icon/logo.png'" />
           <span class="badge">Шлюб і сім’я</span>
+          <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Надія Романюк</h3>
@@ -171,11 +176,12 @@
       </article>
 
       <!-- 6 -->
-      <article class="card person">
+      <article class="card person" data-name="Олег Литвин" data-email="oleglitvin@gmail.com">
         <div class="photo">
           <img src="/icon/consultants/oleh.jpg" alt="Олег Литвин"
                onerror="this.src='/icon/logo.png'" />
-          <span class="badge">Емоції, вигорання</span>
+        <span class="badge">Емоції, вигорання</span>
+          <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Олег Литвин</h3>
@@ -231,25 +237,28 @@
             <input id="c_email" type="email" required />
           </div>
 
-          <!-- НОВЕ: календар + вибір слоту часу -->
+          <!-- Календар + вибір слоту часу -->
           <div class="col-span-2">
             <label>Дата і час</label>
             <div class="slots-wrap">
               <input id="c_date" type="date" required />
+              <!-- Слоти з’являються ПІСЛЯ вибору дати; з 08:00 до 20:00 щогодини -->
               <div id="slotGrid" class="slots" aria-label="Доступні часові слоти"></div>
               <input id="c_time" type="hidden" required />
             </div>
-            <div class="hint muted">Доступно 4 сеанси/день: 08:00, 12:00, 16:00, 20:00.</div>
+            <div class="hint muted">Доступно 4 сеанси/день. Слоти з 08:00 до 20:00 (Europe/Kyiv) — щогодини.</div>
           </div>
 
           <div class="col-span-2">
             <label>Коментар</label>
             <textarea id="c_notes" rows="3" placeholder="Коротко опишіть запит…"></textarea>
-            <div style="margin-top:8px">
+            <div style="margin-top:8px;display:flex;gap:12px;align-items:center">
               <label class="btn outline" style="cursor:pointer">
                 Прикріпити фото
                 <input id="c_file" type="file" accept="image/*" style="display:none" />
               </label>
+              <!-- Прев’ю прикріпленого фото -->
+              <div id="filePreview" class="file-preview" aria-live="polite"></div>
             </div>
           </div>
         </div>
