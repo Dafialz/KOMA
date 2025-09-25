@@ -13,11 +13,12 @@
   @media (max-width:900px){.wrap{grid-template-columns:1fr}}
   .card{border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);background:#fff}
   .video{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px}
-  video{width:100%;background:#000;border-radius:10px}
+  video{width:100%;background:#000;border-radius:10px;min-height:220px}
   .controls{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-top:1px solid var(--border)}
   button{padding:.7rem 1rem;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer}
+  button[disabled]{opacity:.5;cursor:not-allowed}
   .primary{background:var(--brand);color:#fff;border-color:transparent}
-  .muted{opacity:.6}
+  .muted{opacity:.7}
   .side{display:flex;flex-direction:column}
   .side > *{padding:12px}
   .chat{display:flex;flex-direction:column;height:360px;border-top:1px solid var(--border);gap:8px}
@@ -29,7 +30,7 @@
 </style>
 </head>
 <body>
-<header><strong>КОМА • Відеозустріч</strong> <span id="roomLabel" style="opacity:.8"></span></header>
+<header><strong>КОМА • Відеозустріч</strong> <span id="roomLabel" style="opacity:.85"></span></header>
 
 <div class="wrap">
   <section class="card">
@@ -39,9 +40,9 @@
     </div>
     <div class="controls">
       <button id="btnStart" class="primary">Під’єднатися</button>
-      <button id="btnMic">🎙️ Мікрофон</button>
-      <button id="btnCam">📷 Камера</button>
-      <button id="btnScreen">🖥️ Поділитися екраном</button>
+      <button id="btnMic"  disabled>🎙️ Мікрофон</button>
+      <button id="btnCam"  disabled>📷 Камера</button>
+      <button id="btnScreen" disabled>🖥️ Поділитися екраном</button>
       <span id="status" class="muted">Не під’єднано</span>
     </div>
   </section>
@@ -51,8 +52,8 @@
     <div class="chat">
       <div id="chatlog" class="chatlog"></div>
       <div class="row">
-        <input id="msg" placeholder="Написати повідомлення…">
-        <button id="send">Надіслати</button>
+        <input id="msg" placeholder="Написати повідомлення…" disabled>
+        <button id="send" disabled>Надіслати</button>
       </div>
     </div>
     <div style="border-top:1px solid var(--border)">
@@ -62,13 +63,13 @@
 </div>
 
 <script>
-/* ===== Конфіг/параметри ===== */
+/* ===== Параметри кімнати ===== */
 const qs = new URLSearchParams(location.search);
 const room = qs.get('room') ||
              `${(qs.get('consultant')||'room')}_${qs.get('date')||''}_${qs.get('time')||''}`.replace(/\s+/g,'');
 document.getElementById('roomLabel').textContent = `• Кімната: ${room}`;
 
-// адреса сигналінгу на Render
+/* ===== Сигналінг (Render) ===== */
 const RENDER_WSS = 'wss://koma-uaue.onrender.com';
 const SIGNAL_URL = location.hostname === 'localhost' ? 'ws://localhost:3001' : RENDER_WSS;
 
@@ -92,40 +93,59 @@ function logChat(text, who='sys'){
   p.className = who === 'me' ? 'me' : (who === 'sys' ? 'sys' : '');
   p.textContent = text;
   els.chatlog.appendChild(p);
-  els.chatlog.scrollTop = els.chatlog.scrollHeight; // автопрокрутка вниз
+  els.chatlog.scrollTop = els.chatlog.scrollHeight;
 }
 
 /* ===== WebRTC ===== */
-const pc = new RTCPeerConnection({
-  iceServers: [{ urls:'stun:stun.l.google.com:19302' }]
-  // Для продакшн-стабільності можна додати TURN-сервер.
-});
+const pc = new RTCPeerConnection({ iceServers: [{ urls:'stun:stun.l.google.com:19302' }] });
 let localStream, screenTrack, dc;
 
-// прийом вхідного DataChannel (коли ініціатор інший)
-pc.ondatachannel = (e) => {
-  dc = e.channel;
-  bindDataChannel();
-};
-pc.onicecandidate = ({candidate}) => {
-  if (candidate) wsSend({ type:'ice', room, payload: candidate });
-};
-pc.ontrack = ({streams}) => {
-  els.remote.srcObject = streams[0];
-  els.status.textContent = 'З’єднано';
-};
+pc.ondatachannel = (e) => { dc = e.channel; bindDataChannel(); };
+pc.onicecandidate = ({candidate}) => { if (candidate) wsSend({ type:'ice', room, payload: candidate }); };
+pc.ontrack = ({streams}) => { els.remote.srcObject = streams[0]; els.status.textContent = 'З’єднано'; };
 pc.onconnectionstatechange = () => {
   els.status.textContent = 'Статус: ' + pc.connectionState;
-  if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-    logChat('З’єднання перервано', 'sys');
+  if (pc.connectionState === 'connected') {
+    els.start.textContent = 'З’єднано';
+    els.start.disabled = true;
   }
 };
 
-async function startLocal(){
-  if (localStream) return;
-  localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+/* ===== Доступ до девайсів (із захистом від NotReadableError) ===== */
+async function startLocal(constraints = {audio:true, video:true}){
+  // Якщо вже є — не дублюємо
+  if (localStream) return localStream;
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    if (err && err.name === 'NotReadableError') {
+      // Камера/мікрофон зайняті. Пробуємо audio-only і попереджаємо користувача.
+      logChat('Камера/мікрофон зайняті іншою вкладкою або додатком. ' +
+              'Спроба підключення лише з мікрофоном…', 'sys');
+      els.hint.textContent = 'Камера зайнята. Закрийте інші вкладки з відео або дозвольте доступ. Використаємо лише мікрофон.';
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+      } catch (e2) {
+        logChat('Не вдалося отримати навіть мікрофон: ' + (e2.message||e2.name), 'sys');
+        throw e2;
+      }
+    } else {
+      logChat('Помилка доступу до пристроїв: ' + (err.message||err.name), 'sys');
+      throw err;
+    }
+  }
+
+  // Додаємо доріжки до PeerConnection
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   els.local.srcObject = localStream;
+
+  // Увімкнемо керування кнопками
+  els.mic.disabled = false;
+  els.cam.disabled = !localStream.getVideoTracks().length;
+  els.screen.disabled = false;
+
+  return localStream;
 }
 
 async function makeOffer(){
@@ -150,10 +170,9 @@ function connectWS(){
   ws.addEventListener('message', async (e) => {
     const msg = JSON.parse(e.data);
     switch(msg.type){
-      case 'joined':
-        break;
+      case 'joined': break;
       case 'offer': {
-        await startLocalIfNeeded();
+        await startLocal();
         await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -161,7 +180,8 @@ function connectWS(){
         break;
       }
       case 'answer': {
-        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        if (!pc.currentRemoteDescription)
+          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
         break;
       }
       case 'ice': {
@@ -176,19 +196,25 @@ function connectWS(){
     }
   });
 
-  ws.addEventListener('close', () => {
-    logChat('Сигналінг відключено', 'sys');
-  });
+  ws.addEventListener('close', () => { logChat('Сигналінг відключено', 'sys'); });
 }
-
 connectWS();
 
-/* ===== DataChannel/чат ===== */
+/* ===== DataChannel / чат ===== */
 function bindDataChannel(){
   if (!dc) return;
   dc.onmessage = (e)=> logChat(e.data, 'peer');
-  dc.onopen    = ()=> { els.hint.textContent = 'Чат підключено'; logChat('Чат підключено', 'sys'); };
-  dc.onclose   = ()=> logChat('Чат закрито', 'sys');
+  dc.onopen    = ()=>{
+    els.hint.textContent = 'Чат підключено';
+    els.msg.disabled = false;
+    els.send.disabled = false;
+    logChat('Чат підключено', 'sys');
+  };
+  dc.onclose   = ()=>{
+    els.msg.disabled = true;
+    els.send.disabled = true;
+    logChat('Чат закрито', 'sys');
+  };
 }
 
 function sendChat(){
@@ -202,19 +228,19 @@ els.send.onclick = sendChat;
 els.msg.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendChat(); }});
 
 /* ===== UI події ===== */
-async function startLocalIfNeeded(){
-  if (!localStream) await startLocal();
-}
-
 els.start.onclick = async () => {
-  await startLocalIfNeeded();
-  // створюємо власний DataChannel і ініціюємо виклик
-  if (!dc) {
-    dc = pc.createDataChannel('chat');
-    bindDataChannel();
+  try{
+    await startLocal();             // 1) кам/мікрофон
+    if (!dc) {                      // 2) створюємо власний DataChannel
+      dc = pc.createDataChannel('chat');
+      bindDataChannel();
+    }
+    await makeOffer();              // 3) ініціюємо виклик
+    els.start.disabled = true;
+    els.status.textContent = 'Очікуємо відповідь…';
+  }catch(err){
+    els.status.textContent = 'Помилка: ' + (err.message||err.name);
   }
-  await makeOffer();
-  els.start.disabled = true;
 };
 
 els.mic.onclick = () => {
