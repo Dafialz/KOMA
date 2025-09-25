@@ -6,48 +6,21 @@
   <title>Знайти консультанта — КОМА</title>
   <meta name="description" content="Сертифіковані консультанти КОМА. Оберіть фахівця та запишіться на консультацію онлайн." />
 
-  <!-- Іконки/OG з папки html/icon -->
-  <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
+  <!-- Favicon / OpenGraph -->
+  <link rel="icon" href="/icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Знайти консультанта — КОМА" />
   <meta property="og:description" content="Обирайте серед сертифікованих консультантів та записуйтеся онлайн." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="icon/baner.jpg" />
+  <meta property="og:image" content="/icon/baner.jpg" />
   <meta name="theme-color" content="#0f5257" />
 
-  <!-- CSS: папка css лежить вище за html/, тому ../ -->
-  <link rel="stylesheet" href="../css/directory.css" />
+  <!-- Сторінкові стилі -->
+  <link rel="stylesheet" href="/css/directory.css" />
 </head>
 
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="container nav">
-      <a class="brand" href="index.html" aria-label="КОМА Головна">
-        <img src="icon/logo.png" alt="КОМА logo" />
-        <span>КОМА</span>
-      </a>
-      <nav class="menu" aria-label="Primary">
-        <a href="pro-nas.html">Про нас</a>
-        <a href="navchannia.html">Навчання</a>
-        <a href="podii.html">Події</a>
-        <a href="pozhertvy.html">Пожертви</a>
-        <a href="kontakty.html">Контакти</a>
-        <a class="btn outline" href="directory.html" aria-current="page">Знайти консультанта</a>
-        <!-- КНОПКА «ПРИЄДНАТИСЬ» — активується, якщо є майбутній запис -->
-        <a class="btn" id="joinBtn" href="#" aria-disabled="true">Приєднатись</a>
-      </nav>
-      <button class="hamb" id="hamb" aria-label="Меню" aria-expanded="false" aria-controls="mobile">☰</button>
-    </div>
-    <div class="container mobile" id="mobile">
-      <a href="pro-nas.html">Про нас</a>
-      <a href="navchannia.html">Навчання</a>
-      <a href="podii.html">Події</a>
-      <a href="pozhertvy.html">Пожертви</a>
-      <a href="kontakty.html">Контакти</a>
-      <a href="directory.html" aria-current="page">Знайти консультанта</a>
-      <a class="btn" id="joinBtnM" href="#" aria-disabled="true">Приєднатись</a>
-    </div>
-  </header>
+  <!-- Header (partials) -->
+  <div id="site-header" data-include="/partials/header.html"></div>
 
   <!-- Заголовок сторінки -->
   <section class="pagehead">
@@ -57,20 +30,21 @@
     </div>
   </section>
 
-  <!-- Перелік консультантів (без «Записатися») -->
+  <!-- Перелік консультантів -->
   <main class="section" aria-label="Перелік консультантів">
     <div class="container grid grid-3">
 
       <!-- 1 -->
       <article class="card person">
         <div class="photo">
-          <img src="icon/consultants/oksana.jpg" alt="Оксана Кокотень" />
+          <img src="/icon/consultants/oksana.jpg" alt="Оксана Кокотень" />
           <span class="badge">Сімейне консультування</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Оксана Кокотень</h3>
           <p class="p-role">Консультант-психолог, MA</p>
           <div class="p-actions">
+            <a class="btn" href="/zapis.html?consultant=%D0%9E%D0%BA%D1%81%D0%B0%D0%BD%D0%B0%20%D0%9A%D0%BE%D0%BA%D0%BE%D1%82%D0%B5%D0%BD%D1%8C">Консультація</a>
             <a class="btn ghost" href="mailto:oksanakokoten@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -90,13 +64,14 @@
       <!-- 2 -->
       <article class="card person">
         <div class="photo">
-          <img src="icon/consultants/andrii.jpg" alt="Андрій Савчук" />
+          <img src="/icon/consultants/andrii.jpg" alt="Андрій Савчук" />
           <span class="badge">Травма, ПТСР</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Андрій Савчук</h3>
           <p class="p-role">Душеопікун, капелан</p>
           <div class="p-actions">
+            <a class="btn" href="/zapis.html?consultant=%D0%90%D0%BD%D0%B4%D1%80%D1%96%D0%B9%20%D0%A1%D0%B0%D0%B2%D1%87%D1%83%D0%BA">Консультація</a>
             <a class="btn ghost" href="mailto:andriysavchuk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -115,13 +90,14 @@
       <!-- 3 -->
       <article class="card person">
         <div class="photo">
-          <img src="icon/consultants/iryna.jpg" alt="Ірина Шевченко" />
+          <img src="/icon/consultants/iryna.jpg" alt="Ірина Шевченко" />
           <span class="badge">Депресія, тривога</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Ірина Шевченко</h3>
           <p class="p-role">Психолог, КПТ</p>
           <div class="p-actions">
+            <a class="btn" href="/zapis.html?consultant=%D0%86%D1%80%D0%B8%D0%BD%D0%B0%20%D0%A8%D0%B5%D0%B2%D1%87%D0%B5%D0%BD%D0%BA%D0%BE">Консультація</a>
             <a class="btn ghost" href="mailto:irynashevchenko@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -140,13 +116,14 @@
       <!-- 4 -->
       <article class="card person">
         <div class="photo">
-          <img src="icon/consultants/maksym.jpg" alt="Максим Коваль" />
+          <img src="/icon/consultants/maksym.jpg" alt="Максим Коваль" />
           <span class="badge">Підлітки</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Максим Коваль</h3>
           <p class="p-role">Дитячий та підлітковий психолог</p>
           <div class="p-actions">
+            <a class="btn" href="/zapis.html?consultant=%D0%9C%D0%B0%D0%BA%D1%81%D0%B8%D0%BC%20%D0%9A%D0%BE%D0%B2%D0%B0%D0%BB%D1%8C">Консультація</a>
             <a class="btn ghost" href="mailto:maksymkoval@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -165,13 +142,14 @@
       <!-- 5 -->
       <article class="card person">
         <div class="photo">
-          <img src="icon/consultants/nadiia.jpg" alt="Надія Романюк" />
+          <img src="/icon/consultants/nadiia.jpg" alt="Надія Романюк" />
           <span class="badge">Шлюб і сім’я</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Надія Романюк</h3>
           <p class="p-role">Сімейний консультант</p>
           <div class="p-actions">
+            <a class="btn" href="/zapis.html?consultant=%D0%9D%D0%B0%D0%B4%D1%96%D1%8F%20%D0%A0%D0%BE%D0%BC%D0%B0%D0%BD%D1%8E%D0%BA">Консультація</a>
             <a class="btn ghost" href="mailto:nadiyaromaniyk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -190,13 +168,14 @@
       <!-- 6 -->
       <article class="card person">
         <div class="photo">
-          <img src="icon/consultants/oleh.jpg" alt="Олег Литвин" />
+          <img src="/icon/consultants/oleh.jpg" alt="Олег Литвин" />
           <span class="badge">Емоції, вигорання</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Олег Литвин</h3>
           <p class="p-role">Психотерапевт</p>
           <div class="p-actions">
+            <a class="btn" href="/zapis.html?consultant=%D0%9E%D0%BB%D0%B5%D0%B3%20%D0%9B%D0%B8%D1%82%D0%B2%D0%B8%D0%BD">Консультація</a>
             <a class="btn ghost" href="mailto:oleglitvin@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -215,14 +194,23 @@
     </div>
   </main>
 
-  <footer class="section" style="padding:32px 0;border-top:1px solid var(--border)">
-    <div class="container" style="display:flex;align-items:center;gap:12px;color:#4b5563">
-      <img src="icon/logo.png" alt="" style="height:28px;border-radius:8px" />
-      <span>© <span id="y"></span> КОМА. Усі права захищені.</span>
-    </div>
-  </footer>
+  <!-- Footer (partials) -->
+  <div id="site-footer" data-include="/partials/footer.html"></div>
 
-  <!-- Локальний JS сторінки -->
-  <script src="js/directory.js" type="module"></script>
+  <!-- Скрипти -->
+  <script src="/js/guard.js"></script>
+  <script type="module" src="/js/partials.js"></script>
+
+  <!-- Локальний JS сторінки: гармошка для «Ціна» (без optional chaining у лівій частині) -->
+  <script>
+    window.togglePrice = function (btn) {
+      var body = btn.closest('.p-body');
+      if (!body) return;
+      var box = body.querySelector('.prices');
+      if (!box) return;
+      var open = box.classList.toggle('open');
+      btn.textContent = open ? 'Приховати ціну' : 'Ціна';
+    };
+  </script>
 </body>
 </html>
