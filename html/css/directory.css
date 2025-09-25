@@ -81,7 +81,7 @@ a:hover{text-decoration:underline}
 .prices ul{margin:0;padding-left:18px}
 .prices li{margin:6px 0;color:#374151}
 
-/* ====== Modal slots (нове) ====== */
+/* ====== Modal slots ====== */
 .col-span-2{grid-column:1 / -1}
 .slots-wrap{display:grid;gap:8px}
 .slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
@@ -91,6 +91,33 @@ a:hover{text-decoration:underline}
 .slot.taken{opacity:.45;cursor:not-allowed;background:#f3f4f6}
 .slot.selected{border-color:var(--brand);box-shadow:var(--ring)}
 .hint{margin-top:6px;font-size:.9rem}
+
+/* ====== Modal form layout: «Коментар» праворуч зверху ====== */
+#consultForm .grid.grid-2{
+  display:grid;
+  gap:16px;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-areas:
+    "consultant comment"
+    "fullname  comment"
+    "email     comment"
+    "datetime  comment";
+  align-items:start;
+}
+#consultForm .grid.grid-2 > :nth-child(1){grid-area:consultant}
+#consultForm .grid.grid-2 > :nth-child(2){grid-area:fullname}
+#consultForm .grid.grid-2 > :nth-child(3){grid-area:email}
+#consultForm .grid.grid-2 > :nth-child(4){grid-area:datetime}
+#consultForm .grid.grid-2 > :nth-child(5){grid-area:comment}
+
+@media (max-width:720px){
+  #consultForm .grid.grid-2{
+    grid-template-columns:1fr;
+    grid-template-areas:none;
+  }
+  #consultForm .grid.grid-2 > *{grid-area:auto !important}
+  .col-span-2{grid-column:1 / -1}
+}
 
 /* Прев’ю прикріпленого фото у модалці */
 .file-preview{
