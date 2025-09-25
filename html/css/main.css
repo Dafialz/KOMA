@@ -80,7 +80,7 @@ a:hover{text-decoration:underline}
   text-align:center; color:#fff;
   background-image:
     linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.35)),
-    url('../html/icon/baner.jpg'); /* ВАЖЛИВО: правильний шлях відносно /css */
+    url('../icon/baner.jpg'); /* шлях відносно /html/css → /html/icon/baner.jpg */
   background-size:cover; background-position:center 36%; background-repeat:no-repeat;
 }
 .hero-inner{width:100%; position:relative;}
