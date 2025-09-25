@@ -6,7 +6,7 @@
   <title>Знайти консультанта — КОМА</title>
   <meta name="description" content="Сертифіковані консультанти КОМА. Оберіть фахівця та запишіться на консультацію онлайн." />
 
-  <!-- Favicon / OpenGraph -->
+  <!-- Іконки/OG (публікуємось з /html як корінь сайту) -->
   <link rel="icon" href="/icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Знайти консультанта — КОМА" />
   <meta property="og:description" content="Обирайте серед сертифікованих консультантів та записуйтеся онлайн." />
@@ -37,14 +37,15 @@
       <!-- 1 -->
       <article class="card person">
         <div class="photo">
-          <img src="/icon/consultants/oksana.jpg" alt="Оксана Кокотень" />
+          <img src="/icon/consultants/oksana.jpg" alt="Оксана Кокотень"
+               onerror="this.src='/icon/logo.png'" />
           <span class="badge">Сімейне консультування</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Оксана Кокотень</h3>
           <p class="p-role">Консультант-психолог, MA</p>
           <div class="p-actions">
-            <a class="btn" href="/zapis.html?consultant=%D0%9E%D0%BA%D1%81%D0%B0%D0%BD%D0%B0%20%D0%9A%D0%BE%D0%BA%D0%BE%D1%82%D0%B5%D0%BD%D1%8C">Консультація</a>
+            <button class="btn" data-name="Оксана Кокотень" onclick="openConsultation(this)">Консультація</button>
             <a class="btn ghost" href="mailto:oksanakokoten@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -64,14 +65,15 @@
       <!-- 2 -->
       <article class="card person">
         <div class="photo">
-          <img src="/icon/consultants/andrii.jpg" alt="Андрій Савчук" />
+          <img src="/icon/consultants/andrii.jpg" alt="Андрій Савчук"
+               onerror="this.src='/icon/logo.png'" />
           <span class="badge">Травма, ПТСР</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Андрій Савчук</h3>
           <p class="p-role">Душеопікун, капелан</p>
           <div class="p-actions">
-            <a class="btn" href="/zapis.html?consultant=%D0%90%D0%BD%D0%B4%D1%80%D1%96%D0%B9%20%D0%A1%D0%B0%D0%B2%D1%87%D1%83%D0%BA">Консультація</a>
+            <button class="btn" data-name="Андрій Савчук" onclick="openConsultation(this)">Консультація</button>
             <a class="btn ghost" href="mailto:andriysavchuk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -90,14 +92,15 @@
       <!-- 3 -->
       <article class="card person">
         <div class="photo">
-          <img src="/icon/consultants/iryna.jpg" alt="Ірина Шевченко" />
+          <img src="/icon/consultants/iryna.jpg" alt="Ірина Шевченко"
+               onerror="this.src='/icon/logo.png'" />
           <span class="badge">Депресія, тривога</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Ірина Шевченко</h3>
           <p class="p-role">Психолог, КПТ</p>
           <div class="p-actions">
-            <a class="btn" href="/zapis.html?consultant=%D0%86%D1%80%D0%B8%D0%BD%D0%B0%20%D0%A8%D0%B5%D0%B2%D1%87%D0%B5%D0%BD%D0%BA%D0%BE">Консультація</a>
+            <button class="btn" data-name="Ірина Шевченко" onclick="openConsultation(this)">Консультація</button>
             <a class="btn ghost" href="mailto:irynashevchenko@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -116,14 +119,15 @@
       <!-- 4 -->
       <article class="card person">
         <div class="photo">
-          <img src="/icon/consultants/maksym.jpg" alt="Максим Коваль" />
+          <img src="/icon/consultants/maksym.jpg" alt="Максим Коваль"
+               onerror="this.src='/icon/logo.png'" />
           <span class="badge">Підлітки</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Максим Коваль</h3>
           <p class="p-role">Дитячий та підлітковий психолог</p>
           <div class="p-actions">
-            <a class="btn" href="/zapis.html?consultant=%D0%9C%D0%B0%D0%BA%D1%81%D0%B8%D0%BC%20%D0%9A%D0%BE%D0%B2%D0%B0%D0%BB%D1%8C">Консультація</a>
+            <button class="btn" data-name="Максим Коваль" onclick="openConsultation(this)">Консультація</button>
             <a class="btn ghost" href="mailto:maksymkoval@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -142,14 +146,15 @@
       <!-- 5 -->
       <article class="card person">
         <div class="photo">
-          <img src="/icon/consultants/nadiia.jpg" alt="Надія Романюк" />
+          <img src="/icon/consultants/nadiia.jpg" alt="Надія Романюк"
+               onerror="this.src='/icon/logo.png'" />
           <span class="badge">Шлюб і сім’я</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Надія Романюк</h3>
           <p class="p-role">Сімейний консультант</p>
           <div class="p-actions">
-            <a class="btn" href="/zapis.html?consultant=%D0%9D%D0%B0%D0%B4%D1%96%D1%8F%20%D0%A0%D0%BE%D0%BC%D0%B0%D0%BD%D1%8E%D0%BA">Консультація</a>
+            <button class="btn" data-name="Надія Романюк" onclick="openConsultation(this)">Консультація</button>
             <a class="btn ghost" href="mailto:nadiyaromaniyk@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -168,14 +173,15 @@
       <!-- 6 -->
       <article class="card person">
         <div class="photo">
-          <img src="/icon/consultants/oleh.jpg" alt="Олег Литвин" />
+          <img src="/icon/consultants/oleh.jpg" alt="Олег Литвин"
+               onerror="this.src='/icon/logo.png'" />
           <span class="badge">Емоції, вигорання</span>
         </div>
         <div class="p-body">
           <h3 class="p-name">Олег Литвин</h3>
           <p class="p-role">Психотерапевт</p>
           <div class="p-actions">
-            <a class="btn" href="/zapis.html?consultant=%D0%9E%D0%BB%D0%B5%D0%B3%20%D0%9B%D0%B8%D1%82%D0%B2%D0%B8%D0%BD">Консультація</a>
+            <button class="btn" data-name="Олег Литвин" onclick="openConsultation(this)">Консультація</button>
             <a class="btn ghost" href="mailto:oleglitvin@gmail.com">Написати</a>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
@@ -194,23 +200,61 @@
     </div>
   </main>
 
-  <!-- Footer (partials) -->
+  <!-- Footer (partials, як на скрінах) -->
   <div id="site-footer" data-include="/partials/footer.html"></div>
 
-  <!-- Скрипти -->
+  <!-- Скрипти спільні -->
   <script src="/js/guard.js"></script>
-  <script type="module" src="/js/partials.js"></script>
+  <script src="/js/partials.js" type="module"></script>
 
-  <!-- Локальний JS сторінки: гармошка для «Ціна» (без optional chaining у лівій частині) -->
-  <script>
-    window.togglePrice = function (btn) {
-      var body = btn.closest('.p-body');
-      if (!body) return;
-      var box = body.querySelector('.prices');
-      if (!box) return;
-      var open = box.classList.toggle('open');
-      btn.textContent = open ? 'Приховати ціну' : 'Ціна';
-    };
-  </script>
+  <!-- Локальний JS сторінки -->
+  <script src="/js/directory.js"></script>
+
+  <!-- МОДАЛКА «Консультація» -->
+  <div id="consultModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" onclick="closeConsultation()"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="consultTitle">
+      <button class="modal-close" aria-label="Закрити" onclick="closeConsultation()">×</button>
+      <h2 id="consultTitle" style="margin-top:0">Запис на консультацію</h2>
+      <form id="consultForm" onsubmit="return submitConsultation(event)">
+        <div class="grid grid-2">
+          <div>
+            <label>Консультант</label>
+            <input id="c_consultant" type="text" required readonly />
+          </div>
+          <div>
+            <label>Ваше ім’я</label>
+            <input id="c_fullName" type="text" required />
+          </div>
+          <div>
+            <label>E-mail</label>
+            <input id="c_email" type="email" required />
+          </div>
+          <div>
+            <label>Дата</label>
+            <input id="c_date" type="date" required />
+          </div>
+          <div>
+            <label>Час</label>
+            <input id="c_time" type="time" required />
+          </div>
+          <div>
+            <label>Коментар</label>
+            <textarea id="c_notes" rows="3" placeholder="Коротко опишіть запит…"></textarea>
+            <div style="margin-top:8px">
+              <label class="btn outline" style="cursor:pointer">
+                Прикріпити фото
+                <input id="c_file" type="file" accept="image/*" style="display:none" />
+              </label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" class="btn outline" onclick="closeConsultation()">Скасувати</button>
+          <button type="submit" class="btn">Записатися</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </body>
 </html>

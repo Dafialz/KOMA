@@ -1,62 +1,85 @@
-// ===== ШАПКА / мобільне меню / рік
-const hamb = document.getElementById('hamb');
-const mobile = document.getElementById('mobile');
-hamb?.addEventListener('click', () => {
-  const open = mobile.classList.toggle('open');
-  hamb.setAttribute('aria-expanded', open ? 'true' : 'false');
-});
-document.getElementById('y')?.textContent = new Date().getFullYear();
+// ===== РІК У ФУТЕРІ (без optional chaining у лівій частині)
+(function setYear() {
+  var y = document.getElementById('y');
+  if (y) y.textContent = new Date().getFullYear();
+})();
 
-// Показ/приховування прайсу
-window.togglePrice = (btn) => {
-  const box = btn.closest('.p-body').querySelector('.prices');
-  box.classList.toggle('open');
-  btn.textContent = box.classList.contains('open') ? 'Приховати ціну' : 'Ціна';
+// ===== Гармошка "Ціна"
+window.togglePrice = function (btn) {
+  var body = btn.closest('.p-body');
+  if (!body) return;
+  var box = body.querySelector('.prices');
+  if (!box) return;
+  var open = box.classList.toggle('open');
+  btn.textContent = open ? 'Приховати ціну' : 'Ціна';
 };
 
-// ===== КНОПКА «ПРИЄДНАТИСЬ»
-const joinBtn  = document.getElementById('joinBtn');
-const joinBtnM = document.getElementById('joinBtnM');
+// ===== МОДАЛКА "Консультація"
+var modal = document.getElementById('consultModal');
+var form  = document.getElementById('consultForm');
 
-// Скільки після старту ще вважаємо запис «активним»
-const JOIN_OPEN_AFTER_MIN = 60;
+window.openConsultation = function (el) {
+  var name = el.dataset.name || '';
+  document.getElementById('c_consultant').value = name;
+  // підставимо ім’я, email якщо є guard
+  try {
+    if (window.guard?.user) {
+      var u = window.guard.user;
+      document.getElementById('c_fullName').value = u.fullName || '';
+      document.getElementById('c_email').value    = u.email || '';
+    }
+  } catch {}
+  modal.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+};
 
-// Груба, але стабільна побудова timestamp для Києва (UTC+3 під ваш кейс)
-function startTSFromKyiv(date, time) {
-  return Date.parse(`${date}T${time}:00+03:00`);
+window.closeConsultation = function () {
+  modal.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  form && form.reset();
+};
+
+function tsKyiv(date, time) {
+  // стабільно збираємо таймстемп (UTC+3)
+  return Date.parse(date + 'T' + time + ':00+03:00');
 }
 
-function setJoinLinkFromStorage() {
-  const raw = localStorage.getItem('koma_last_booking');
-  if (!raw) return disableJoin();
+window.submitConsultation = function (e) {
+  e.preventDefault();
+  var consultant = document.getElementById('c_consultant').value.trim();
+  var fullName   = document.getElementById('c_fullName').value.trim();
+  var email      = document.getElementById('c_email').value.trim();
+  var date       = document.getElementById('c_date').value;
+  var time       = document.getElementById('c_time').value;
+  var notes      = document.getElementById('c_notes').value.trim();
 
-  let b;
-  try { b = JSON.parse(raw); } catch { return disableJoin(); }
-  if (!b || !b.consultant || !b.fullName || !b.email || !b.date || !b.time) return disableJoin();
+  if (!consultant || !fullName || !email || !date || !time) return false;
 
-  const startTS = Number(b.startTS ?? startTSFromKyiv(b.date, b.time));
-  const validTill = startTS + JOIN_OPEN_AFTER_MIN * 60 * 1000;
-  if (Date.now() > validTill) return disableJoin();
+  var booking = {
+    consultant, fullName, email, date, time, notes,
+    startTS: tsKyiv(date, time)
+  };
 
-  const params = new URLSearchParams({
-    consultant: b.consultant,
-    fullName: b.fullName,
-    email: b.email,
-    date: b.date,
-    time: b.time,
-    notes: b.notes || ''
-  }).toString();
-  const url = `zapis.html?${params}`;
-  enableJoin(url);
-}
+  try {
+    localStorage.setItem('koma_last_booking', JSON.stringify(booking));
+  } catch {}
 
-function enableJoin(url) {
-  joinBtn.href = url;       joinBtn.removeAttribute('aria-disabled');
-  joinBtnM.href = url;      joinBtnM.removeAttribute('aria-disabled');
-}
-function disableJoin() {
-  joinBtn.setAttribute('aria-disabled', 'true'); joinBtn.href = '#';
-  joinBtnM.setAttribute('aria-disabled', 'true'); joinBtnM.href = '#';
-}
+  // редирект на сторінку запису — там уже все підхопиться
+  var params = new URLSearchParams(booking).toString();
+  window.location.href = '/zapis.html?' + params;
+  return false;
+};
 
-setJoinLinkFromStorage();
+// ===== Дрібні стилі для модалки, якщо їх ще немає в CSS
+(function injectModalStyles(){
+  var css = `
+  .modal[aria-hidden="true"]{display:none}
+  .modal{position:fixed;inset:0;z-index:70}
+  .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+  .modal-dialog{position:relative;z-index:1;max-width:720px;margin:6vh auto;background:#fff;
+    border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:24px}
+  .modal-close{position:absolute;right:10px;top:10px;background:transparent;border:0;
+    font-size:24px;line-height:1;cursor:pointer}
+  `;
+  var s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+})();
