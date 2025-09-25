@@ -88,10 +88,10 @@ const NAME_TO_EMAIL = {
   'Олег Литвин':     'oleglitvin@gmail.com'
 };
 
-// Слоти щогодини 08:00–20:00
+// Слоти щогодини 08:00–19:00
 function hourSlots() {
   var arr = [];
-  for (var h = 8; h <= 20; h++) {
+  for (var h = 8; h <= 19; h++) {        // ⬅️ було 20, тепер 19
     arr.push(String(h).padStart(2,'0') + ':00');
   }
   return arr;
@@ -140,7 +140,6 @@ async function updateQuotaBadges(dateStr){
       } else {
         btn.removeAttribute('aria-disabled');
         btn.textContent = 'Записатись';
-        // відновимо клік, якщо втрачено
         if (!btn.onclick) btn.onclick = function(){ openConsultation(btn); };
       }
     }catch(e){
@@ -263,7 +262,6 @@ async function renderSlots(){
     if (!isTaken) anyFree = true;
 
     btn.onclick = function () {
-      // зняти попередню позначку
       grid.querySelectorAll('.slot.selected').forEach(function(x){ x.classList.remove('selected'); });
       btn.classList.add('selected');
       timeHidden.value = t;
@@ -375,7 +373,7 @@ window.submitConsultation = function (e) {
   document.head.appendChild(s);
 })();
 
-// ===== Ініціалізація лічильників 0/4 на сьогодні + періодичне оновлення
+// ===== Ініціалізація лічильників 0/4 на сьогодні
 (async function initQuotas(){
   const today = kyivTodayStr();
   await updateQuotaBadges(today);
