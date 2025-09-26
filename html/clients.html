@@ -6,61 +6,12 @@
   <title>Клієнти — КОМА</title>
   <link rel="icon" href="icon/favicon.ico" />
   <meta name="theme-color" content="#0f5257" />
-  <style>
-    :root{ --page-bg:#f7fafb; --text:#111827; --muted:#4b5563; --brand:#0f5257; --border:#e5e7eb; --panel:#fff; --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.08); --max:1100px;}
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--page-bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-    .container{max-width:var(--max);margin:0 auto;padding:0 20px}
-    header{background:linear-gradient(135deg,#0b2e33,#0f5257 60%,#6fc8b8);color:#fff}
-    .nav{display:flex;align-items:center;justify-content:space-between;height:68px}
-    .brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}
-    .brand img{height:40px;border-radius:8px}
-    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.1rem;border-radius:999px;background:#0f5257;color:#fff;font-weight:700;border:1px solid transparent;box-shadow:var(--shadow);cursor:pointer}
-    .btn.ghost{background:#fff;color:#0f5257;border-color:#0f5257}
-    .btn.gray{background:#eef2f7;color:#111;border-color:#e5e7eb}
-    .btn.light{background:#fff;color:#111;border-color:#e5e7eb}
-    .section{padding:28px 0}
-    .grid{display:grid;gap:16px}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .muted{color:var(--muted)}
-    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#f8fafc;border-radius:999px;padding:6px 10px}
-    .list{display:grid;gap:12px}
-    .item{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff}
-    .when{font-weight:700}
-    .empty{padding:20px;border:1px dashed var(--border);border-radius:12px;text-align:center;background:#fff}
-    .badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font-size:.78rem;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46}
-    .danger{border-color:#fecaca;background:#fef2f2;color:#991b1b}
-    .tools{display:flex;gap:8px;align-items:center}
-    .spinner{width:18px;height:18px;border:2px solid rgba(0,0,0,.15);border-top-color:#0f5257;border-radius:50%;animation:spin 0.8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
+  <link rel="stylesheet" href="css/main.css">
 
-    /* Файл/чек */
-    .fileline{margin-top:6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .filebtn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border-radius:999px;background:#fff;border:1px solid #e5e7eb;color:#111;text-decoration:none}
-    .filebtn:hover{background:#f8fafc}
-
-    /* Міні-превʼю прикріпленого фото */
-    .filethumb{display:inline-block; line-height:0}
-    .filethumb img{
-      height:72px; width:auto;
-      border-radius:10px;
-      border:1px solid var(--border);
-      box-shadow:0 4px 14px rgba(0,0,0,.06);
-    }
-  </style>
+  
 </head>
 <body>
-  <header>
-    <div class="container nav">
-      <a class="brand" href="index.html"><img src="icon/logo.png" alt=""><strong>КОМА</strong></a>
-      <div class="row">
-        <a class="btn ghost" href="directory.html">Каталог консультантів</a>
-        <a class="btn ghost" href="admin.html">Кабінет</a>
-        <button id="logout" class="btn gray">Вийти</button>
-      </div>
-    </div>
-  </header>
+  <div data-include="header.html"></div>
 
   <section class="section">
     <div class="container grid">
@@ -84,11 +35,10 @@
     </div>
   </section>
 
-  <footer class="section" style="padding:22px 0;border-top:1px solid #e5e7eb">
-    <div class="container muted">© <span id="y"></span> КОМА</div>
-  </footer>
+  <div data-include="footer.html"></div>
 
   <script src="js/guard.js"></script>
   <script type="module" src="js/clients.js"></script>
+  <script src="js/partials.js"></script>
 </body>
 </html>

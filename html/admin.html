@@ -6,50 +6,12 @@
   <title>Кабінет консультанта — КОМА</title>
   <link rel="icon" href="../icon/favicon.ico" />
   <meta name="theme-color" content="#0f5257" />
-  <style>
-    :root{
-      --page-bg:#ffffff; --text:#111827; --muted:#4b5563; --brand:#0f5257;
-      --border:#e5e7eb; --panel:#ffffff; --radius:16px;
-      --shadow:0 10px 30px rgba(0,0,0,.08); --shadow-sm:0 6px 18px rgba(0,0,0,.06);
-      --max:1100px;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:#f7fafb;color:var(--text);
-      font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-    .container{max-width:var(--max);margin:0 auto;padding:0 20px}
-    header{background:linear-gradient(135deg,#0b2e33,#0f5257 60%,#6fc8b8);color:#fff}
-    .nav{display:flex;align-items:center;justify-content:space-between;height:68px}
-    .brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}
-    .brand img{height:40px;border-radius:8px}
-    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.1rem;border-radius:999px;
-      background:#0f5257;color:#fff;font-weight:700;border:1px solid transparent;box-shadow:var(--shadow-sm);cursor:pointer}
-    .btn.ghost{background:#fff;color:#0f5257;border-color:#0f5257}
-    .btn.gray{background:#eef2f7;color:#111;border-color:#e5e7eb}
-    .section{padding:28px 0}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
-    .grid{display:grid;gap:18px}
-    .g-2{grid-template-columns:1fr 1fr}
-    @media (max-width:900px){.g-2{grid-template-columns:1fr}}
-    label{display:block;margin:.4rem 0 .25rem;font-weight:600}
-    .input{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
-    .input:focus{outline:none;box-shadow:0 0 0 3px rgba(15,82,87,.18)}
-    .muted{color:var(--muted)}
-    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#f8fafc;border-radius:999px;padding:8px 12px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .ok{color:#065f46}
-  </style>
+  <link rel="stylesheet" href="css/main.css">
+
+  
 </head>
 <body>
-  <header>
-    <div class="container nav">
-      <a class="brand" href="index.html"><img src="../icon/logo.png" alt=""><strong>КОМА</strong></a>
-      <div class="row">
-        <a class="btn ghost" href="directory.html">Каталог консультантів</a>
-        <a class="btn ghost" href="clients.html" title="Перегляд/ведення клієнтів">Клієнти</a>
-        <button id="logout" class="btn gray">Вийти</button>
-      </div>
-    </div>
-  </header>
+  <div data-include="header.html"></div>
 
   <section class="section">
     <div class="container grid g-2">
@@ -90,9 +52,7 @@
     </div>
   </section>
 
-  <footer class="section" style="padding:22px 0;border-top:1px solid var(--border)">
-    <div class="container muted">© <span id="y"></span> КОМА</div>
-  </footer>
+  <div data-include="footer.html"></div>
 
   <script src="js/guard.js"></script>
   <script>
@@ -100,8 +60,6 @@
     guard.protect(); // редіректить на login.html, якщо немає сесії або email не з allowlist
 
     // футер
-    document.getElementById('y').textContent = new Date().getFullYear();
-
     // показ email/імені
     const me = guard.getSession();
     document.getElementById('who').textContent = `Користувач: ${me.email}`;
@@ -158,5 +116,6 @@
       guard.logout();
     };
   </script>
+  <script src="js/partials.js"></script>
 </body>
 </html>

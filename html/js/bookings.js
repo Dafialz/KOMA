@@ -1,7 +1,8 @@
+import { API_BASE } from './config.js';
+
 // html/js/bookings.js
 // Єдиний клієнт для API бронювань.
 // !!! Обов'язково заміни API_BASE на свій Render-домен з цим сервером.
-export const API_BASE = "https://koma-uaue.onrender.com"; // <-- ТУТ
 
 /** Внутрішній запит з охайною обробкою помилок та без кешу */
 async function request(input, init = {}) {

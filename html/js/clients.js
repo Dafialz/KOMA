@@ -7,7 +7,6 @@ const me = guard.getSession();
 const myName  = guard.emailToName(me.email) || 'Консультант';
 const myEmail = String(me.email || '').toLowerCase();
 document.getElementById('meLine').textContent = `Користувач: ${myEmail} (${myName})`;
-document.getElementById('y').textContent = new Date().getFullYear();
 document.getElementById('logout').onclick = () => guard.logout();
 
 const listEl  = document.getElementById('list');

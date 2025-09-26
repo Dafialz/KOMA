@@ -18,6 +18,7 @@ a{color:var(--brand);text-decoration:none}
 a:hover{text-decoration:underline}
 .container{max-width:var(--max);margin:0 auto;padding:0 20px}
 .lead{color:var(--muted)}
+.muted{color:var(--muted)}
 
 /* ========== Buttons & chips ========== */
 .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 1.25rem;border-radius:999px;
@@ -25,11 +26,14 @@ a:hover{text-decoration:underline}
   box-shadow:var(--shadow-sm);transition:transform .2s,border-color .2s,background .2s;
   border:2px solid transparent; cursor:pointer; text-decoration:none}
 .btn:hover{transform:translateY(-1px)}
+.btn:focus-visible{outline:none;box-shadow:var(--ring)}
 .btn.outline{background:#fff;color:var(--brand);border-color:var(--brand)}
 .btn.green{background:var(--brand-2)}
 .btn.invert{background:transparent;color:#fff;border-color:#fff}
 .btn.invert:hover{background:rgba(255,255,255,.12)}
 .btn.gray{background:#eef2f7;color:#111;border-color:#e5e7eb}
+.btn.small{padding:.55rem .9rem;font-weight:600}
+.btn.ghost{background:transparent;border-color:#d1d5db;color:#111}
 .btn[aria-disabled="true"]{opacity:.55; pointer-events:none}
 
 .tag{display:inline-block;padding:.25rem .6rem;border:1px solid var(--border);border-radius:999px;
