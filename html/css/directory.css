@@ -12,12 +12,14 @@ img{max-width:100%;height:auto;display:block}
 a{color:var(--brand);text-decoration:none}
 a:hover{text-decoration:underline}
 .container{max-width:var(--max);margin:0 auto;padding:0 20px}
+.muted{color:var(--muted)}
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.1rem;border-radius:999px;
   background:var(--brand);color:#fff;font-weight:700;letter-spacing:.2px;border:1px solid transparent;
   box-shadow:var(--shadow-sm);transition:.2s;cursor:pointer}
 .btn:hover{transform:translateY(-1px)}
+.btn:focus-visible{outline:none;box-shadow:var(--ring)}
 .btn.outline{background:#fff;color:var(--brand);border-color:var(--brand)}
 .btn.ghost{background:transparent;border-color:#d1d5db;color:#111}
 .btn.small{padding:.55rem .9rem;font-weight:600}
@@ -95,6 +97,7 @@ a:hover{text-decoration:underline}
 @media (max-width:560px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .slot{padding:.65rem .9rem;border:1px solid var(--border);border-radius:10px;background:#fff;text-align:center;cursor:pointer}
 .slot:hover{box-shadow:var(--shadow-sm)}
+.slot:focus-visible{outline:none;box-shadow:var(--ring)}
 .slot.taken{opacity:.45;cursor:not-allowed;background:#f3f4f6}
 .slot.selected{border-color:var(--brand);box-shadow:var(--ring)}
 .hint{margin-top:6px;font-size:.9rem}
@@ -140,7 +143,7 @@ body.modal-open{overflow:hidden}            /* блокуємо фон, доки
 .modal-backdrop{position:absolute; inset:0; background:rgba(0,0,0,.45)}
 .modal-dialog{
   position:relative; z-index:1;
-  max-width:720px; width:calc(100% - 24px);
+  max-width:820px; width:calc(100% - 24px);
   margin:6vh auto; background:#fff;
   border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
   padding:24px;
@@ -151,7 +154,44 @@ body.modal-open{overflow:hidden}            /* блокуємо фон, доки
   background:transparent; border:0; font-size:24px; line-height:1; cursor:pointer
 }
 
+/* ===== Form basics у модалці (рівні поля) ===== */
+#consultForm label{display:block;font-weight:700;margin-bottom:6px}
+#consultForm input[type="text"],
+#consultForm input[type="email"],
+#consultForm input[type="date"],
+#consultForm textarea{
+  width:100%;padding:.65rem .75rem;border:1px solid var(--border);
+  border-radius:10px;background:#fff;outline:none
+}
+#consultForm input[type="text"]:focus-visible,
+#consultForm input[type="email"]:focus-visible,
+#consultForm input[type="date"]:focus-visible,
+#consultForm textarea:focus-visible{box-shadow:var(--ring)}
+#consultForm textarea{min-height:96px;resize:vertical}
+
 /* ===== Paid checkbox ===== */
 .paid-wrap{ margin-top:6px }
 .paid-wrap label{ display:inline-flex; align-items:center; gap:8px; user-select:none }
 .paid-wrap input[type="checkbox"]{ width:18px; height:18px; accent-color:var(--brand) }
+
+/* ===== Блок «ПриватБанк» у правій колонці ===== */
+#consultForm .paycard{
+  grid-column:2;
+  display:flex; gap:12px; align-items:center;
+  border:1px dashed var(--border);
+  border-radius:12px; padding:10px; background:#fafafa;
+}
+#consultForm .paycard__logo img{ width:56px; height:auto; display:block }
+#consultForm .paycard__title{ font-weight:800; margin-bottom:4px }
+#consultForm .paycard__row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+#consultForm .paycard__num{
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background:#fff; border:1px solid var(--border); padding:6px 10px; border-radius:8px;
+  user-select:all; cursor:pointer;
+}
+#consultForm .paycard__num:hover{box-shadow:var(--shadow-sm)}
+#consultForm .paycard__btn{ white-space:nowrap }
+
+@media (max-width:720px){
+  #consultForm .paycard{ grid-column:1 / -1 }
+}

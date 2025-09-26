@@ -6,7 +6,7 @@
   <title>Знайти консультанта — КОМА</title>
   <meta name="description" content="Сертифіковані консультанти КОМА. Оберіть фахівця та запишіться на консультацію онлайн." />
 
-  <!-- Іконки/OG (публікуємось з /html як корінь сайту) -->
+  <!-- Іконки/OG -->
   <link rel="icon" href="/icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Знайти консультанта — КОМА" />
   <meta property="og:description" content="Обирайте серед сертифікованих консультантів та записуйтеся онлайн." />
@@ -37,8 +37,7 @@
       <!-- 1 -->
       <article class="card person" data-name="Оксана Кокотень" data-email="oksanakokoten@gmail.com">
         <div class="photo">
-          <img src="/icon/consultants/oksana.jpg" alt="Оксана Кокотень"
-               onerror="this.src='/icon/logo.png'" />
+          <img src="/icon/consultants/oksana.jpg" alt="Оксана Кокотень" onerror="this.src='/icon/logo.png'" />
           <span class="badge">Сімейне консультування</span>
           <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
@@ -66,8 +65,7 @@
       <!-- 2 -->
       <article class="card person" data-name="Андрій Ойович" data-email="andriysavchuk@gmail.com">
         <div class="photo">
-          <img src="/icon/consultants/andriy.jpg" alt="Андрій Ойович"
-               onerror="this.src='/icon/logo.png'" />
+          <img src="/icon/consultants/andriy.jpg" alt="Андрій Ойович" onerror="this.src='/icon/logo.png'" />
           <span class="badge">Травма, ПТСР</span>
           <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
@@ -94,8 +92,7 @@
       <!-- 3 -->
       <article class="card person" data-name="Анастасія Ойович" data-email="irynashevchenko@gmail.com">
         <div class="photo">
-          <img src="/icon/consultants/nastya.jpg" alt="Анастасія Ойович"
-               onerror="this.src='/icon/logo.png'" />
+          <img src="/icon/consultants/nastya.jpg" alt="Анастасія Ойович" onerror="this.src='/icon/logo.png'" />
           <span class="badge">Депресія, тривога</span>
           <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
@@ -122,8 +119,7 @@
       <!-- 4 -->
       <article class="card person" data-name="Олександр Ткачук" data-email="maksymkoval@gmail.com">
         <div class="photo">
-          <img src="/icon/consultants/sasha.jpg" alt="Олександр Ткачук"
-               onerror="this.src='/icon/logo.png'" />
+          <img src="/icon/consultants/sasha.jpg" alt="Олександр Ткачук" onerror="this.src='/icon/logo.png'" />
           <span class="badge">Підлітки</span>
           <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
@@ -150,8 +146,7 @@
       <!-- 5 -->
       <article class="card person" data-name="Тетяна Маковська" data-email="nadiyaromaniyk@gmail.com">
         <div class="photo">
-          <img src="/icon/consultants/tanya.jpg" alt="Тетяна Маковська"
-               onerror="this.src='/icon/logo.png'" />
+          <img src="/icon/consultants/tanya.jpg" alt="Тетяна Маковська" onerror="this.src='/icon/logo.png'" />
           <span class="badge">Шлюб і сім’я</span>
           <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
@@ -178,8 +173,7 @@
       <!-- 6 -->
       <article class="card person" data-name="Олля Литвин" data-email="oleglitvin@gmail.com">
         <div class="photo">
-          <img src="/icon/consultants/olya.jpg" alt="Олля Литвин"
-               onerror="this.src='/icon/logo.png'" />
+          <img src="/icon/consultants/olya.jpg" alt="Олля Литвин" onerror="this.src='/icon/logo.png'" />
           <span class="badge">Емоції, вигорання</span>
           <span class="quota-badge" aria-label="Кількість записів на сьогодні">0/4</span>
         </div>
@@ -206,10 +200,10 @@
     </div>
   </main>
 
-  <!-- Footer (partials, як на скрінах) -->
+  <!-- Footer (partials) -->
   <div id="site-footer" data-include="/partials/footer.html"></div>
 
-  <!-- Скрипти спільні -->
+  <!-- Спільні скрипти -->
   <script src="/js/guard.js"></script>
   <script src="/js/partials.js" type="module"></script>
 
@@ -221,17 +215,21 @@
     <div class="modal-backdrop" onclick="closeConsultation()"></div>
     <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="consultTitle">
       <button class="modal-close" aria-label="Закрити" onclick="closeConsultation()">×</button>
+
       <h2 id="consultTitle" style="margin-top:0">Запис на консультацію</h2>
+
       <form id="consultForm" onsubmit="return submitConsultation(event)">
         <div class="grid grid-2">
           <div>
             <label>Консультант</label>
             <input id="c_consultant" type="text" required readonly />
           </div>
+
           <div>
             <label>Ваше ім’я</label>
             <input id="c_fullName" type="text" required />
           </div>
+
           <div>
             <label>E-mail</label>
             <input id="c_email" type="email" required />
@@ -242,13 +240,13 @@
             <label>Дата і час</label>
             <div class="slots-wrap">
               <input id="c_date" type="date" required />
-              <!-- Слоти з’являються ПІСЛЯ вибору дати; 08:00–19:00 щогодини -->
               <div id="slotGrid" class="slots" aria-label="Доступні часові слоти"></div>
               <input id="c_time" type="hidden" required />
             </div>
             <div class="hint muted">Доступно 4 сеанси/день. Слоти з 08:00 до 19:00 (Europe/Kyiv) — щогодини.</div>
           </div>
 
+          <!-- Коментар + прикріпити фото (праворуч у верхній колонці на десктопі) -->
           <div class="col-span-2">
             <label>Коментар</label>
             <textarea id="c_notes" rows="3" placeholder="Коротко опишіть запит…"></textarea>
@@ -257,11 +255,34 @@
                 Прикріпити фото
                 <input id="c_file" type="file" accept="image/*" style="display:none" />
               </label>
-              <!-- Прев’ю прикріпленого фото -->
               <div id="filePreview" class="file-preview" aria-live="polite"></div>
             </div>
           </div>
+
+          <!-- Блок оплати ПриватБанк (статично в HTML) -->
+          <div id="pb_block" class="paycard col-span-2" aria-label="Оплата ПриватБанк">
+            <div class="paycard__logo">
+              <img src="/icon/privat.png" alt="ПриватБанк" />
+            </div>
+            <div class="paycard__info">
+              <div class="paycard__title">ПриватБанк</div>
+              <div class="paycard__row">
+                <code id="pb_num" class="paycard__num" title="Натисніть, щоб скопіювати">1234 1234 1234 1234</code>
+                <button type="button" id="pb_copy" class="btn outline small paycard__btn">Копіювати</button>
+              </div>
+              <div class="muted" style="font-size:.9rem">Оплатіть та поставте галочку «Я оплатив(ла)».</div>
+            </div>
+          </div>
+
+          <!-- Обовʼязковий чекбокс оплати -->
+          <div class="col-span-2 paid-wrap">
+            <label style="display:inline-flex;align-items:center;gap:8px">
+              <input id="c_paid" type="checkbox" required />
+              <span>Я оплатив(ла)</span>
+            </label>
+          </div>
         </div>
+
         <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
           <button type="button" class="btn outline" onclick="closeConsultation()">Скасувати</button>
           <button id="submitBtn" type="submit" class="btn">Записатися</button>

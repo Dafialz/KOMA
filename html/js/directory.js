@@ -91,7 +91,7 @@ const NAME_TO_EMAIL = {
 // Слоти щогодини 08:00–19:00
 function hourSlots() {
   var arr = [];
-  for (var h = 8; h <= 19; h++) {        // до 19:00 включно
+  for (var h = 8; h <= 19; h++) {
     arr.push(String(h).padStart(2,'0') + ':00');
   }
   return arr;
@@ -110,14 +110,13 @@ async function getBookings(email){
 }
 
 function findEmailByName(name){
-  // шукаємо по data-name у картці; якщо немає — фолбек з мапи
   var card = $all('.card.person').find(function(c){
     return (c.dataset.name || '').trim() === String(name||'').trim();
   });
   return (card && card.dataset.email) || NAME_TO_EMAIL[name] || '';
 }
 
-// ===== ОНОВЛЕННЯ ЛІЧИЛЬНИКІВ 0/4 ТА БЛОКУВАННЯ КНОПОК
+// ===== ОНОВЛЕННЯ ЛІЧИЛЬНИКІв 0/4 ТА КНОПОК
 async function updateQuotaBadges(dateStr){
   const cards = $all('.card.person');
   for (const card of cards){
@@ -148,7 +147,59 @@ async function updateQuotaBadges(dateStr){
   }
 }
 
-/* ===== Інʼєкція обовʼязкового чекбоксу "Я оплатив(ла)" ===== */
+/* ===== Копіювання тексту (для картки банку) ===== */
+function copyText(txt){
+  if (!txt) return;
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).catch(()=>{});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+/* ===== БЛОК ОПЛАТИ «ПРИВАТБАНК» ===== */
+function ensurePaymentBlock(){
+  const form = getForm();
+  if (!form) return;
+  if ($('#pb_block', form)) return;
+
+  const grid = form.querySelector('.grid.grid-2') || form;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'pb_block';
+  wrap.className = 'paycard';
+
+  wrap.innerHTML = [
+    '<div class="paycard__logo"><img src="/icon/privat.png" alt="ПриватБанк"></div>',
+    '<div class="paycard__info">',
+      '<div class="paycard__title">ПриватБанк</div>',
+      '<div class="paycard__row">',
+        '<code id="pb_num" class="paycard__num" title="Натисніть, щоб скопіювати">1234 1234 1234 1234</code>',
+        '<button type="button" id="pb_copy" class="btn outline small paycard__btn">Копіювати</button>',
+      '</div>',
+      '<div class="muted" style="font-size:.9rem">Оплатіть та поставте галочку «Я оплатив(ла)».</div>',
+    '</div>'
+  ].join('');
+
+  // ставимо у праву колонку після «Коментар»
+  const commentBlock = grid.children[4] || null;
+  if (commentBlock) {
+    commentBlock.after(wrap);
+  } else {
+    grid.appendChild(wrap);
+  }
+
+  const pbNum  = wrap.querySelector('#pb_num');
+  const pbCopy = wrap.querySelector('#pb_copy');
+  function doCopy(){ copyText('1234123412341234'); }
+  pbNum.addEventListener('click', doCopy);
+  pbCopy.addEventListener('click', doCopy);
+}
+
+/* ===== Обовʼязковий чекбокс "Я оплатив(ла)" ===== */
 function ensurePaidCheckbox(){
   var form = getForm();
   if (!form) return;
@@ -157,7 +208,7 @@ function ensurePaidCheckbox(){
     var grid = form.querySelector('.grid.grid-2') || form;
     var wrap = document.createElement('div');
     wrap.className = 'col-span-2 paid-wrap';
-    // сам чекбокс
+
     var label = document.createElement('label');
     label.style.display = 'inline-flex';
     label.style.alignItems = 'center';
@@ -175,7 +226,6 @@ function ensurePaidCheckbox(){
     label.appendChild(span);
     wrap.appendChild(label);
 
-    // додати в кінець сітки форми (перед кнопками)
     grid.appendChild(wrap);
   }
 }
@@ -198,12 +248,11 @@ window.openConsultation = function (el) {
     }
   } catch {}
 
-  // дата й слоти
+  // дата й слоти — одразу рендеримо (на сьогодні)
   var dateInput = $('#c_date');
   setMinToday(dateInput);
-  renderSlots(); // первинний рендер
+  renderSlots();
 
-  // під час зміни дати — оновити слоти + лічильники в картках
   if (dateInput && !dateInput._bound){
     dateInput.addEventListener('change', function(){
       renderSlots();
@@ -212,7 +261,8 @@ window.openConsultation = function (el) {
     dateInput._bound = true;
   }
 
-  // інʼєкція чекбоксу "Я оплатив(ла)"
+  // блок оплати + чекбокс «Я оплатив(ла)»
+  ensurePaymentBlock();
   ensurePaidCheckbox();
 
   // прев’ю файлу
@@ -254,7 +304,6 @@ async function renderSlots(){
   timeHidden.value = '';
   if (submitBtn) submitBtn.disabled = true;
 
-  // взяти бронювання для цього консультанта на обрану дату
   const email = findEmailByName(consultant);
   let takenSet = new Set();
   let countForDay = 0;
@@ -271,7 +320,6 @@ async function renderSlots(){
 
   const slots = hourSlots();
 
-  // якщо ліміт 4/4 — блокуємо всі слоти
   if (countForDay >= MAX_PER_DAY){
     slots.forEach(function(t){
       const btn = document.createElement('button');
@@ -313,10 +361,9 @@ function bindFilePreview(){
   var inp = $('#c_file');
   var box = $('#filePreview');
   if (!inp || !box) return;
+  if (inp._bound) return;
 
-  if (inp._bound) return; // вже підключено
   inp._bound = true;
-
   inp.addEventListener('change', function(){
     box.innerHTML = '';
     var f = inp.files && inp.files[0];
@@ -399,18 +446,23 @@ window.submitConsultation = function (e) {
   return false;
 };
 
-// ===== Вбудовані стилі для модалки (scrollable fallback)
+// ===== Вбудовані стилі (щоб все працювало навіть без css-файлу)
 (function injectModalStyles() {
   var css = [
     '.modal[aria-hidden="true"]{display:none}',
-    'body.modal-open{overflow:hidden}',                               /* блокуємо скрол фону */
+    'body.modal-open{overflow:hidden}',
     '.modal{position:fixed;inset:0;z-index:70;overscroll-behavior:contain}',
     '.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}',
-    '.modal-dialog{position:relative;z-index:1;max-width:720px;width:calc(100% - 24px);margin:6vh auto;background:#fff;',
+    '.modal-dialog{position:relative;z-index:1;max-width:820px;width:calc(100% - 24px);margin:6vh auto;background:#fff;',
     ' border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:24px;',
     ' max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch}',
-    '.modal-close{position:absolute;right:10px;top:10px;background:transparent;border:0;',
-    ' font-size:24px;line-height:1;cursor:pointer}'
+    '.modal-close{position:absolute;right:10px;top:10px;background:transparent;border:0;font-size:24px;line-height:1;cursor:pointer}',
+    '.paycard{display:flex;gap:12px;align-items:center;border:1px dashed #e5e7eb;border-radius:12px;padding:10px;background:#fafafa;margin-top:4px}',
+    '.paycard__logo img{width:56px;height:auto;display:block}',
+    '.paycard__title{font-weight:800;margin-bottom:4px}',
+    '.paycard__row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
+    '.paycard__num{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:#fff;border:1px solid #e5e7eb;padding:6px 10px;border-radius:8px;user-select:all;cursor:pointer}',
+    '.paycard__btn{white-space:nowrap}'
   ].join('');
   var s = document.createElement('style');
   s.textContent = css;
