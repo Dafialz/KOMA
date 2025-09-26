@@ -13,6 +13,7 @@
   
 </head>
 <body>
+  <div data-include="partials/header.html"></div>
   <div class="wrap">
     <div class="card">
       <div class="logo">
@@ -51,15 +52,11 @@
       </form>
     </div>
 
-    <div class="footer">
-      © <span id="y"></span> КОМА • <a href="index.html">На головну</a>
-    </div>
+    <div data-include="partials/footer.html"></div>
   </div>
 
 <script>
   // Рік у футері
-  document.getElementById('y').textContent = new Date().getFullYear();
-
   // Мінімальна «сесія» в localStorage
   const SESSION_KEY = 'koma_session';
   function setSession(email, days){
