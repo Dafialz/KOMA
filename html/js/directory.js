@@ -1,9 +1,3 @@
-// ===== РІК У ФУТЕРІ
-(function setYear() {
-  var y = document.getElementById('y');
-  if (y) y.textContent = new Date().getFullYear();
-})();
-
 // ===== Плавний акордеон "Ціна"
 function ensurePricesInit() {
   var all = document.querySelectorAll('.prices');
@@ -97,10 +91,10 @@ function hourSlots() {
   return arr;
 }
 
-// Динамічний імпорт API бронювань
+// Динамічний імпорт API бронювань (відносний шлях від js/)
 async function getBookings(email){
   try{
-    if (!window.__bk) window.__bk = await import('/js/bookings.js');
+    if (!window.__bk) window.__bk = await import('./bookings.js');
     const res = await window.__bk.fetchBookings(email);
     return (res && res.list) ? res.list : [];
   }catch(e){
@@ -173,7 +167,7 @@ function ensurePaymentBlock(){
   wrap.className = 'paycard';
 
   wrap.innerHTML = [
-    '<div class="paycard__logo"><img src="/icon/privat.png" alt="ПриватБанк"></div>',
+    '<div class="paycard__logo"><img src="../icon/privat.png" alt="ПриватБанк"></div>',
     '<div class="paycard__info">',
       '<div class="paycard__title">ПриватБанк</div>',
       '<div class="paycard__row">',
@@ -184,7 +178,6 @@ function ensurePaymentBlock(){
     '</div>'
   ].join('');
 
-  // ставимо у праву колонку після «Коментар»
   const commentBlock = grid.children[4] || null;
   if (commentBlock) {
     commentBlock.after(wrap);
@@ -239,7 +232,6 @@ window.openConsultation = function (el) {
   var c_consultant = $('#c_consultant');
   if (c_consultant) c_consultant.value = name;
 
-  // автозаповнення з guard
   try {
     if (window.guard && window.guard.user) {
       var u = window.guard.user;
@@ -248,7 +240,6 @@ window.openConsultation = function (el) {
     }
   } catch {}
 
-  // дата й слоти — одразу рендеримо (на сьогодні)
   var dateInput = $('#c_date');
   setMinToday(dateInput);
   renderSlots();
@@ -261,11 +252,9 @@ window.openConsultation = function (el) {
     dateInput._bound = true;
   }
 
-  // блок оплати + чекбокс «Я оплатив(ла)»
   ensurePaymentBlock();
   ensurePaidCheckbox();
 
-  // прев’ю файлу
   bindFilePreview();
 
   modal.classList.add('open');
@@ -276,201 +265,4 @@ window.openConsultation = function (el) {
   if (focusEl) setTimeout(function(){ focusEl.focus(); }, 0);
 };
 
-window.closeConsultation = function () {
-  var modal = getModal();
-  if (!modal) return;
-  modal.classList.remove('open');
-  modal.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('modal-open');
-
-  var form = getForm();
-  if (form) form.reset();
-  var grid = $('#slotGrid');
-  if (grid) grid.innerHTML = '';
-  var prev = $('#filePreview');
-  if (prev) prev.innerHTML = '';
-};
-
-// Побудова слотів з урахуванням зайнятості
-async function renderSlots(){
-  var grid = $('#slotGrid');
-  var date = ($('#c_date') || {}).value;
-  var consultant = ($('#c_consultant') || {}).value;
-  var timeHidden = $('#c_time');
-  var submitBtn = getSubmit();
-  if (!grid || !date || !consultant) return;
-
-  grid.innerHTML = '';
-  timeHidden.value = '';
-  if (submitBtn) submitBtn.disabled = true;
-
-  const email = findEmailByName(consultant);
-  let takenSet = new Set();
-  let countForDay = 0;
-
-  if (email){
-    const list = await getBookings(email);
-    for (const b of list){
-      if (b.date === date && b.time){
-        takenSet.add(b.time);
-        countForDay++;
-      }
-    }
-  }
-
-  const slots = hourSlots();
-
-  if (countForDay >= MAX_PER_DAY){
-    slots.forEach(function(t){
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = t;
-      btn.className = 'slot taken';
-      btn.disabled = true;
-      grid.appendChild(btn);
-    });
-    if (submitBtn) submitBtn.disabled = true;
-    return;
-  }
-
-  let anyFree = false;
-  slots.forEach(function(t){
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = t;
-    const isTaken = takenSet.has(t);
-    btn.className = 'slot' + (isTaken ? ' taken' : '');
-    btn.disabled = isTaken;
-
-    if (!isTaken) anyFree = true;
-
-    btn.onclick = function () {
-      grid.querySelectorAll('.slot.selected').forEach(function(x){ x.classList.remove('selected'); });
-      btn.classList.add('selected');
-      timeHidden.value = t;
-      if (submitBtn) submitBtn.disabled = false;
-    };
-    grid.appendChild(btn);
-  });
-
-  if (submitBtn) submitBtn.disabled = !anyFree;
-}
-
-// Прев’ю прикріпленого фото
-function bindFilePreview(){
-  var inp = $('#c_file');
-  var box = $('#filePreview');
-  if (!inp || !box) return;
-  if (inp._bound) return;
-
-  inp._bound = true;
-  inp.addEventListener('change', function(){
-    box.innerHTML = '';
-    var f = inp.files && inp.files[0];
-    if (!f) return;
-    if (!/^image\//i.test(f.type)){
-      box.textContent = 'Невідомий файл';
-      return;
-    }
-    var r = new FileReader();
-    r.onload = function(){
-      var img = document.createElement('img');
-      img.alt = 'Прев’ю';
-      img.src = r.result;
-      box.innerHTML = '';
-      box.appendChild(img);
-    };
-    r.readAsDataURL(f);
-  });
-}
-
-// ESC закриття
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') window.closeConsultation();
-});
-
-// Сабміт форми
-window.submitConsultation = function (e) {
-  if (e && e.preventDefault) e.preventDefault();
-
-  var consultant = ($('#c_consultant') || {}).value || '';
-  var fullName   = ($('#c_fullName')   || {}).value || '';
-  var email      = ($('#c_email')      || {}).value || '';
-  var date       = ($('#c_date')       || {}).value || '';
-  var time       = ($('#c_time')       || {}).value || '';
-  var notes      = ($('#c_notes')      || {}).value || '';
-  var paidEl     = ($('#c_paid')       || null);
-
-  consultant = consultant.trim();
-  fullName   = fullName.trim();
-  email      = email.trim();
-  notes      = notes.trim();
-
-  if (!consultant || !fullName || !email || !date || !time) {
-    alert('Будь ласка, оберіть дату і час та заповніть обовʼязкові поля.');
-    return false;
-  }
-  if (!paidEl || !paidEl.checked) {
-    alert('Підтвердіть оплату: поставте галочку «Я оплатив(ла)».');
-    return false;
-  }
-
-  var booking = {
-    consultant: consultant,
-    fullName:   fullName,
-    email:      email,
-    date:       date,
-    time:       time,
-    notes:      notes,
-    paid:       true,
-    startTS:    tsKyiv(date, time)
-  };
-
-  try { localStorage.setItem('koma_last_booking', JSON.stringify(booking)); } catch {}
-
-  var fileInput = $('#c_file');
-  if (fileInput && fileInput.files && fileInput.files.length) booking.hasFile = true;
-
-  var params = new URLSearchParams({
-    consultant: booking.consultant,
-    fullName:   booking.fullName,
-    email:      booking.email,
-    date:       booking.date,
-    time:       booking.time,
-    notes:      booking.notes,
-    paid:       '1'
-  }).toString();
-
-  window.closeConsultation();
-  window.location.href = '/zapis.html?' + params;
-  return false;
-};
-
-// ===== Вбудовані стилі (щоб все працювало навіть без css-файлу)
-(function injectModalStyles() {
-  var css = [
-    '.modal[aria-hidden="true"]{display:none}',
-    'body.modal-open{overflow:hidden}',
-    '.modal{position:fixed;inset:0;z-index:70;overscroll-behavior:contain}',
-    '.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}',
-    '.modal-dialog{position:relative;z-index:1;max-width:820px;width:calc(100% - 24px);margin:6vh auto;background:#fff;',
-    ' border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:24px;',
-    ' max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch}',
-    '.modal-close{position:absolute;right:10px;top:10px;background:transparent;border:0;font-size:24px;line-height:1;cursor:pointer}',
-    '.paycard{display:flex;gap:12px;align-items:center;border:1px dashed #e5e7eb;border-radius:12px;padding:10px;background:#fafafa;margin-top:4px}',
-    '.paycard__logo img{width:56px;height:auto;display:block}',
-    '.paycard__title{font-weight:800;margin-bottom:4px}',
-    '.paycard__row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
-    '.paycard__num{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:#fff;border:1px solid #e5e7eb;padding:6px 10px;border-radius:8px;user-select:all;cursor:pointer}',
-    '.paycard__btn{white-space:nowrap}'
-  ].join('');
-  var s = document.createElement('style');
-  s.textContent = css;
-  document.head.appendChild(s);
-})();
-
-// ===== Ініціалізація лічильників 0/4 на сьогодні
-(async function initQuotas(){
-  const today = kyivTodayStr();
-  await updateQuotaBadges(today);
-})();
+window.close
