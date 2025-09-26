@@ -1,10 +1,13 @@
 // server.js
 // ─────────────────────────────────────────────────────────────────────────────
-// 1) WebSocket signaling server (для video.html)
-// 2) REST API для бронювань з автозбереженням у bookings.json
-//    POST /api/bookings, GET /api/bookings?consultantEmail=..., DELETE /api/bookings/:id
-//    Підтримка файлів (multipart/form-data, поле "file"), збереження у /uploads
-//    Автоочистка: запис видаляється через 60 хв після старту
+// 1) WebSocket-сигналінг для video.html (join / offer / answer / ice / bye)
+// 2) REST API бронювань із збереженням у bookings.json та файлами в /uploads
+//    POST   /api/bookings
+//    GET    /api/bookings?consultantEmail=...   -> { ok, list: [...] }
+//    DELETE /api/bookings/:id                    (також видаляє прикріплений файл)
+// 3) Віддаємо статичний сайт із папки /html
+//
+// Примітка: автоочистку за часом ВИМКНЕНО. Запис живе, доки його не видалять.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require("express");
@@ -17,29 +20,26 @@ const multer = require("multer");
 
 // ── Конфіг ───────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*"; // напр.: "https://koma-hcmz.netlify.app"
-const DATA_DIR = process.env.DATA_DIR || ".";             // напр.: "/data" на Render
-const BOOK_FILE = path.join(DATA_DIR, "bookings.json");
-const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
+const DATA_DIR       = process.env.DATA_DIR       || "."; // на Render можна "/data"
+const BOOK_FILE      = path.join(DATA_DIR, "bookings.json");
+const UPLOAD_DIR     = path.join(DATA_DIR, "uploads");
 
-// гарантовано створюємо директорії
-try { fs.mkdirSync(DATA_DIR,  { recursive: true }); } catch {}
-try { fs.mkdirSync(UPLOAD_DIR,{ recursive: true }); } catch {}
+// Створюємо директорії, якщо їх нема
+try { fs.mkdirSync(DATA_DIR,   { recursive: true }); } catch {}
+try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch {}
 
-// ── Multer (завантаження файлів) ─────────────────────────────────────────────
+// ── Multer (файли) ───────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
-    const safe = (file.originalname || "file")
+    const safe = String(file.originalname || "file")
       .replace(/[^a-zA-Z0-9.\-_]+/g, "_")
       .slice(0, 80);
     const stamp = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
     cb(null, `${stamp}-${safe}`);
   },
 });
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
 
 // ── App / HTTP / WS ──────────────────────────────────────────────────────────
 const app = express();
@@ -48,19 +48,13 @@ const wss = new WebSocket.Server({ server });
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 app.use(
-  cors(
-    ALLOWED_ORIGIN === "*"
-      ? {}
-      : { origin: ALLOWED_ORIGIN }
-  )
+  cors(ALLOWED_ORIGIN === "*" ? {} : { origin: ALLOWED_ORIGIN })
 );
 app.use(express.json());
+app.use("/uploads", express.static(UPLOAD_DIR)); // віддаємо завантажені файли
 
-// віддавати завантажені файли
-app.use("/uploads", express.static(UPLOAD_DIR));
-
-// ── СИГНАЛІНГ: кімнати для відеодзвінків ─────────────────────────────────────
-const rooms = new Map(); // { roomId: Set<ws> }
+// ── Сигналінг (кімнати) ──────────────────────────────────────────────────────
+const rooms = new Map(); // Map<roomId, Set<ws>>
 
 wss.on("connection", (ws) => {
   ws.on("message", (raw) => {
@@ -70,16 +64,17 @@ wss.on("connection", (ws) => {
     if (msg.type === "join") {
       ws.room = String(msg.room || "").trim();
       if (!ws.room) return;
-
       if (!rooms.has(ws.room)) rooms.set(ws.room, new Set());
       rooms.get(ws.room).add(ws);
-      broadcast(ws.room, { type: "peer-join" }, ws);
+      // можна сповістити інших, якщо треба:
+      // broadcast(ws.room, { type: "peer-join" }, ws);
       return;
     }
 
+    // Перекидаємо SDP/ICE/bye іншим клієнтам у кімнаті
     if (
       ws.room &&
-      (msg.type === "offer" || msg.type === "answer" || msg.type === "ice")
+      (msg.type === "offer" || msg.type === "answer" || msg.type === "ice" || msg.type === "bye")
     ) {
       broadcast(ws.room, msg, ws);
     }
@@ -88,7 +83,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     if (ws.room && rooms.has(ws.room)) {
       rooms.get(ws.room).delete(ws);
-      broadcast(ws.room, { type: "peer-leave" }, ws);
+      // broadcast(ws.room, { type: "peer-leave" }, ws);
       if (rooms.get(ws.room).size === 0) rooms.delete(ws.room);
     }
   });
@@ -104,39 +99,29 @@ function broadcast(room, message, exceptWs) {
   }
 }
 
-// ── БРОНЮВАННЯ: збереження у файлі ───────────────────────────────────────────
+// ── Бронювання ───────────────────────────────────────────────────────────────
 let bookings = [];
 try {
   if (fs.existsSync(BOOK_FILE)) {
-    bookings = JSON.parse(fs.readFileSync(BOOK_FILE, "utf-8"));
-    if (!Array.isArray(bookings)) bookings = [];
+    const raw = fs.readFileSync(BOOK_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) bookings = parsed;
   }
 } catch { bookings = []; }
 
 function saveBookings() {
   try {
     fs.writeFileSync(BOOK_FILE, JSON.stringify(bookings, null, 2), "utf-8");
-  } catch {}
+  } catch (e) { console.error("saveBookings error:", e.message); }
 }
 
-// автоочистка: старше за 60 хв від запланованого часу
-function cleanup() {
-  const now = Date.now();
-  const before = bookings.length;
-  bookings = bookings.filter((b) => now < Number(b.startTS) + 60 * 60 * 1000);
-  if (bookings.length !== before) saveBookings();
-}
-setInterval(cleanup, 60 * 1000);
-
-// ── API ──────────────────────────────────────────────────────────────────────
-app.get("/api/health", (req, res) => {
-  cleanup();
+// Health (корисно для Render)
+app.get("/api/health", (_req, res) => {
   res.json({ ok: true, rooms: rooms.size, bookings: bookings.length });
 });
 
-// створити бронювання (підтримка JSON та multipart/form-data з полем "file")
+// Створити бронювання (JSON або multipart form-data з полем "file")
 app.post("/api/bookings", upload.single("file"), (req, res) => {
-  // якщо multipart — поля у req.body приходять як строки; якщо JSON — express.json() вже їх розпарсив
   let {
     consultantEmail,
     consultantName,
@@ -144,7 +129,7 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     email,
     date,
     time,
-    note
+    note,
   } = req.body || {};
 
   consultantEmail = String(consultantEmail || "").trim().toLowerCase();
@@ -156,7 +141,6 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
   note            = String(note            || "").trim();
 
   if (!consultantEmail || !consultantName || !fullName || !date || !time) {
-    // при помилці видалимо тимчасово збережений файл (якщо був)
     if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -165,19 +149,18 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     return res.status(400).json({ error: "Bad email" });
   }
 
-  // Київський локальний час
+  // Таймштамп початку (Київ). Якщо потрібна точна сезонність — краще передавати з фронта.
   const startTS = Date.parse(`${date}T${time}:00+03:00`);
   if (Number.isNaN(startTS)) {
     if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Bad date/time" });
   }
 
-  // інформація про файл (якщо був)
+  // Інфо про файл (якщо прикріплено)
   let fileName = "";
   let fileUrl  = "";
   if (req.file) {
     fileName = req.file.originalname || req.file.filename;
-    // віддаємо як шлях відносно цього сервера
     fileUrl  = `/uploads/${req.file.filename}`;
   }
 
@@ -194,19 +177,17 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     startTS,
     createdAt: Date.now(),
     fileName,
-    fileUrl, // напр.: /uploads/abc123-file.pdf
+    fileUrl,
   };
 
   bookings.push(rec);
   saveBookings();
-
   return res.status(201).json({ ok: true, id, rec });
 });
 
-// отримати список для консультанта
+// Отримати список бронювань для консультанта
 app.get("/api/bookings", (req, res) => {
-  cleanup();
-  const c = String(req.query.consultantEmail || "").toLowerCase().trim();
+  const c = String(req.query.consultantEmail || "").trim().toLowerCase();
   if (!c) return res.status(400).json({ error: "consultantEmail required" });
 
   const list = bookings
@@ -216,11 +197,12 @@ app.get("/api/bookings", (req, res) => {
   res.json({ ok: true, list });
 });
 
-// видалити бронювання вручну (після дзвінка)
+// Видалити бронювання (натиснули «Завершити»)
 app.delete("/api/bookings/:id", (req, res) => {
   const id = String(req.params.id || "");
-  // якщо у записі був файл — видалимо і його
   const found = bookings.find((b) => b.id === id);
+
+  // Якщо був файл — видаляємо і його
   if (found && found.fileUrl) {
     const p = path.join(UPLOAD_DIR, path.basename(found.fileUrl));
     try { fs.unlinkSync(p); } catch {}
@@ -229,14 +211,16 @@ app.delete("/api/bookings/:id", (req, res) => {
   const before = bookings.length;
   bookings = bookings.filter((b) => b.id !== id);
   if (before !== bookings.length) saveBookings();
+
   res.json({ ok: true, removed: before - bookings.length });
 });
 
-// ── Статика (віддаємо /html як корінь сайту) ─────────────────────────────────
+// ── Статика (корінь сайту — /html) ───────────────────────────────────────────
 app.use(express.static("html"));
 
 // ── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () =>
-  console.log(`Server on http://localhost:${PORT}  |  API and WS ready`)
-);
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`CORS: ${ALLOWED_ORIGIN}`);
+});

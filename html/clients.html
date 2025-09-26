@@ -60,7 +60,7 @@
             <div class="muted" id="meLine">—</div>
           </div>
           <div class="tools">
-            <span class="pill">Автоочистка записів: <strong>+60 хв</strong> після початку</span>
+            <span class="pill">Записи зберігаються, доки ви не натиснете <strong>«Завершити»</strong></span>
             <button id="refresh" class="btn light" title="Оновити">Оновити</button>
             <span id="spin" class="spinner" style="display:none"></span>
           </div>
@@ -78,107 +78,6 @@
   </footer>
 
   <script src="js/guard.js"></script>
-  <script type="module">
-    import { fetchBookings, deleteBooking } from './js/bookings.js';
-
-    // Захист сторінки
-    guard.protect();
-    const me = guard.getSession();
-    const myName = guard.emailToName(me.email) || 'Консультант';
-    const myEmail = String(me.email || '').toLowerCase();
-    document.getElementById('meLine').textContent = `Користувач: ${myEmail} (${myName})`;
-    document.getElementById('y').textContent = new Date().getFullYear();
-    document.getElementById('logout').onclick = () => guard.logout();
-
-    const listEl  = document.getElementById('list');
-    const emptyEl = document.getElementById('empty');
-    const errEl   = document.getElementById('error');
-    const spinEl  = document.getElementById('spin');
-    const refreshBtn = document.getElementById('refresh');
-
-    function fmt(date, time) {
-      // YYYY-MM-DD -> DD.MM.YYYY HH:MM
-      const p = date.split('-'); return `${p[2]}.${p[1]}.${p[0]} ${time}`;
-    }
-
-    function minsLeft(startTS){
-      const ms = (Number(startTS) + 60*60*1000) - Date.now();
-      return Math.max(0, Math.ceil(ms/60000));
-    }
-
-    function render(items) {
-      listEl.innerHTML = '';
-      if (!items.length) { emptyEl.style.display='block'; errEl.style.display='none'; return; }
-      emptyEl.style.display='none'; errEl.style.display='none';
-
-      for (const b of items) {
-        const left = minsLeft(b.startTS);
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `
-          <div>
-            <div class="when">${fmt(b.date, b.time)}
-              <span class="badge${left<=5 ? ' danger' : ''}">зникне через ${left} хв</span>
-            </div>
-            <div><strong>${b.fullName}</strong> ${b.email ? `• <a href="mailto:${b.email}">${b.email}</a>` : ''}</div>
-            ${b.note ? `<div class="muted">${b.note}</div>` : ''}
-
-            ${b.fileUrl ? `
-              <div class="fileline">
-                <span class="muted">Прикріплений файл:</span>
-                <a class="filebtn" href="${b.fileUrl}" target="_blank" rel="noopener" download>
-                  📎 Завантажити чек${b.fileName ? ` (${escapeHtml(b.fileName)})` : ''}
-                </a>
-              </div>
-            ` : ''}
-
-          </div>
-          <div class="row">
-            <a class="btn ghost" href="video.html?room=${encodeURIComponent(myName)}" target="_blank" rel="noopener">Приєднатися до відеочату</a>
-            <button class="btn gray" data-id="${b.id}">Завершити</button>
-          </div>
-        `;
-        div.querySelector('button[data-id]').onclick = async (e) => {
-          const id = e.currentTarget.getAttribute('data-id');
-          try {
-            e.currentTarget.disabled = true;
-            await deleteBooking(id);
-            await load();
-          } catch {
-            e.currentTarget.disabled = false;
-            alert('Не вдалося видалити запис. Спробуйте ще раз.');
-          }
-        };
-        listEl.appendChild(div);
-      }
-    }
-
-    // Простенький ескейп для відображення назви файлу
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, c => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      }[c]));
-    }
-
-    async function load(showSpinner=true){
-      try {
-        if(showSpinner) spinEl.style.display = 'inline-block';
-        const { list } = await fetchBookings(myEmail);
-        render(list);
-      } catch {
-        listEl.innerHTML = '';
-        emptyEl.style.display='none';
-        errEl.style.display='block';
-      } finally {
-        spinEl.style.display = 'none';
-      }
-    }
-
-    refreshBtn.onclick = () => load();
-
-    // первинне завантаження + оновлення щохвилини
-    await load(false);
-    setInterval(load, 60*1000);
-  </script>
+  <script type="module" src="js/clients.js"></script>
 </body>
 </html>
