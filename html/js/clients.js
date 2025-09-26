@@ -1,3 +1,4 @@
+// /js/clients.js
 import { fetchBookings, deleteBooking } from './bookings.js';
 
 // Захист сторінки та шапка
@@ -35,6 +36,19 @@ function render(items) {
   items.sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
 
   for (const b of items) {
+    const hasFile = !!b.fileUrl;
+    const fileBlock = hasFile ? `
+      <div class="fileline">
+        <span class="muted">Прикріплене фото:</span>
+        <a class="filebtn" href="${b.fileUrl}" target="_blank" rel="noopener" download>
+          📎 Завантажити чек${b.fileName ? ` (${escapeHtml(b.fileName)})` : ''}
+        </a>
+        <a class="filethumb" href="${b.fileUrl}" target="_blank" rel="noopener" title="Відкрити в новій вкладці">
+          <img src="${b.fileUrl}" alt="Прикріплене фото" loading="lazy">
+        </a>
+      </div>
+    ` : '';
+
     const div = document.createElement('div');
     div.className = 'item';
     div.innerHTML = `
@@ -42,15 +56,7 @@ function render(items) {
         <div class="when">${fmt(b.date, b.time)}</div>
         <div><strong>${b.fullName}</strong> ${b.email ? `• <a href="mailto:${b.email}">${b.email}</a>` : ''}</div>
         ${b.note ? `<div class="muted">${b.note}</div>` : ''}
-
-        ${b.fileUrl ? `
-          <div class="fileline">
-            <span class="muted">Прикріплений файл:</span>
-            <a class="filebtn" href="${b.fileUrl}" target="_blank" rel="noopener" download>
-              📎 Завантажити чек${b.fileName ? ` (${escapeHtml(b.fileName)})` : ''}
-            </a>
-          </div>
-        ` : ''}
+        ${fileBlock}
       </div>
       <div class="row">
         <a class="btn ghost" href="video.html?room=${encodeURIComponent(myName)}" target="_blank" rel="noopener">Приєднатися до відеочату</a>

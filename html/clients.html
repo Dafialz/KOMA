@@ -34,9 +34,20 @@
     .tools{display:flex;gap:8px;align-items:center}
     .spinner{width:18px;height:18px;border:2px solid rgba(0,0,0,.15);border-top-color:#0f5257;border-radius:50%;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Файл/чек */
     .fileline{margin-top:6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
     .filebtn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border-radius:999px;background:#fff;border:1px solid #e5e7eb;color:#111;text-decoration:none}
     .filebtn:hover{background:#f8fafc}
+
+    /* Міні-превʼю прикріпленого фото */
+    .filethumb{display:inline-block; line-height:0}
+    .filethumb img{
+      height:72px; width:auto;
+      border-radius:10px;
+      border:1px solid var(--border);
+      box-shadow:0 4px 14px rgba(0,0,0,.06);
+    }
   </style>
 </head>
 <body>
