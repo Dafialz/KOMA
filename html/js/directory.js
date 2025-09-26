@@ -91,7 +91,7 @@ const NAME_TO_EMAIL = {
 // Слоти щогодини 08:00–19:00
 function hourSlots() {
   var arr = [];
-  for (var h = 8; h <= 19; h++) {        // ⬅️ було 20, тепер 19
+  for (var h = 8; h <= 19; h++) {        // до 19:00 включно
     arr.push(String(h).padStart(2,'0') + ':00');
   }
   return arr;
@@ -148,6 +148,38 @@ async function updateQuotaBadges(dateStr){
   }
 }
 
+/* ===== Інʼєкція обовʼязкового чекбоксу "Я оплатив(ла)" ===== */
+function ensurePaidCheckbox(){
+  var form = getForm();
+  if (!form) return;
+
+  if (!$('#c_paid', form)) {
+    var grid = form.querySelector('.grid.grid-2') || form;
+    var wrap = document.createElement('div');
+    wrap.className = 'col-span-2 paid-wrap';
+    // сам чекбокс
+    var label = document.createElement('label');
+    label.style.display = 'inline-flex';
+    label.style.alignItems = 'center';
+    label.style.gap = '8px';
+
+    var input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = 'c_paid';
+    input.required = true;
+
+    var span = document.createElement('span');
+    span.textContent = 'Я оплатив(ла)';
+
+    label.appendChild(input);
+    label.appendChild(span);
+    wrap.appendChild(label);
+
+    // додати в кінець сітки форми (перед кнопками)
+    grid.appendChild(wrap);
+  }
+}
+
 // ===== МОДАЛКА "Записатись"
 window.openConsultation = function (el) {
   var modal = getModal();
@@ -179,6 +211,9 @@ window.openConsultation = function (el) {
     });
     dateInput._bound = true;
   }
+
+  // інʼєкція чекбоксу "Я оплатив(ла)"
+  ensurePaidCheckbox();
 
   // прев’ю файлу
   bindFilePreview();
@@ -317,6 +352,7 @@ window.submitConsultation = function (e) {
   var date       = ($('#c_date')       || {}).value || '';
   var time       = ($('#c_time')       || {}).value || '';
   var notes      = ($('#c_notes')      || {}).value || '';
+  var paidEl     = ($('#c_paid')       || null);
 
   consultant = consultant.trim();
   fullName   = fullName.trim();
@@ -327,6 +363,10 @@ window.submitConsultation = function (e) {
     alert('Будь ласка, оберіть дату і час та заповніть обовʼязкові поля.');
     return false;
   }
+  if (!paidEl || !paidEl.checked) {
+    alert('Підтвердіть оплату: поставте галочку «Я оплатив(ла)».');
+    return false;
+  }
 
   var booking = {
     consultant: consultant,
@@ -335,6 +375,7 @@ window.submitConsultation = function (e) {
     date:       date,
     time:       time,
     notes:      notes,
+    paid:       true,
     startTS:    tsKyiv(date, time)
   };
 
@@ -349,7 +390,8 @@ window.submitConsultation = function (e) {
     email:      booking.email,
     date:       booking.date,
     time:       booking.time,
-    notes:      booking.notes
+    notes:      booking.notes,
+    paid:       '1'
   }).toString();
 
   window.closeConsultation();
@@ -357,14 +399,16 @@ window.submitConsultation = function (e) {
   return false;
 };
 
-// ===== Вбудовані стилі для модалки (fallback)
+// ===== Вбудовані стилі для модалки (scrollable fallback)
 (function injectModalStyles() {
   var css = [
-    '.modal[aria-hidden=\"true\"]{display:none}',
-    '.modal{position:fixed;inset:0;z-index:70}',
+    '.modal[aria-hidden="true"]{display:none}',
+    'body.modal-open{overflow:hidden}',                               /* блокуємо скрол фону */
+    '.modal{position:fixed;inset:0;z-index:70;overscroll-behavior:contain}',
     '.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}',
-    '.modal-dialog{position:relative;z-index:1;max-width:720px;margin:6vh auto;background:#fff;',
-    ' border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:24px}',
+    '.modal-dialog{position:relative;z-index:1;max-width:720px;width:calc(100% - 24px);margin:6vh auto;background:#fff;',
+    ' border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:24px;',
+    ' max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch}',
     '.modal-close{position:absolute;right:10px;top:10px;background:transparent;border:0;',
     ' font-size:24px;line-height:1;cursor:pointer}'
   ].join('');
