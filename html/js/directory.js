@@ -228,9 +228,14 @@ window.openConsultation = function (el) {
   var modal = getModal();
   if (!modal) { console.warn('Modal not found'); return; }
 
+  // Зберігаємо ім'я у поле форми, а email — у data модалки
   var name = (el && el.dataset && el.dataset.name) ? el.dataset.name : '';
+  var email = (el && el.dataset && el.dataset.email) ? el.dataset.email : '';
+
   var c_consultant = $('#c_consultant');
   if (c_consultant) c_consultant.value = name;
+
+  if (email) modal.dataset.email = email; // ключовий момент — не залежимо від збігу імені з email
 
   try {
     if (window.guard && window.guard.user) {
@@ -275,8 +280,14 @@ function renderSlots(){
   var slots = hourSlots();
   grid.innerHTML = '';
 
-  var name = (document.getElementById('c_consultant') || {}).value || '';
-  var email = findEmailByName(name);
+  // Email беремо з модалки; якщо його раптом немає — фолбек по імені
+  var modal = getModal();
+  var email = (modal && modal.dataset && modal.dataset.email) || '';
+  if (!email) {
+    var name = (document.getElementById('c_consultant') || {}).value || '';
+    email = findEmailByName(name);
+  }
+
   var busy = [];
 
   (async function(){
@@ -347,12 +358,14 @@ async function submitConsultation(e){
 
   // головні поля з форми
   var consultantName = (document.getElementById('c_consultant')||{}).value || '';
-  var consultantEmail = findEmailByName(consultantName);
+  // беремо email з модалки; якщо нема — фолбек по імені
+  var modal = getModal();
+  var consultantEmail = (modal && modal.dataset && modal.dataset.email) || findEmailByName(consultantName);
 
   var data = {
     consultant: consultantName,                 // для сумісності з фронтом
     consultantName: consultantName,             // те, що очікує сервер
-    consultantEmail: consultantEmail,           // те, що очікує сервер
+    consultantEmail: consultantEmail,           // те, що очікує сервер (НЕ залежить від збігу з ім'ям)
     fullName:   (document.getElementById('c_fullName')||{}).value || '',
     email:      (document.getElementById('c_email')||{}).value || '',
     date:       (document.getElementById('c_date')||{}).value || '',
@@ -361,8 +374,8 @@ async function submitConsultation(e){
     paid:       !!((document.getElementById('c_paid')||{}).checked)
   };
 
-  if (!data.consultantName || !data.fullName || !data.email || !data.date || !data.time){
-    alert('Заповніть усі поля та оберіть час.');
+  if (!data.consultantName || !data.consultantEmail || !data.fullName || !data.email || !data.date || !data.time){
+    alert('Заповніть усі поля, оберіть час і переконайтесь, що email консультанта відомий.');
     return false;
   }
   if (!data.paid){
