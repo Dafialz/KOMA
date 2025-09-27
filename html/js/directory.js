@@ -266,3 +266,132 @@ window.openConsultation = function (el) {
 };
 
 window.close
+
+// Створення слотів 08:00–19:00 і вибір слоту
+function renderSlots(){
+  var grid = document.getElementById('slotGrid');
+  var dateInput = document.getElementById('c_date');
+  var timeInput = document.getElementById('c_time');
+  if (!grid || !dateInput || !timeInput) return;
+
+  var slots = hourSlots();
+  grid.innerHTML = '';
+
+  var name = (document.getElementById('c_consultant') || {}).value || '';
+  var email = findEmailByName(name);
+  var busy = [];
+
+  (async function(){
+    try{
+      var list = await getBookings(email);
+      busy = list.filter(b => b.date === dateInput.value).map(b => b.time);
+      Array.prototype.forEach.call(grid.children, function(btn){
+        var t = btn.getAttribute('data-time');
+        if (busy.indexOf(t) >= 0){
+          btn.classList.add('taken');
+          btn.setAttribute('aria-disabled','true');
+        }
+      });
+    }catch(e){/* ignore */}
+  })();
+
+  slots.forEach(function(t){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'slot';
+    b.textContent = t;
+    b.setAttribute('data-time', t);
+    b.addEventListener('click', function(){
+      if (b.classList.contains('taken')) return;
+      Array.prototype.forEach.call(grid.children, function(x){ x.classList.remove('selected'); });
+      b.classList.add('selected');
+      timeInput.value = t;
+    });
+    grid.appendChild(b);
+  });
+
+  timeInput.value = '';
+}
+
+// Прев'ю завантаженого зображення
+function bindFilePreview(){
+  var input = document.getElementById('c_file');
+  var box = document.getElementById('filePreview');
+  if (!input || !box || input._bound) return;
+  input._bound = true;
+
+  input.addEventListener('change', function(){
+    box.innerHTML = '';
+    var f = input.files && input.files[0];
+    if (!f) return;
+    var img = document.createElement('img');
+    img.alt = 'Попередній перегляд';
+    box.appendChild(img);
+    var reader = new FileReader();
+    reader.onload = function(e){ img.src = e.target.result; };
+    reader.readAsDataURL(f);
+  });
+}
+
+window.closeConsultation = function (){
+  var modal = getModal();
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  document.body.classList.remove('modal-open');
+};
+
+async function submitConsultation(e){
+  if (e && e.preventDefault) e.preventDefault();
+  var form = getForm();
+  var btn = getSubmit();
+  if (!form || !btn) return false;
+
+  var data = {
+    consultant: (document.getElementById('c_consultant')||{}).value || '',
+    fullName:   (document.getElementById('c_fullName')||{}).value || '',
+    email:      (document.getElementById('c_email')||{}).value || '',
+    date:       (document.getElementById('c_date')||{}).value || '',
+    time:       (document.getElementById('c_time')||{}).value || '',
+    notes:      (document.getElementById('c_notes')||{}).value || '',
+    paid:       !!((document.getElementById('c_paid')||{}).checked)
+  };
+
+  if (!data.consultant || !data.fullName || !data.email || !data.date || !data.time){
+    alert('Заповніть усі поля та оберіть час.');
+    return false;
+  }
+  if (!data.paid){
+    alert('Підтвердіть оплату (галочка «Я оплатив(ла)»).');
+    return false;
+  }
+
+  btn.setAttribute('aria-disabled','true'); btn.textContent='Надсилаю…';
+
+  try{
+    if (!window.__bk) window.__bk = await import('./bookings.js');
+    if (window.__bk && window.__bk.createBooking){
+      const res = await window.__bk.createBooking(data);
+      if (res && res.ok){
+        alert('Заявку надіслано. Очікуйте підтвердження.');
+        closeConsultation();
+        try{ updateQuotaBadges(data.date); }catch(_){}
+        return false;
+      }
+    }
+    var qs = new URLSearchParams(data).toString();
+    location.href = 'zapis.html?' + qs;
+    return false;
+  }catch(e){
+    console.warn('submitConsultation error', e);
+    var qs = new URLSearchParams(data).toString();
+    location.href = 'zapis.html?' + qs;
+    return false;
+  }finally{
+    btn.removeAttribute('aria-disabled'); btn.textContent='Записатися';
+  }
+}
+window.submitConsultation = submitConsultation;
+
+// Початкове оновлення лічильників на сьогодні
+updateQuotaBadges(kyivTodayStr());
