@@ -167,7 +167,7 @@ function ensurePaymentBlock(){
   wrap.className = 'paycard';
 
   wrap.innerHTML = [
-    '<div class="paycard__logo"><img src="../icon/privat.png" alt="ПриватБанк"></div>',
+    '<div class="paycard__logo"><img src="icon/privat.png" alt="ПриватБанк"></div>',
     '<div class="paycard__info">',
       '<div class="paycard__title">ПриватБанк</div>',
       '<div class="paycard__row">',
@@ -265,8 +265,6 @@ window.openConsultation = function (el) {
   if (focusEl) setTimeout(function(){ focusEl.focus(); }, 0);
 };
 
-window.close
-
 // Створення слотів 08:00–19:00 і вибір слоту
 function renderSlots(){
   var grid = document.getElementById('slotGrid');
@@ -347,8 +345,14 @@ async function submitConsultation(e){
   var btn = getSubmit();
   if (!form || !btn) return false;
 
+  // головні поля з форми
+  var consultantName = (document.getElementById('c_consultant')||{}).value || '';
+  var consultantEmail = findEmailByName(consultantName);
+
   var data = {
-    consultant: (document.getElementById('c_consultant')||{}).value || '',
+    consultant: consultantName,                 // для сумісності з фронтом
+    consultantName: consultantName,             // те, що очікує сервер
+    consultantEmail: consultantEmail,           // те, що очікує сервер
     fullName:   (document.getElementById('c_fullName')||{}).value || '',
     email:      (document.getElementById('c_email')||{}).value || '',
     date:       (document.getElementById('c_date')||{}).value || '',
@@ -357,7 +361,7 @@ async function submitConsultation(e){
     paid:       !!((document.getElementById('c_paid')||{}).checked)
   };
 
-  if (!data.consultant || !data.fullName || !data.email || !data.date || !data.time){
+  if (!data.consultantName || !data.fullName || !data.email || !data.date || !data.time){
     alert('Заповніть усі поля та оберіть час.');
     return false;
   }
@@ -379,6 +383,7 @@ async function submitConsultation(e){
         return false;
       }
     }
+    // fallback: якщо API недоступний — редірект на сторінку підтвердження
     var qs = new URLSearchParams(data).toString();
     location.href = 'zapis.html?' + qs;
     return false;
