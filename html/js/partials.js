@@ -28,14 +28,14 @@ function initHeaderFooterLogic() {
   const y = document.getElementById('y');
   if (y) y.textContent = new Date().getFullYear();
 
-  // auth UI (кабінет/вхід)
+  // auth UI (Вхід ↔ Кабінет) — працює на всіх сторінках, бо запускається після підвантаження partials
   try {
     if (window.guard?.applyAuthUI) {
       window.guard.applyAuthUI({ desktop: '#authBtn', mobile: '#authBtnMobile' });
     }
   } catch {}
 
-  // Показ/приховування пункту «Клієнти» для консультанта
+  // Показ/приховування пункту «Клієнти» тільки для консультанта
   try {
     const showClients = (() => {
       if (!window.guard?.getSession || !window.guard?.hasAccess) return false;
@@ -89,7 +89,7 @@ function initHeaderFooterLogic() {
       time: b.time
     }).toString();
 
-    // без початкового /, бо всі сторінки в /html/
+    // без початкового /, бо всі сторінки лежать у /html/
     enable(`zapis.html?${params}`);
   }
 

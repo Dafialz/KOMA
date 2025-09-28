@@ -8,20 +8,38 @@
           <div class="small">Християнський центр ментального здоров’я «КОМА»</div>
         </div>
       </div>
+
       <div class="small">
         <div><a href="pro-nas.html">Про нас</a></div>
-        <div><a href="navchannia.html">Команда</a></div>
-        <div><a href="pozhertvy.html">Пожертви</a></div>
+        <div><a href="events.html">Події</a></div>
+        <div><a href="donate.html">Пожертви</a></div>
       </div>
+
       <div class="small">
-        <div><a href="directory.html">Знайти консультанта</a></div>
-        <div><a href="podii.html">Події</a></div>
-        <div><a href="kontakty.html">Контакти</a></div>
+        <div><a href="news.html">Новини</a></div>
+        <div><a href="directory.html">Консультанти</a></div>
+        <div><a id="footerCabLink" href="login.html">Вхід</a></div>
       </div>
     </div>
+
     <div class="small" style="margin-top:14px;text-align:center">
       © <span id="y"></span> КОМА. Усі права захищені. |
       <a href="polityka-konfidenciinosti.html">Політика приватності</a>
     </div>
   </div>
+
+  <script>
+    // Підміняємо «Вхід» на «Кабінет», якщо користувач авторизований
+    (function () {
+      try {
+        const a = document.getElementById('footerCabLink');
+        if (!a || !window.guard?.getSession) return;
+        const s = window.guard.getSession();
+        if (s && s.email) {
+          a.textContent = 'Кабінет';
+          a.href = 'admin.html';
+        }
+      } catch {}
+    })();
+  </script>
 </footer>
