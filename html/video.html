@@ -6,6 +6,48 @@
   <title>Відеочат — КОМА</title>
   <link rel="icon" href="icon/favicon.ico">
   <link rel="stylesheet" href="css/main.css">
+
+  <!-- Локальна стилізація саме для сторінки відеочату -->
+  <style>
+    .wrap{max-width:1100px;margin:16px auto;padding:0 18px;display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    @media (max-width:900px){.wrap{grid-template-columns:1fr}}
+    .card{border:1px solid var(--border);border-radius:var(--radius,16px);background:#fff;box-shadow:var(--shadow,0 10px 30px rgba(0,0,0,.08))}
+    .card.side{padding:16px}
+    .video{position:relative;display:grid;grid-template-columns:1fr;gap:8px;padding:16px;border-bottom:1px solid var(--border)}
+    .video video{width:100%;background:#000;border-radius:12px;min-height:220px}
+    .video #local{position:absolute;right:16px;bottom:16px;width:220px;max-width:35%;border:2px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:12px}
+    @media (max-width:700px){.video #local{width:150px}}
+
+    /* Панель керування */
+    .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .controls .btn{height:38px;padding:0 14px}
+    .btn-group{display:inline-flex;gap:0}
+    .btn-group .btn{border-radius:999px}
+    .btn-group .btn:not(:first-child){margin-left:-8px}
+    .btn-group .btn:focus{position:relative;z-index:1}
+    .btn-pill{border-radius:999px}
+    .btn.ghost{border:1px dashed var(--border)}
+    .btn.active{outline:2px solid rgba(15,82,87,.25)}
+    .controls .meta{margin-left:auto;display:flex;gap:10px;align-items:center;color:var(--muted,#4b5563);font-size:.95rem;flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;gap:6px;line-height:1;border-radius:999px;background:#eef6f6;color:#0f5257;padding:6px 10px;font-size:.85rem}
+    .badge.muted{background:#f3f4f6;color:#6b7280}
+    .badge.ok{background:#e8f8ef;color:#0f7a48}
+    .badge.danger{background:#fde8e8;color:#b91c1c}
+
+    /* Чат */
+    .chat{margin-top:10px}
+    .chatlog{height:260px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fafafa}
+    .chatlog .sys{color:#6b7280;font-size:.9rem}
+    .chatlog .me{background:#e8f8ef;color:#0f7a48;padding:8px 10px;border-radius:10px;margin:6px 0 2px auto;display:inline-block;max-width:85%}
+    .chatlog div:not(.me):not(.sys){background:#eef6f6;color:#0f5257;padding:8px 10px;border-radius:10px;margin:6px 0 2px 0;display:inline-block;max-width:85%}
+    .row{display:flex;gap:8px;margin-top:10px}
+    .row input{flex:1;border:1px solid var(--border);border-radius:10px;padding:10px}
+    .row .btn{height:40px}
+
+    /* Стани :disabled для кнопок у цій сторінці */
+    button:disabled,
+    .btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+  </style>
 </head>
 <body>
 
@@ -20,31 +62,43 @@
       </div>
 
       <div class="controls">
-        <button id="btnStart" class="primary">Під’єднатися</button>
-        <button id="btnMic"    disabled>🎙️ Мікрофон</button>
-        <button id="btnCam"    disabled>📷 Камера</button>
-        <button id="btnScreen" disabled>🖥️ Поділитися екраном</button>
-        <button id="btnFullRemote">⤢ На весь екран (співрозмовник)</button>
-        <button id="btnFullLocal">⤢ На весь екран (моє)</button>
+        <!-- Головна дія -->
+        <button id="btnStart" class="btn green btn-pill">🔌 Під’єднатися</button>
 
-        <!-- Статуси, щоб не було помилок textContent на null -->
-        <span id="status" class="muted">Не під’єднано</span>
-        <span id="roomLabel" class="muted"></span>
-        <span id="roleLabel" class="muted"></span>
+        <!-- Група керування девайсами -->
+        <div class="btn-group" role="group" aria-label="Пристрої">
+          <button id="btnMic"    class="btn gray"    disabled>🎙️ Мікрофон</button>
+          <button id="btnCam"    class="btn gray"    disabled>📷 Камера</button>
+          <button id="btnScreen" class="btn outline" disabled>🖥️ Поділитись екраном</button>
+        </div>
+
+        <!-- Повноекранні режими -->
+        <div class="btn-group" role="group" aria-label="Екран">
+          <button id="btnFullRemote" class="btn ghost">⤢ Співрозмовник</button>
+          <button id="btnFullLocal"  class="btn ghost">⤢ Моє відео</button>
+        </div>
+
+        <!-- Статуси -->
+        <div class="meta">
+          <span id="status" class="badge muted">Не під’єднано</span>
+          <span id="roomLabel" class="badge"></span>
+          <span id="roleLabel" class="badge"></span>
+        </div>
       </div>
     </section>
 
     <aside class="card side">
-      <div><strong>Чат</strong></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <strong>Чат</strong>
+        <span class="badge muted" id="hint">Очікування підключення…</span>
+      </div>
+
       <div class="chat">
         <div id="chatlog" class="chatlog"></div>
         <div class="row">
           <input id="msg" placeholder="Написати повідомлення…" disabled>
-          <button id="send" disabled>Надіслати</button>
+          <button id="send" class="btn outline" disabled>Надіслати</button>
         </div>
-      </div>
-      <div style="border-top:1px solid var(--border)">
-        <div class="muted" id="hint">Очікування підключення…</div>
       </div>
     </aside>
   </div>
@@ -64,11 +118,11 @@
   const room   = makeRoomIdFromQS(qs);
   const polite = true;
 
-  // Безпечне встановлення тексту для бейджів
+  // Бейджі
   const rl = document.getElementById('roomLabel');
   const rr = document.getElementById('roleLabel');
-  if (rl) rl.textContent = `• Кімната: ${room}`;
-  if (rr) rr.textContent = '• Роль: учасник';
+  if (rl) rl.textContent = `Кімната: ${room}`;
+  if (rr) rr.textContent = 'Роль: учасник';
 
   /* ========= Сигналінг (Render) ========= */
   const RENDER_WSS = 'wss://koma-uaue.onrender.com';
@@ -90,6 +144,11 @@
     send:   document.getElementById('send'),
     hint:   document.getElementById('hint'),
   };
+  function setBadge(text, cls){
+    if(!els.status) return;
+    els.status.textContent = text;
+    els.status.className = 'badge ' + (cls||'');
+  }
   function logChat(text, who='sys'){
     const p = document.createElement('div');
     p.className = who === 'me' ? 'me' : (who === 'sys' ? 'sys' : '');
@@ -108,7 +167,6 @@
     ],
   });
 
-  // Фіксуємо m-lines наперед
   const txAudio = pc.addTransceiver('audio', { direction:'sendrecv' });
   const txVideo = pc.addTransceiver('video', { direction:'sendrecv' });
 
@@ -121,12 +179,12 @@
   pc.ontrack = ({streams}) => {
     if (!els.remote.srcObject) els.remote.srcObject = streams[0];
     els.remote.play?.().catch(()=>{});
-    if (els.status) els.status.textContent = 'З’єднано';
+    setBadge('З’єднано','ok');
   };
   pc.onconnectionstatechange = () => {
-    if (els.status) els.status.textContent = 'Статус: ' + pc.connectionState;
+    setBadge('Статус: ' + pc.connectionState, pc.connectionState==='connected'?'ok':(pc.connectionState==='failed'?'danger':'muted'));
     if (pc.connectionState === 'connected') {
-      els.start.textContent = 'З’єднано'; els.start.disabled = true;
+      els.start.textContent = 'З’єднано'; els.start.disabled = true; els.start.classList.add('active');
     }
     if (pc.connectionState === 'failed') {
       logChat('З’єднання втрачено. Пробуємо відновити…','sys');
@@ -145,7 +203,7 @@
     }catch(e){ console.warn('ICE restart failed', e); }
   }
 
-  /* ========= Девайси (fallback на audio-only) ========= */
+  /* ========= Девайси ========= */
   async function startLocal(constraints){
     if (localStream) return localStream;
     const base = constraints || {
@@ -289,9 +347,10 @@
       if (!dc) { dc = pc.createDataChannel('chat'); bindDataChannel(); }
       await createAndSendOffer();
       els.start.disabled = true;
-      if (els.status) els.status.textContent = 'Очікуємо відповідь…';
+      els.start.classList.add('active');
+      setBadge('Очікуємо відповідь…','muted');
     }catch(err){
-      if (els.status) els.status.textContent = 'Помилка: ' + (err.message||err.name);
+      setBadge('Помилка: ' + (err.message||err.name),'danger');
     }
   };
 
@@ -300,6 +359,7 @@
     if (track){
       track.enabled = !track.enabled;
       els.mic.textContent = track.enabled ? '🎙️ Мікрофон' : '🔇 Мікрофон';
+      els.mic.classList.toggle('active', !track.enabled);
     }
   };
   els.cam.onclick = () => {
@@ -307,15 +367,18 @@
     if (!track) return;
     track.enabled = !track.enabled;
     els.cam.textContent = track.enabled ? '📷 Камера' : '🚫 Камера';
+    els.cam.classList.toggle('active', !track.enabled);
   };
   els.screen.onclick = async () => {
     try{
       const stream = await navigator.mediaDevices.getDisplayMedia({video:true});
       screenTrack = stream.getVideoTracks()[0];
       await txVideo.sender.replaceTrack(screenTrack);
+      els.screen.classList.add('active');
       screenTrack.onended = async () => {
         const cam = localStream && localStream.getVideoTracks()[0];
         await txVideo.sender.replaceTrack(cam || null);
+        els.screen.classList.remove('active');
       };
     }catch{}
   };
