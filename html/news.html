@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Новини — КОМА</title>
+  <link rel="icon" href="icon/favicon.ico" />
+  <meta name="theme-color" content="#0f5257" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <div data-include="partials/header.html"></div>
+
+  <section class="section" aria-label="Hero">
+    <div class="container">
+      <h1>Новини</h1>
+      <p class="lead">Оголошення, статті та оновлення з життя центру.</p>
+    </div>
+  </section>
+
+  <section class="section" aria-label="Стрічка новин">
+    <div class="container grid grid-3">
+
+      <article class="card" style="padding:18px">
+        <div class="tag">Оголошення</div>
+        <h3 style="margin-top:6px">Запуск групи підтримки для волонтерів</h3>
+        <p>Відкриваємо набір у нову групу. Формат — онлайн, 8 зустрічей по 90 хв.</p>
+        <div class="row">
+          <a class="btn outline" href="zapis.html">Деталі</a>
+          <span class="small">12.09.2025</span>
+        </div>
+      </article>
+
+      <article class="card" style="padding:18px">
+        <div class="tag">Стаття</div>
+        <h3 style="margin-top:6px">Як відновлюватися після виснаження</h3>
+        <p>Короткі практики саморегуляції, які можна застосувати вже сьогодні.</p>
+        <div class="row">
+          <a class="btn outline" href="#" aria-disabled="true">Читати</a>
+          <span class="small">05.09.2025</span>
+        </div>
+      </article>
+
+      <article class="card" style="padding:18px">
+        <div class="tag">Подія</div>
+        <h3 style="margin-top:6px">Безкоштовний вебінар для капеланів</h3>
+        <p>Реєстрація відкрита. Місця обмежені.</p>
+        <div class="row">
+          <a class="btn outline" href="zapis.html">Зареєструватися</a>
+          <span class="small">22.08.2025</span>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- Пагінація (плейсхолдер) -->
+    <div class="container" style="margin-top:18px">
+      <div class="row" style="justify-content:center">
+        <a class="btn gray small" href="#" aria-disabled="true">← Попередні</a>
+        <a class="btn small" href="#" aria-disabled="true">Наступні →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Віджет фраз + служба підтримки -->
+  <div data-include="partials/support.html"></div>
+
+  <div data-include="partials/footer.html"></div>
+  <script type="module" src="js/partials.js"></script>
+  <script src="js/support.js" defer></script>
+</body>
+</html>

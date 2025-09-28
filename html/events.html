@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Події — КОМА</title>
+  <link rel="icon" href="icon/favicon.ico" />
+  <meta name="theme-color" content="#0f5257" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <div data-include="partials/header.html"></div>
+
+  <section class="section" aria-label="Hero">
+    <div class="container">
+      <h1>Події</h1>
+      <p class="lead">Навчальні зустрічі, вебінари, інтенсиви та групи підтримки. Обирайте формат і долучайтесь.</p>
+    </div>
+  </section>
+
+  <section class="section" aria-label="Список подій">
+    <div class="container">
+      <!-- Фільтри (плейсхолдер) -->
+      <div class="card" style="padding:16px;margin-bottom:18px">
+        <div class="row">
+          <select class="input" style="max-width:220px">
+            <option>Усі формати</option>
+            <option>Онлайн</option>
+            <option>Офлайн</option>
+          </select>
+          <select class="input" style="max-width:220px">
+            <option>Найближчі</option>
+            <option>Цього місяця</option>
+            <option>Архів</option>
+          </select>
+          <input class="input" placeholder="Пошук подій…" style="max-width:300px">
+        </div>
+      </div>
+
+      <!-- Сітка подій -->
+      <div class="grid grid-3">
+        <article class="event card">
+          <strong>Zoom Class: Foundations</strong>
+          <p class="small" style="text-align:left">Онлайн • 12 бер — 14 кві</p>
+          <p>6 тижнів живих занять + записи та матеріали.</p>
+          <div style="margin-top:10px"><a class="btn outline" href="zapis.html">Долучитися</a></div>
+        </article>
+
+        <article class="event card">
+          <strong>Intensive: Trauma Care</strong>
+          <p class="small" style="text-align:left">Київ • 5–7 кві</p>
+          <p>Інтенсив для практиків: кейси, рольові ігри, супервізія.</p>
+          <div style="margin-top:10px"><a class="btn outline" href="zapis.html">Зареєструватися</a></div>
+        </article>
+
+        <article class="event card">
+          <strong>CE Webinar: Ethics</strong>
+          <p class="small" style="text-align:left">Онлайн • 22 кві</p>
+          <p>Оновлення етичних стандартів, Q&amp;A.</p>
+          <div style="margin-top:10px"><a class="btn outline" href="zapis.html">Забронювати</a></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Віджет фраз + служба підтримки -->
+  <div data-include="partials/support.html"></div>
+
+  <div data-include="partials/footer.html"></div>
+  <script type="module" src="js/partials.js"></script>
+  <script src="js/support.js" defer></script>
+</body>
+</html>
