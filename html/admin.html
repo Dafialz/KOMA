@@ -14,15 +14,28 @@
     @media (max-width:980px){.vk-wrap{grid-template-columns:1fr}}
     .vk-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
     .vk-profile{padding:16px}
-    .vk-avatar{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:#f3f4f6;border:1px solid var(--border)}
+    /* Аватар без підрізання */
+    .vk-avatar{
+      width:100%;
+      height:auto;              /* висота за пропорціями */
+      object-fit:contain;       /* не обрізає фото */
+      background:#f3f4f6;
+      border:1px solid var(--border);
+      border-radius:12px;
+      display:block;
+    }
     .vk-name{font-weight:800;margin:10px 0 2px}
     .vk-mail{color:var(--muted);font-size:.95rem;word-break:break-all}
     .vk-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
     .vk-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border)}
     .vk-stats div{padding:10px 8px;text-align:center}
     .vk-stats b{display:block;font-size:1.1rem}
-    .vk-gallery{padding:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .vk-gallery img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid var(--border);background:#f6f7f8}
+
+    /* Блок під кнопкою підтримки (замість галереї) */
+    .vk-support{padding:12px;border-top:1px solid var(--border)}
+    .w100{width:100%;justify-content:center}
+
     .vk-title{margin:0 0 6px}
   </style>
 </head>
@@ -31,7 +44,7 @@
 
   <section class="section">
     <div class="container vk-wrap">
-      <!-- Ліва колонка: профіль + фото -->
+      <!-- Ліва колонка: профіль + кнопка підтримки -->
       <aside class="vk-card">
         <div class="vk-profile">
           <img id="avatar" class="vk-avatar" src="icon/avatar.png" alt="Аватар консультанта">
@@ -50,7 +63,12 @@
           <div><b id="statPhotos">0</b><span class="muted">фото</span></div>
         </div>
 
-        <div class="vk-gallery" id="gallery"></div>
+        <!-- ЗАМІСТЬ ГАЛЕРЕЇ -->
+        <div class="vk-support">
+          <a id="supportBtn" class="btn outline w100" href="mailto:support@koma.example?subject=Підтримка%20КОМА">
+            Служба підтримки
+          </a>
+        </div>
       </aside>
 
       <!-- Права колонка: існуючий функціонал -->
@@ -102,7 +120,7 @@
 
     // ===== Сесія та базові дані користувача
     const sess    = guard.getSession();
-    const myEmail = String(sess?.email || '').toLowerCase();   // <— є тепер ЗАВЖДИ
+    const myEmail = String(sess?.email || '').toLowerCase();
     const myName  = guard.emailToName(myEmail) || 'Консультант';
 
     // Відображення у правій колонці/профілі
@@ -111,7 +129,7 @@
     document.getElementById('profMail').textContent = myEmail;
     document.getElementById('clientsBtn').style.display = 'inline-flex';
 
-    // ===== Мапи аватарів та галерей (під твою структуру icon/consultants/*)
+    // ===== Мапи аватарів (під твою структуру icon/consultants/*)
     const AVATAR_MAP = {
       'oksanakokoten@gmail.com'   : 'icon/consultants/oksana.jpg',
       'sergiyoyovych@gmail.com'   : 'icon/consultants/sergi.jpg',
@@ -121,61 +139,13 @@
       'kristinakokoten@gmail.com' : 'icon/consultants/kris.jpg'
     };
 
-    const GALLERY_MAP = {
-      'oksanakokoten@gmail.com': [
-        'icon/pro-nas/banda1.jpg','icon/pro-nas/banda2.jpg','icon/pro-nas/banda3.jpg'
-      ],
-      'sergiyoyovych@gmail.com': [
-        'icon/pro-nas/banda4.jpg','icon/pro-nas/banda6.jpg'
-      ],
-      'tetianaoyovych@gmail.com': [
-        'icon/pro-nas/banda5.jpg','icon/pro-nas/banda1.jpg'
-      ],
-      'oleksandrtkachuk@gmail.com': [
-        'icon/pro-nas/banda2.jpg','icon/pro-nas/banda4.jpg'
-      ],
-      'anastasiyamakovska@gmail.com': [
-        'icon/pro-nas/banda3.jpg','icon/pro-nas/banda5.jpg'
-      ],
-      'kristinakokoten@gmail.com': [
-        'icon/pro-nas/koma.jpg','icon/pro-nas/koma-centr.jpg'
-      ]
-    };
-
-    // Якщо для когось галерея не задана — шукаємо фото у вигляді icon/consultants/<ім’я>-1..6.jpg
-    function fallbackGallery(email){
-      const avatar = AVATAR_MAP[email] || '';              // напр. icon/consultants/oksana.jpg
-      const stem   = avatar.replace(/\.jpg$/i,'');         // icon/consultants/oksana
-      const root   = stem ? stem.replace(/[^/]+$/,'') : 'icon/consultants/'; // icon/consultants/
-      const name   = stem ? stem.split('/').pop() : 'oksana';
-      const arr=[]; for(let i=1;i<=6;i++) arr.push(`${root}${name}${i}.jpg`);
-      return arr;
-    }
-
-    // Аватар
+    // Аватар (з фолбеком)
     const avatarEl = document.getElementById('avatar');
     avatarEl.src = AVATAR_MAP[myEmail] || 'icon/avatar.png';
     avatarEl.onerror = () => { avatarEl.src = 'icon/avatar.png'; };
 
-    // Галерея
-    const gal = document.getElementById('gallery');
-    const galleryList = (GALLERY_MAP[myEmail] && GALLERY_MAP[myEmail].length)
-      ? GALLERY_MAP[myEmail]
-      : fallbackGallery(myEmail);
-
-    let shown = 0;
-    galleryList.forEach(src=>{
-      const img = new Image();
-      img.loading = 'lazy';
-      img.src = src;
-      img.alt = 'Фото';
-      img.onerror = () => img.remove();
-      img.onload  = () => { gal.appendChild(img); shown++; document.getElementById('statPhotos').textContent = shown; };
-    });
-
-    // Простенькі «статистики»
-    document.getElementById('statToday').textContent   = 0;
-    document.getElementById('statPlanned').textContent = 0;
+    // Статистика «фото» тепер дорівнює 0 (галереї немає)
+    document.getElementById('statPhotos').textContent = 0;
 
     // ===== Дата/час за замовчуванням (сьогодні +1 день, таймзона Київ)
     const kyivNow = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Kyiv' }));
@@ -218,6 +188,9 @@
 
     // Вихід
     document.getElementById('logout').onclick = () => guard.logout();
+
+    // Якщо хочеш динамічно підставляти email підтримки — зроби так:
+    // document.getElementById('supportBtn').href = `mailto:support@koma.example?subject=Підтримка%20для%20${encodeURIComponent(myName)}`;
   </script>
   <script src="js/partials.js"></script>
 </body>
