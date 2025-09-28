@@ -7,7 +7,6 @@
   <link rel="icon" href="icon/favicon.ico">
   <link rel="stylesheet" href="css/main.css">
 
-  <!-- Локальна стилізація саме для сторінки відеочату -->
   <style>
     .wrap{max-width:1100px;margin:16px auto;padding:0 18px;display:grid;grid-template-columns:2fr 1fr;gap:16px}
     @media (max-width:900px){.wrap{grid-template-columns:1fr}}
@@ -18,7 +17,6 @@
     .video #local{position:absolute;right:16px;bottom:16px;width:220px;max-width:35%;border:2px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:12px}
     @media (max-width:700px){.video #local{width:150px}}
 
-    /* Панель керування */
     .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
     .controls .btn{height:38px;padding:0 14px}
     .btn-group{display:inline-flex;gap:0}
@@ -34,7 +32,6 @@
     .badge.ok{background:#e8f8ef;color:#0f7a48}
     .badge.danger{background:#fde8e8;color:#b91c1c}
 
-    /* Чат */
     .chat{margin-top:10px}
     .chatlog{height:260px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fafafa}
     .chatlog .sys{color:#6b7280;font-size:.9rem}
@@ -44,41 +41,43 @@
     .row input{flex:1;border:1px solid var(--border);border-radius:10px;padding:10px}
     .row .btn{height:40px}
 
-    /* Стани :disabled для кнопок у цій сторінці */
-    button:disabled,
-    .btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+    button:disabled,.btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+
+    /* Кнопка для розблокування аудіо на мобільних */
+    .unmute {
+      position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
+      background:#0f5257;color:#fff;border:none;border-radius:999px;padding:10px 14px;
+      font-size:.9rem; box-shadow:0 6px 18px rgba(0,0,0,.25); display:none;
+    }
+    .video.has-unmute .unmute{display:block}
   </style>
 </head>
 <body>
 
-  <!-- Єдині partials, як і на інших сторінках -->
   <div data-include="partials/header.html"></div>
 
   <div class="wrap">
     <section class="card">
-      <div class="video">
+      <div class="video" id="videoWrap">
         <video id="remote" autoplay playsinline></video>
         <video id="local"  autoplay playsinline muted></video>
+        <button id="btnUnmute" class="unmute">Увімкнути звук</button>
       </div>
 
       <div class="controls">
-        <!-- Головна дія -->
         <button id="btnStart" class="btn green btn-pill">🔌 Під’єднатися</button>
 
-        <!-- Група керування девайсами -->
         <div class="btn-group" role="group" aria-label="Пристрої">
           <button id="btnMic"    class="btn gray"    disabled>🎙️ Мікрофон</button>
           <button id="btnCam"    class="btn gray"    disabled>📷 Камера</button>
           <button id="btnScreen" class="btn outline" disabled>🖥️ Поділитись екраном</button>
         </div>
 
-        <!-- Повноекранні режими -->
         <div class="btn-group" role="group" aria-label="Екран">
           <button id="btnFullRemote" class="btn ghost">⤢ Співрозмовник</button>
           <button id="btnFullLocal"  class="btn ghost">⤢ Моє відео</button>
         </div>
 
-        <!-- Статуси -->
         <div class="meta">
           <span id="status" class="badge muted">Не під’єднано</span>
           <span id="roomLabel" class="badge"></span>
@@ -118,13 +117,12 @@
   const room   = makeRoomIdFromQS(qs);
   const polite = true;
 
-  // Бейджі
   const rl = document.getElementById('roomLabel');
   const rr = document.getElementById('roleLabel');
   if (rl) rl.textContent = `Кімната: ${room}`;
   if (rr) rr.textContent = 'Роль: учасник';
 
-  /* ========= Сигналінг (Render) ========= */
+  /* ========= Сигналінг ========= */
   const RENDER_WSS = 'wss://koma-uaue.onrender.com';
   const SIGNAL_URL = (location.hostname === 'localhost') ? 'ws://localhost:3000' : RENDER_WSS;
 
@@ -143,6 +141,8 @@
     msg:    document.getElementById('msg'),
     send:   document.getElementById('send'),
     hint:   document.getElementById('hint'),
+    unmute: document.getElementById('btnUnmute'),
+    vwrap:  document.getElementById('videoWrap'),
   };
   function setBadge(text, cls){
     if(!els.status) return;
@@ -178,15 +178,17 @@
   pc.onicecandidate = ({candidate}) => { if (candidate) wsSend({ type:'ice', room, payload: candidate }); };
   pc.ontrack = ({streams}) => {
     if (!els.remote.srcObject) els.remote.srcObject = streams[0];
-    els.remote.play?.().catch(()=>{});
+    try { els.remote.play(); } catch {}
+    maybeShowUnmute();
     setBadge('З’єднано','ok');
   };
   pc.onconnectionstatechange = () => {
-    setBadge('Статус: ' + pc.connectionState, pc.connectionState==='connected'?'ok':(pc.connectionState==='failed'?'danger':'muted'));
-    if (pc.connectionState === 'connected') {
+    const st = pc.connectionState;
+    setBadge('Статус: ' + st, st==='connected'?'ok':(st==='failed'?'danger':'muted'));
+    if (st === 'connected') {
       els.start.textContent = 'З’єднано'; els.start.disabled = true; els.start.classList.add('active');
     }
-    if (pc.connectionState === 'failed') {
+    if (st === 'failed') {
       logChat('З’єднання втрачено. Пробуємо відновити…','sys');
       restartIce();
     }
@@ -228,7 +230,7 @@
     if (v) await txVideo.sender.replaceTrack(v);
 
     els.local.srcObject = localStream;
-    els.local.play?.().catch(()=>{});
+    try { els.local.play(); } catch {}
     els.mic.disabled = !a;
     els.cam.disabled = !v;
     els.screen.disabled = false;
@@ -282,7 +284,7 @@
         } else {
           await pc.setRemoteDescription(offerDesc);
         }
-        await startLocal();
+        // Не викликаємо getUserMedia тут — чекаємо кліку користувача
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         wsSend({ type:'answer', room, payload: pc.localDescription });
@@ -383,14 +385,45 @@
     }catch{}
   };
 
-  /* ========= Повноекранний режим ========= */
+  /* ========= Повноекранний режим (iOS фолбеки) ========= */
+  function enterFullscreen(el){
+    if (!el) return;
+    try {
+      if (el.requestFullscreen) return el.requestFullscreen();
+      if (el.webkitEnterFullscreen) return el.webkitEnterFullscreen(); // iPhone Safari
+      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen(); // iPad
+      if (el.msRequestFullscreen) return el.msRequestFullscreen();
+    } catch {}
+  }
+  function exitFullscreen(){
+    try{
+      if (document.exitFullscreen) return document.exitFullscreen();
+      if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+    }catch{}
+  }
   function toggleFS(el){
-    if (!document.fullscreenElement) el.requestFullscreen?.();
-    else document.exitFullscreen?.();
+    if (!document.fullscreenElement && !(document.webkitFullscreenElement)) enterFullscreen(el);
+    else exitFullscreen();
   }
   els.fullRemote.addEventListener('click', ()=> toggleFS(els.remote));
   els.fullLocal .addEventListener('click', ()=> toggleFS(els.local));
   [els.remote, els.local].forEach(v => v.addEventListener('dblclick', ()=> toggleFS(v)));
+
+  function isMobile(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
+  if (isMobile()){
+    els.remote.addEventListener('click', ()=> enterFullscreen(els.remote), { passive:true });
+    els.local .addEventListener('click', ()=> enterFullscreen(els.local),  { passive:true });
+  }
+
+  /* ========= Аудіо-анлок на мобільних ========= */
+  function maybeShowUnmute(){
+    if (!isMobile()) return;
+    els.vwrap.classList.add('has-unmute');
+  }
+  els.unmute.addEventListener('click', ()=>{
+    try { els.remote.muted = false; els.remote.play(); } catch {}
+    els.vwrap.classList.remove('has-unmute');
+  });
 
   /* ========= Автостарт (опційно ?autostart=1) ========= */
   if (qs.get('autostart') === '1') {
