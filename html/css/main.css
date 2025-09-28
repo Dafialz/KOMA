@@ -54,16 +54,31 @@ a:hover{text-decoration:underline}
 }
 
 /* ========== Header (partials/header.html) ========== */
-.header{position:sticky;top:0;z-index:50;
+/* Підтримуємо і .header, і .site-header (щоб нічого не ламалось) */
+.header,.site-header{
+  position:sticky; top:0; z-index:50;
   background:linear-gradient(135deg,#0b2e33 0%,#0f5257 55%,#6fc8b8 120%);
-  border-bottom:1px solid rgba(255,255,255,.15); color:#fff}
-.nav{display:flex;align-items:center;justify-content:space-between;height:72px}
-.brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}
-.brand img{height:40px;width:auto;border-radius:8px}
-.brand span{font-weight:800;letter-spacing:.2px}
+  border-bottom:1px solid rgba(255,255,255,.15); color:#fff;
+}
+.header .nav,.site-header .nav{
+  display:flex; align-items:center; justify-content:space-between; height:72px;
+}
+.header .brand,.site-header .brand{
+  display:flex; align-items:center; gap:12px; color:#fff; text-decoration:none;
+}
+.header .brand img,.site-header .brand img{height:40px;width:auto;border-radius:8px}
+.header .brand span,.site-header .brand span{font-weight:800;letter-spacing:.2px}
+
+/* Посилання в хедері (працює як із .menu, так і без нього) */
 .menu{display:flex;gap:18px;align-items:center}
 .menu a{color:#fff;opacity:.95;padding:.5rem .6rem;border-radius:10px;text-decoration:none}
 .menu a:hover{background:rgba(255,255,255,.12)}
+/* Якщо навігація без класу .menu */
+.header nav a,.site-header nav a{
+  color:#fff; opacity:.95; padding:.5rem .6rem; border-radius:10px; text-decoration:none;
+}
+.header nav a:hover,.site-header nav a:hover{ background:rgba(255,255,255,.12); }
+
 .hamb{display:none}
 @media (max-width:960px){
   .menu{display:none}
@@ -71,9 +86,11 @@ a:hover{text-decoration:underline}
     border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff}
   #mobile.open{max-height:500px;padding:12px 0}
 }
-.mobile{overflow:hidden;max-height:0;transition:max-height .25s ease,padding .25s ease;
+.mobile{
+  overflow:hidden; max-height:0; transition:max-height .25s ease,padding .25s ease;
   border-bottom:1px solid rgba(255,255,255,.15);
-  background:linear-gradient(135deg,#0b2e33 0%,#0f5257 80%)}
+  background:linear-gradient(135deg,#0b2e33 0%,#0f5257 80%);
+}
 .mobile a{display:block;padding:12px 0;color:#fff;border-bottom:1px dashed rgba(255,255,255,.18);text-decoration:none}
 
 /* Кнопки в хедері, які можуть бути «заблоковані» */
@@ -140,4 +157,4 @@ p{margin:0 0 10px;color:var(--muted)}
 label{display:block;font-weight:700;margin:8px 0 6px}
 .hint{font-size:.9rem;color:#6b7280;margin-top:8px}
 .error{display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:.6rem .8rem;border-radius:10px;margin:10px 0}
-.ok{display:none;background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;padding:.6rem .8rem;border-radius:10px;margin:10px 0}
+.ok{display:none;background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;padding:.6rem .8рем;border-radius:10px;margin:10px 0}
