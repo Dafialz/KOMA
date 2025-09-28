@@ -13,29 +13,26 @@
     .hero h1{margin:0 0 10px}
     .hero .lead{color:var(--muted,#4b5563);max-width:880px;margin:0 auto}
 
-    /* Верхній блок з 2-ма великими картками */
-    .grid-2{display:grid;gap:18px;grid-template-columns:repeat(2,1fr)}
-    @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+    /* Верхній блок з 3-ма великими картками */
+    .grid-3{display:grid;gap:18px;grid-template-columns:repeat(3,1fr)}
+    @media (max-width:1100px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:700px){.grid-3{grid-template-columns:1fr}}
 
     .about-card{
       background:#fff;border:1px solid var(--border);
       border-radius:var(--radius,16px);
       box-shadow:var(--shadow,0 10px 30px rgba(0,0,0,.06));
-      overflow:hidden;display:flex;flex-direction:column
+      overflow:hidden;display:flex;flex-direction:column;
     }
 
-    /* ВАЖЛИВО: не обрізати фото, вирівняти по центру, зробити більшими */
     .about-card img{
       width:100%;
-      height:320px;                 /* трошки більші */
-      object-fit:contain;           /* без підрізання */
+      height:360px;
+      object-fit:contain;         /* показує все фото */
       object-position:center;
-      background:#f6f7f8;           /* м’який фон для «порожніх» полів */
-      display:block
+      background:#f6f7f8;
+      display:block;
     }
-
-    /* Трохи більші зображення у верхніх 2-х картках */
-    .about-card.wide img{height:360px}
 
     .about-body{padding:14px 16px 18px;display:grid;gap:8px}
     .about-body h3{margin:0;font-size:1.1rem}
@@ -65,28 +62,34 @@
     </div>
   </section>
 
-  <!-- ДВА ВЕЛИКІ ФОТО З ОПИСОМ НАВЕРХУ -->
+  <!-- ТРИ ВЕЛИКІ КАРТКИ -->
   <section class="section">
-    <div class="container grid-2">
-      <article class="about-card wide">
+    <div class="container grid-3">
+      <article class="about-card">
         <img src="icon/pro-nas/koma.jpg" alt="Айдентика та логотип КОМА">
         <div class="about-body">
           <h3>Наш бренд</h3>
-          <p>
-            Візуальна айдентика КОМА — про цілісність і ясність. Ми поєднуємо професійний підхід,
-            християнські цінності та повагу до гідності кожної людини.
-          </p>
+          <p>Візуальна айдентика КОМА — про цілісність і ясність. Ми поєднуємо професійний підхід,
+            християнські цінності та повагу до гідності кожної людини.</p>
         </div>
       </article>
 
-      <article class="about-card wide">
+      <article class="about-card">
         <img src="icon/pro-nas/koma-centr.jpg" alt="Простір центру КОМА">
         <div class="about-body">
           <h3>Наш простір</h3>
-          <p>
-            Інклюзивні приміщення для індивідуальної та групової роботи, зручні формати
-            офлайн та онлайн. Створюємо безпечне середовище для відновлення та розвитку.
-          </p>
+          <p>Інклюзивні приміщення для індивідуальної та групової роботи, зручні формати
+            офлайн та онлайн. Створюємо безпечне середовище для відновлення та розвитку.</p>
+        </div>
+      </article>
+
+      <article class="about-card">
+        <div style="height:360px;display:flex;align-items:center;justify-content:center;background:#f6f7f8;color:#999">
+          <span>Фото пастора (скоро)</span>
+        </div>
+        <div class="about-body">
+          <h3>Наш пастор</h3>
+          <p>Тут буде інформація та фото пастора. Блок створено як резерв.</p>
         </div>
       </article>
     </div>
