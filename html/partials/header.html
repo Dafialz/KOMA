@@ -1,37 +1,46 @@
-<header class="header">
-  <div class="container nav">
-    <a class="brand" href="index.html" aria-label="КОМА Головна">
-      <img src="icon/logo.png" alt="КОМА logo">
-      <span>КОМА</span>
+<header class="site-header">
+  <div class="container row" style="align-items:center; gap:16px;">
+    <a class="brand row" href="index.html" style="align-items:center; gap:10px;">
+      <img src="icon/logo.svg" alt="КОМА" width="36" height="36">
+      <span class="brand-title">КОМА</span>
     </a>
 
-    <nav class="menu" aria-label="Primary">
+    <!-- Desktop nav -->
+    <nav class="nav desktop" aria-label="Головне меню" style="margin-left:auto;">
       <a href="pro-nas.html">Про нас</a>
-      <a href="navchannia.html">Навчання</a>
-      <a href="podii.html">Події</a>
-      <a href="pozhertvy.html">Пожертви</a>
-      <a href="kontakty.html">Контакти</a>
-      <a class="btn outline" href="directory.html">Знайти консультанта</a>
-      <a class="btn" id="joinBtn" href="#" aria-disabled="true">Приєднатись</a>
-      <a class="btn gray" href="clients.html">Клієнти</a>
+      <a href="training.html">Навчання</a>
+      <a href="events.html">Події</a>
+      <a href="donate.html">Пожертви</a>
+      <a href="news.html">Новини</a>
+      <!-- Показувати ТІЛЬКИ для консультанта -->
+      <a id="clientsNav" href="clients.html" style="display:none">Клієнти</a>
+
+      <!-- Кнопка «Приєднатись» активується, якщо є майбутній запис -->
+      <a id="joinBtn" class="btn outline" href="#" aria-disabled="true">Приєднатись</a>
+
+      <!-- Вхід / Кабінет (керується guard.applyAuthUI) -->
       <a id="authBtn" class="btn green" href="login.html">Вхід</a>
     </nav>
 
-    <button class="hamb" id="hamb" aria-label="Меню" aria-expanded="false">☰</button>
+    <!-- Mobile hamburger -->
+    <button id="hamb" class="hamb" aria-label="Меню" aria-expanded="false" aria-controls="mobile">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 
-  <!-- Mobile -->
-  <div class="container mobile" id="mobile" aria-label="Mobile menu">
+  <!-- Mobile menu -->
+  <nav id="mobile" class="mobile" aria-label="Мобільне меню">
     <a href="pro-nas.html">Про нас</a>
-    <a href="navchannia.html">Навчання</a>
-    <a href="podii.html">Події</a>
-    <a href="pozhertvy.html">Пожертви</a>
-    <a href="kontakty.html">Контакти</a>
-    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-      <a class="btn outline" href="directory.html">Знайти консультанта</a>
-      <a class="btn" id="joinBtnM" href="#" aria-disabled="true">Приєднатись</a>
-      <a class="btn gray" href="clients.html">Клієнти</a>
+    <a href="training.html">Навчання</a>
+    <a href="events.html">Події</a>
+    <a href="donate.html">Пожертви</a>
+    <a href="news.html">Новини</a>
+    <!-- Показувати ТІЛЬКИ для консультанта -->
+    <a id="clientsNavM" href="clients.html" style="display:none">Клієнти</a>
+
+    <div class="row" style="gap:10px; margin-top:8px;">
+      <a id="joinBtnM" class="btn outline" href="#" aria-disabled="true">Приєднатись</a>
       <a id="authBtnMobile" class="btn green" href="login.html">Вхід</a>
     </div>
-  </div>
+  </nav>
 </header>

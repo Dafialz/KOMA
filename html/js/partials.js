@@ -24,15 +24,29 @@ function initHeaderFooterLogic() {
     hamb.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
-  // рік у футері (перезаписуємо, а не append — щоб не дублювалось)
+  // рік у футері
   const y = document.getElementById('y');
   if (y) y.textContent = new Date().getFullYear();
 
-  // auth UI (якщо guard є)
+  // auth UI (кабінет/вхід)
   try {
     if (window.guard?.applyAuthUI) {
       window.guard.applyAuthUI({ desktop: '#authBtn', mobile: '#authBtnMobile' });
     }
+  } catch {}
+
+  // Показ/приховування пункту «Клієнти» для консультанта
+  try {
+    const showClients = (() => {
+      if (!window.guard?.getSession || !window.guard?.hasAccess) return false;
+      const s = window.guard.getSession();
+      return !!(s && window.guard.hasAccess(s.email));
+    })();
+
+    ['#clientsNav', '#clientsNavM'].forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el) el.style.display = showClients ? '' : 'none';
+    });
   } catch {}
 
   // КНОПКА «ПРИЄДНАТИСЬ» — активна, якщо є майбутній запис у localStorage
@@ -75,7 +89,7 @@ function initHeaderFooterLogic() {
       time: b.time
     }).toString();
 
-    // ВАЖЛИВО: без початкового /, бо всі сторінки в /html/
+    // без початкового /, бо всі сторінки в /html/
     enable(`zapis.html?${params}`);
   }
 
