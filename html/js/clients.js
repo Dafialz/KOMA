@@ -37,8 +37,23 @@ const uniqById = (arr)=> {
   });
 };
 
+// абсолютний URL до файлу з Render (якщо бек віддав /uploads/..)
+let API_BASE_CACHE = null;
+async function getApiBase(){
+  if (API_BASE_CACHE) return API_BASE_CACHE;
+  const mod = await import('./config.js');
+  API_BASE_CACHE = mod.API_BASE || '';
+  return API_BASE_CACHE;
+}
+function joinUrl(base, rel){
+  if (!rel) return '';
+  if (/^https?:\/\//i.test(rel)) return rel;
+  if (rel.startsWith('/')) return `${base}${rel}`;
+  return `${base}/${rel}`;
+}
+
 // ── Рендер ──────────────────────────────────────────────────────────────────
-function render(items) {
+async function render(items) {
   if (!listEl) return;
   listEl.innerHTML = '';
 
@@ -54,16 +69,21 @@ function render(items) {
   // Сортуємо за датою/часом (найближчі вгорі)
   safeItems.sort((a,b) => (String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
 
+  const API_BASE = await getApiBase();
+
   for (const b of safeItems) {
-    const hasFile = !!b.fileUrl;
+    const fileUrlAbs = b.fileUrl ? joinUrl(API_BASE, b.fileUrl) : '';
+    const hasFile = !!fileUrlAbs;
+
     const fileBlock = hasFile ? `
-      <div class="fileline">
+      <div class="fileline" style="display:flex;align-items:center;gap:10px;margin-top:8px">
         <span class="muted">Прикріплене фото:</span>
-        <a class="filebtn" href="${b.fileUrl}" target="_blank" rel="noopener" download>
+        <a class="filebtn btn light" href="${fileUrlAbs}" target="_blank" rel="noopener" download>
           📎 Завантажити чек${b.fileName ? ` (${escapeHtml(b.fileName)})` : ''}
         </a>
-        <a class="filethumb" href="${b.fileUrl}" target="_blank" rel="noopener" title="Відкрити в новій вкладці">
-          <img src="${b.fileUrl}" alt="Прикріплене фото" loading="lazy">
+        <a class="filethumb" href="${fileUrlAbs}" target="_blank" rel="noopener" title="Відкрити в новій вкладці" style="line-height:0">
+          <img src="${fileUrlAbs}" alt="Прикріплене фото" loading="lazy"
+               style="height:56px;width:56px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
         </a>
       </div>
     ` : '';
@@ -77,12 +97,13 @@ function render(items) {
         ${b.note ? `<div class="muted">${escapeHtml(b.note)}</div>` : ''}
         ${fileBlock}
       </div>
-      <div class="row">
+      <div class="row" style="gap:10px;align-items:center">
         <a class="btn ghost" href="video.html?room=${encodeURIComponent(myName)}" target="_blank" rel="noopener">Приєднатися до відеочату</a>
         <button class="btn gray" data-id="${escapeHtml(b.id)}">Завершити</button>
       </div>
     `;
 
+    // кнопка "Завершити"
     const delBtn = div.querySelector('button[data-id]');
     if (delBtn) {
       delBtn.onclick = async (e) => {
@@ -98,12 +119,21 @@ function render(items) {
       };
     }
 
+    // якщо користувач клацне саме по <img>, все одно відкриємо в новій вкладці
+    const img = div.querySelector('.filethumb img');
+    if (img && fileUrlAbs){
+      img.style.cursor = 'zoom-in';
+      img.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        window.open(fileUrlAbs, '_blank', 'noopener');
+      });
+    }
+
     listEl.appendChild(div);
   }
 }
 
 // ── Додатковий фетч по імені (варіант B) ────────────────────────────────────
-// Якщо бекенд це підтримує: /api/bookings?consultantName=...
 async function fetchByName(name){
   try{
     const { API_BASE } = await import('./config.js');
@@ -122,13 +152,13 @@ async function load(showSpinner=true){
     // 1) за email консультанта (основний шлях)
     const byEmail = await fetchBookings(myEmail).catch(()=>({ list: [] }));
 
-    // 2) додатково за ІМЕНЕМ консультанта (щоб не залежати від збігу email/ім’я)
+    // 2) додатково за іменем консультанта (щоб не залежати від збігу email/ім’я)
     const byName  = await fetchByName(myName).catch(()=>({ list: [] }));
 
     // змерджимо унікально (за id)
     const merged = uniqById([...(byEmail?.list||[]), ...(byName?.list||[])]);
 
-    render(merged);
+    await render(merged);
   } catch {
     if (listEl) listEl.innerHTML = '';
     if (emptyEl) emptyEl.style.display='none';

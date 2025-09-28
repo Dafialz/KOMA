@@ -115,7 +115,7 @@ async function updateQuotaBadges(dateStr){
   const cards = $all('.card.person');
   for (const card of cards){
     const email = (card.dataset && card.dataset.email) || '';
-    const name  = (card.dataset && card.dataset.name)  || (card.querySelector('.p-name') || {}).textContent || '';
+    theName  = (card.dataset && card.dataset.name)  || (card.querySelector('.p-name') || {}).textContent || '';
     const btn   = card.querySelector('.p-actions .btn');
     const badge = card.querySelector('.quota-badge');
     if (!email || !btn || !badge) continue;
@@ -136,7 +136,7 @@ async function updateQuotaBadges(dateStr){
         if (!btn.onclick) btn.onclick = function(){ openConsultation(btn); };
       }
     }catch(e){
-      console.warn('quota update fail for', name, e);
+      console.warn('quota update fail for', theName, e);
     }
   }
 }
@@ -380,6 +380,10 @@ async function submitConsultation(e){
   var modal = getModal();
   var consultantEmail = (modal && modal.dataset && modal.dataset.email) || findEmailByName(consultantName);
 
+  // файл чеку (необов'язковий)
+  var fileInput = document.getElementById('c_file');
+  var file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
+
   var data = {
     consultant: consultantName,                 // для сумісності з фронтом
     consultantName: consultantName,             // те, що очікує сервер
@@ -389,7 +393,8 @@ async function submitConsultation(e){
     date:       (document.getElementById('c_date')||{}).value || '',
     time:       (document.getElementById('c_time')||{}).value || '',
     notes:      (document.getElementById('c_notes')||{}).value || '',
-    paid:       !!((document.getElementById('c_paid')||{}).checked)
+    paid:       !!((document.getElementById('c_paid')||{}).checked),
+    file        // <- ВАЖЛИВО: передаємо файл у payload (FormData збере bookings.js)
   };
 
   if (!data.consultantName || !data.consultantEmail || !data.fullName || !data.email || !data.date || !data.time){
