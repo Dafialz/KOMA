@@ -10,7 +10,7 @@
 <body>
 
   <!-- Єдині partials, як і на інших сторінках -->
-  <div data-include="header.html"></div>
+  <div data-include="partials/header.html"></div>
 
   <div class="wrap">
     <section class="card">
@@ -64,7 +64,7 @@
   const room   = makeRoomIdFromQS(qs);
   const polite = true;
 
-  // Безопасне встановлення тексту для бейджів
+  // Безпечне встановлення тексту для бейджів
   const rl = document.getElementById('roomLabel');
   const rr = document.getElementById('roleLabel');
   if (rl) rl.textContent = `• Кімната: ${room}`;
