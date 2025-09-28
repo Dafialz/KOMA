@@ -169,3 +169,49 @@ label{display:block;font-weight:700;margin:8px 0 6px}
 .hint{font-size:.9rem;color:#6b7280;margin-top:8px}
 .error{display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:.6rem .8rem;border-radius:10px;margin:10px 0}
 .ok{display:none;background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;padding:.6rem .8rem;border-radius:10px;margin:10px 0}
+
+/* ========== KOMA widget & Support modal ========== */
+.koma-widget{
+  position:fixed; right:16px; bottom:16px; z-index:60;
+  display:flex; align-items:center; gap:10px;
+  pointer-events:none; /* текст не блокує кліки по сторінці */
+}
+.koma-phrase{
+  pointer-events:auto;
+  background:#0f5257; color:#fff; border:1px solid rgba(255,255,255,.25);
+  box-shadow:var(--shadow-sm); border-radius:999px;
+  padding:.5rem .9rem; font-weight:700; white-space:nowrap;
+  max-width:70vw; overflow:hidden; text-overflow:ellipsis;
+}
+.koma-help{
+  pointer-events:auto;
+  width:48px; height:48px; border-radius:999px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:20px; line-height:1;
+  color:#fff; background:linear-gradient(135deg,#0b2e33 0%,#0f5257 70%);
+  border:1px solid rgba(255,255,255,.35); box-shadow:var(--shadow);
+  transition:transform .15s ease;
+}
+.koma-help:hover{ transform:translateY(-1px); }
+@media (max-width:640px){
+  .koma-phrase{ display:none; } /* на дуже малих екранах лишаємо тільки кнопку */
+}
+
+/* ===== Modal ===== */
+.koma-modal{ position:fixed; inset:0; display:none; z-index:70; }
+.koma-modal[aria-hidden="false"]{ display:block; }
+.koma-modal__backdrop{
+  position:absolute; inset:0; background:rgba(0,0,0,.45); backdrop-filter:saturate(1.2) blur(2px);
+}
+.koma-modal__panel{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(560px,92vw); background:#fff; border:1px solid var(--border);
+  border-radius:16px; box-shadow:var(--shadow); padding:18px;
+}
+.koma-modal__close{
+  position:absolute; right:10px; top:10px; background:#fff; border:1px solid var(--border);
+  width:32px; height:32px; border-radius:8px; cursor:pointer;
+}
+.koma-modal__lead{ color:var(--muted); margin:6px 0 12px; }
+.koma-form .input{ margin-top:6px; }
+.koma-form label{ margin-top:10px; }

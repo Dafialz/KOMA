@@ -1,0 +1,42 @@
+<!-- Кома-віджет + модалка підтримки -->
+<div class="koma-widget" aria-live="polite">
+  <div class="koma-phrase" id="komaPhrase">Кома — час набиратися сил</div>
+
+  <!-- Кнопка служби підтримки -->
+  <button class="koma-help" id="komaHelpBtn" aria-label="Служба підтримки">
+    ?
+  </button>
+</div>
+
+<!-- Модалка підтримки -->
+<div class="koma-modal" id="komaModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="komaModalTitle">
+  <div class="koma-modal__backdrop" id="komaBackdrop"></div>
+
+  <div class="koma-modal__panel" role="document">
+    <button class="koma-modal__close" id="komaClose" aria-label="Закрити">✕</button>
+    <h3 id="komaModalTitle">Служба підтримки</h3>
+    <p class="koma-modal__lead">Залиште коротке повідомлення — ми зв’яжемось.</p>
+
+    <form id="komaForm" class="koma-form">
+      <label>Ім’я
+        <input class="input" name="name" required placeholder="Ваше ім’я">
+      </label>
+
+      <label>Email (необов’язково)
+        <input class="input" type="email" name="email" placeholder="you@example.com">
+      </label>
+
+      <label>Повідомлення
+        <textarea class="input" name="message" rows="4" required placeholder="Коротко опишіть запит…"></textarea>
+      </label>
+
+      <div class="row" style="justify-content:flex-end;gap:10px">
+        <button type="button" class="btn gray" id="komaCancel">Скасувати</button>
+        <button type="submit" class="btn">Надіслати</button>
+      </div>
+
+      <p id="komaOk" class="ok">Дякуємо! Повідомлення надіслано.</p>
+      <p id="komaErr" class="error">Упс, щось пішло не так. Спробуйте ще раз.</p>
+    </form>
+  </div>
+</div>
