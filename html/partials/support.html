@@ -1,42 +1,33 @@
-<!-- Кома-віджет + модалка підтримки -->
-<div class="koma-widget" aria-live="polite">
-  <div class="koma-phrase" id="komaPhrase">Кома — час набиратися сил</div>
-
-  <!-- Кнопка служби підтримки -->
-  <button class="koma-help" id="komaHelpBtn" aria-label="Служба підтримки">
-    ?
-  </button>
+<!-- KOMA widget + Support modal -->
+<div class="koma-widget" id="komaWidget" aria-live="polite">
+  <span class="koma-phrase" id="komaPhrase">Кома — час набиратися сил</span>
+  <button class="koma-help" id="komaBtn" aria-controls="komaModal" aria-expanded="false" aria-label="Служба підтримки">?</button>
 </div>
 
-<!-- Модалка підтримки -->
-<div class="koma-modal" id="komaModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="komaModalTitle">
-  <div class="koma-modal__backdrop" id="komaBackdrop"></div>
-
-  <div class="koma-modal__panel" role="document">
+<div class="koma-modal" id="komaModal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="koma-modal__backdrop"></div>
+  <div class="koma-modal__panel">
     <button class="koma-modal__close" id="komaClose" aria-label="Закрити">✕</button>
-    <h3 id="komaModalTitle">Служба підтримки</h3>
-    <p class="koma-modal__lead">Залиште коротке повідомлення — ми зв’яжемось.</p>
+    <h3>Служба підтримки</h3>
+    <p class="koma-modal__lead">Залишіть ім’я та короткий запит — ми зв’яжемося.</p>
 
-    <form id="komaForm" class="koma-form">
+    <form class="koma-form" id="komaForm">
       <label>Ім’я
-        <input class="input" name="name" required placeholder="Ваше ім’я">
+        <input class="input" name="name" required>
       </label>
-
-      <label>Email (необов’язково)
-        <input class="input" type="email" name="email" placeholder="you@example.com">
+      <label>Ел. пошта
+        <input class="input" type="email" name="email">
       </label>
-
       <label>Повідомлення
-        <textarea class="input" name="message" rows="4" required placeholder="Коротко опишіть запит…"></textarea>
+        <textarea class="input" name="message" rows="4" required></textarea>
       </label>
 
-      <div class="row" style="justify-content:flex-end;gap:10px">
-        <button type="button" class="btn gray" id="komaCancel">Скасувати</button>
-        <button type="submit" class="btn">Надіслати</button>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" type="submit">Надіслати</button>
+        <button class="btn gray" type="button" id="komaCancel">Скасувати</button>
       </div>
 
-      <p id="komaOk" class="ok">Дякуємо! Повідомлення надіслано.</p>
-      <p id="komaErr" class="error">Упс, щось пішло не так. Спробуйте ще раз.</p>
+      <p class="ok" id="komaOk">Дякуємо! Ми відповімо найближчим часом.</p>
     </form>
   </div>
 </div>

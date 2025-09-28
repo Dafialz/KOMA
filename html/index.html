@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -20,7 +19,7 @@
 </head>
 
 <body>
-  <!-- Header partial (усередині html/partials) -->
+  <!-- Header partial -->
   <div id="site-header" data-include="partials/header.html"></div>
 
   <!-- HERO BANNER -->
@@ -121,14 +120,16 @@
     </div>
   </section>
 
-<div data-include="partials/support.html"></div>
+  <!-- Віджет фраз + служба підтримки -->
+  <div data-include="partials/support.html"></div>
 
-  <!-- Footer partial (усередині html/partials) -->
+  <!-- Footer partial -->
   <div id="site-footer" data-include="partials/footer.html"></div>
 
-  <!-- Скрипти (лежать у html/js) -->
+  <!-- Скрипти -->
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
-  <script src="js/support.js"></script>
+  <!-- ВАЖЛИВО: support.js після partials і з defer -->
+  <script src="js/support.js" defer></script>
 </body>
 </html>
