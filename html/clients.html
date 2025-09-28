@@ -8,23 +8,37 @@
   <meta name="theme-color" content="#0f5257" />
   <link rel="stylesheet" href="css/main.css">
 
-  
+  <!-- Локальні правки сторінки клієнтів -->
+  <style>
+    /* Щоб футер не "прилипає" до картки при порожньому списку */
+    .section.clients { min-height: 62vh; }
+    /* Трошки відступів у блоках-повідомленнях */
+    .empty { padding: 12px 0; }
+    /* Вирівнювання панелі інструментів на вузьких екранах */
+    @media (max-width: 640px){
+      .tools { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-start; margin-top:10px; }
+      .tools .pill { order:2 }
+      .tools .btn { order:1 }
+    }
+  </style>
 </head>
 <body>
+  <!-- Шапка -->
   <div data-include="partials/header.html"></div>
 
-  <section class="section">
+  <!-- Контент -->
+  <section class="section clients" aria-labelledby="clients-title">
     <div class="container grid">
       <div class="card">
-        <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row" style="justify-content:space-between;align-items:center;gap:12px">
           <div>
-            <h2 style="margin:0">Мої клієнти на найближчий час</h2>
-            <div class="muted" id="meLine">—</div>
+            <h2 id="clients-title" style="margin:0">Мої клієнти на найближчий час</h2>
+            <div class="muted" id="meLine" aria-live="polite">—</div>
           </div>
           <div class="tools">
             <span class="pill">Записи зберігаються, доки ви не натиснете <strong>«Завершити»</strong></span>
-            <button id="refresh" class="btn light" title="Оновити">Оновити</button>
-            <span id="spin" class="spinner" style="display:none"></span>
+            <button id="refresh" class="btn light" title="Оновити список" aria-label="Оновити список">Оновити</button>
+            <span id="spin" class="spinner" style="display:none" aria-hidden="true"></span>
           </div>
         </div>
 
@@ -35,8 +49,10 @@
     </div>
   </section>
 
+  <!-- Футер -->
   <div data-include="partials/footer.html"></div>
 
+  <!-- Скрипти -->
   <script src="js/guard.js"></script>
   <script type="module" src="js/clients.js"></script>
   <script src="js/partials.js"></script>

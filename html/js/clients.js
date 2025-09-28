@@ -1,3 +1,4 @@
+
 // /js/clients.js
 import { fetchBookings, deleteBooking } from './bookings.js';
 
@@ -94,7 +95,7 @@ async function render(items) {
       <div>
         <div class="when">${fmt(b.date, b.time)}</div>
         <div><strong>${escapeHtml(b.fullName||'')}</strong>${b.email ? ` • <a href="mailto:${escapeHtml(b.email)}">${escapeHtml(b.email)}</a>` : ''}</div>
-        ${b.note ? `<div class="muted">${escapeHtml(b.note)}</div>` : ''}
+        ${b.notes ? `<div class="muted">${escapeHtml(b.notes)}</div>` : ''} 
         ${fileBlock}
       </div>
       <div class="row" style="gap:10px;align-items:center">
