@@ -16,44 +16,79 @@ async function includePartials() {
 }
 
 function initHeaderFooterLogic() {
-  // мобільне меню
+  const isAdminPage = /(^|\/)admin\.html(\?|#|$)/i.test(location.pathname);
+
+  // мобільне меню (бургер)
   const hamb = document.getElementById('hamb');
   const mobile = document.getElementById('mobile');
   hamb?.addEventListener('click', () => {
-    const open = mobile.classList.toggle('open');
-    hamb.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const open = mobile?.classList.toggle('open');
+    if (open != null) hamb.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
   // рік у футері
   const y = document.getElementById('y');
   if (y) y.textContent = new Date().getFullYear();
 
-  // auth UI (Вхід ↔ Кабінет) — працює на всіх сторінках, бо запускається після підвантаження partials
+  // ===== AUTH UI: «Вхід» ↔ «Кабінет» (працює на всіх сторінках)
   try {
     if (window.guard?.applyAuthUI) {
+      // основне вмикання
       window.guard.applyAuthUI({ desktop: '#authBtn', mobile: '#authBtnMobile' });
+    } else {
+      // запасний варіант, якщо applyAuthUI відсутній
+      const s = window.guard?.getSession?.();
+      const loggedIn = !!(s && s.email);
+      const btnD = document.querySelector('#authBtn');
+      const btnM = document.querySelector('#authBtnMobile');
+      const setCabinet = (aEl) => { if (!aEl) return;
+        aEl.textContent = 'Кабінет';
+        aEl.classList.remove('green');
+        aEl.href = 'admin.html';
+      };
+      const setLogin = (aEl) => { if (!aEl) return;
+        aEl.textContent = 'Вхід';
+        aEl.classList.add('green');
+        aEl.href = 'login.html';
+      };
+      if (loggedIn) { setCabinet(btnD); setCabinet(btnM); }
+      else { setLogin(btnD); setLogin(btnM); }
     }
-  } catch {}
+  } catch (e) { console.warn('Auth UI init failed:', e); }
 
-  // Показ/приховування пункту «Клієнти» тільки для консультанта
+  // ===== Показ/приховування «Клієнти» для консультанта
+  let isConsultant = false;
   try {
-    const showClients = (() => {
-      if (!window.guard?.getSession || !window.guard?.hasAccess) return false;
-      const s = window.guard.getSession();
-      return !!(s && window.guard.hasAccess(s.email));
-    })();
-
-    ['#clientsNav', '#clientsNavM'].forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el) el.style.display = showClients ? '' : 'none';
-    });
+    const s = window.guard?.getSession?.();
+    isConsultant = !!(s && window.guard?.hasAccess?.(s.email));
   } catch {}
 
-  // КНОПКА «ПРИЄДНАТИСЬ» — активна, якщо є майбутній запис у localStorage
+  // (а) Хедер: #clientsNav (desktop) і #clientsNavM (mobile)
+  ['#clientsNav', '#clientsNavM'].forEach(sel => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    el.style.display = isConsultant ? '' : 'none';
+  });
+
+  // (б) Футер: знайдемо всі лінки на clients.html і керуватимемо видимістю
+  //   — приховати на admin.html завжди,
+  //   — на інших сторінках показувати тільки консультанту
+  const footerClientLinks = [
+    ...document.querySelectorAll('footer a[href$="clients.html"], .footer a[href$="clients.html"]')
+  ];
+  footerClientLinks.forEach(a => {
+    if (isAdminPage) {
+      a.style.display = 'none';
+    } else {
+      a.style.display = isConsultant ? '' : 'none';
+    }
+  });
+
+  // ===== Кнопка «ПРИЄДНАТИСЬ» — активна, якщо є майбутній запис у localStorage
   const joinBtn  = document.getElementById('joinBtn');
   const joinBtnM = document.getElementById('joinBtnM');
 
-  const OPEN_AFTER_MIN = 60; // ще 60 хв після початку
+  const OPEN_AFTER_MIN = 60; // активна ще 60 хв після початку
 
   const enable = (url) => {
     [joinBtn, joinBtnM].forEach(b => {
@@ -78,18 +113,19 @@ function initHeaderFooterLogic() {
     let b;
     try { b = JSON.parse(raw); } catch { return disable(); }
     if (!b || !b.date || !b.time) return disable();
+
     const start = Number(b.startTS ?? startTSKyiv(b.date, b.time));
+    if (Number.isNaN(start)) return disable();
     if (Date.now() > start + OPEN_AFTER_MIN * 60 * 1000) return disable();
 
     const params = new URLSearchParams({
-      consultant: b.consultant,
-      fullName: b.fullName,
-      email: b.email,
+      consultant: b.consultant || '',
+      fullName: b.fullName || '',
+      email: b.email || '',
       date: b.date,
       time: b.time
     }).toString();
 
-    // без початкового /, бо всі сторінки лежать у /html/
     enable(`zapis.html?${params}`);
   }
 
