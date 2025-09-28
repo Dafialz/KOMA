@@ -5,12 +5,12 @@
     "hash": "8e774832cdfb1ca061db52a8cc2b97b8c95f48cd6fba23b98083a35dd57b9758"
   },
   {
-    "email": "andriyoyovych@gmail.com",
+    "email": "sergiyoyovych@gmail.com",
     "salt": "b7a83f2bea57ece1",
     "hash": "55aa6b026efe3ef6507c028e0a16468e003cffcc406c9093bc770222a64403f6"
   },
   {
-    "email": "anastasiyaoyovych@gmail.com",
+    "email": "tetianaoyovych@gmail.com",
     "salt": "20d52c9e43ce6461",
     "hash": "4423e05ed9fb2e3b7e0c8077cb435857dcd5569589e38be5d64f0a7dd84d205d"
   },
@@ -20,7 +20,7 @@
     "hash": "d05d0c5e5424b17eb1c23d2b02b9fd7b23e7e04519279334b2bae5e07cd8b6b6"
   },
   {
-    "email": "tetianamakovska@gmail.com",
+    "email": "anastasiyamakovska@gmail.com",
     "salt": "2b3d92f578bea24f",
     "hash": "cf0908c02042ac8f2c957c6d5479d30551f61bee0d764ad1c6ba979f8d47fccf"
   },
