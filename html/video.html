@@ -12,8 +12,9 @@
     @media (max-width:900px){.wrap{grid-template-columns:1fr}}
     .card{border:1px solid var(--border);border-radius:var(--radius,16px);background:#fff;box-shadow:var(--shadow,0 10px 30px rgba(0,0,0,.08))}
     .card.side{padding:16px}
+
     .video{position:relative;display:grid;grid-template-columns:1fr;gap:8px;padding:16px;border-bottom:1px solid var(--border)}
-    .video video{width:100%;background:#000;border-radius:12px;min-height:220px}
+    .video video{width:100%;background:#000;border-radius:12px;min-height:220px;object-fit:cover}
     .video #local{position:absolute;right:16px;bottom:16px;width:220px;max-width:35%;border:2px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:12px}
     @media (max-width:700px){.video #local{width:150px}}
 
@@ -32,11 +33,24 @@
     .badge.ok{background:#e8f8ef;color:#0f7a48}
     .badge.danger{background:#fde8e8;color:#b91c1c}
 
+    /* Чат: вирівнювання, бульбашки, підписи */
     .chat{margin-top:10px}
-    .chatlog{height:260px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fafafa}
-    .chatlog .sys{color:#6b7280;font-size:.9rem}
-    .chatlog .me{background:#e8f8ef;color:#0f7a48;padding:8px 10px;border-radius:10px;margin:6px 0 2px auto;display:inline-block;max-width:85%}
-    .chatlog div:not(.me):not(.sys){background:#eef6f6;color:#0f5257;padding:8px 10px;border-radius:10px;margin:6px 0 2px 0;display:inline-block;max-width:85%}
+    .chatlog{
+      display:flex; flex-direction:column; gap:6px;
+      height:260px; overflow:auto; border:1px solid var(--border);
+      border-radius:12px; padding:10px; background:#fafafa;
+    }
+    .msg{display:flex}
+    .msg.me{justify-content:flex-end}
+    .msg.peer{justify-content:flex-start}
+    .msg.sys{justify-content:center}
+    .bubble{
+      max-width:85%; padding:8px 10px; border-radius:12px;
+      background:#eef6f6; color:#0f5257; box-shadow:0 1px 0 rgba(0,0,0,.03);
+    }
+    .me .bubble{background:#e8f8ef;color:#0f7a48}
+    .sys{color:#6b7280;font-size:.9rem}
+    .name{display:block; font-size:.75rem; opacity:.8; margin-bottom:4px}
     .row{display:flex;gap:8px;margin-top:10px}
     .row input{flex:1;border:1px solid var(--border);border-radius:10px;padding:10px}
     .row .btn{height:40px}
@@ -54,6 +68,7 @@
 </head>
 <body>
 
+  <!-- header через partials -->
   <div data-include="partials/header.html"></div>
 
   <div class="wrap">
@@ -65,19 +80,23 @@
       </div>
 
       <div class="controls">
+        <!-- Головна дія -->
         <button id="btnStart" class="btn green btn-pill">🔌 Під’єднатися</button>
 
+        <!-- Пристрої -->
         <div class="btn-group" role="group" aria-label="Пристрої">
           <button id="btnMic"    class="btn gray"    disabled>🎙️ Мікрофон</button>
           <button id="btnCam"    class="btn gray"    disabled>📷 Камера</button>
           <button id="btnScreen" class="btn outline" disabled>🖥️ Поділитись екраном</button>
         </div>
 
+        <!-- Повноекранно -->
         <div class="btn-group" role="group" aria-label="Екран">
           <button id="btnFullRemote" class="btn ghost">⤢ Співрозмовник</button>
           <button id="btnFullLocal"  class="btn ghost">⤢ Моє відео</button>
         </div>
 
+        <!-- Статуси -->
         <div class="meta">
           <span id="status" class="badge muted">Не під’єднано</span>
           <span id="roomLabel" class="badge"></span>
@@ -93,7 +112,7 @@
       </div>
 
       <div class="chat">
-        <div id="chatlog" class="chatlog"></div>
+        <div id="chatlog" class="chatlog" role="log" aria-live="polite"></div>
         <div class="row">
           <input id="msg" placeholder="Написати повідомлення…" disabled>
           <button id="send" class="btn outline" disabled>Надіслати</button>
@@ -149,11 +168,29 @@
     els.status.textContent = text;
     els.status.className = 'badge ' + (cls||'');
   }
+
+  // Акуратний рендер повідомлень у чаті
   function logChat(text, who='sys'){
-    const p = document.createElement('div');
-    p.className = who === 'me' ? 'me' : (who === 'sys' ? 'sys' : '');
-    p.textContent = text;
-    els.chatlog.appendChild(p);
+    const item = document.createElement('div');
+    if (who === 'me')       item.className = 'msg me';
+    else if (who === 'peer')item.className = 'msg peer';
+    else                    item.className = 'msg sys';
+
+    if (who === 'sys'){
+      item.textContent = text;
+    } else {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = who === 'me' ? 'Я' : 'Співрозмовник';
+      const span = document.createElement('span');
+      span.textContent = text;
+      bubble.appendChild(name);
+      bubble.appendChild(span);
+      item.appendChild(bubble);
+    }
+    els.chatlog.appendChild(item);
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
@@ -284,7 +321,7 @@
         } else {
           await pc.setRemoteDescription(offerDesc);
         }
-        // Не викликаємо getUserMedia тут — чекаємо кліку користувача
+        // не викликаємо getUserMedia тут — потрібен кліком користувача
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         wsSend({ type:'answer', room, payload: pc.localDescription });
@@ -409,6 +446,7 @@
   els.fullLocal .addEventListener('click', ()=> toggleFS(els.local));
   [els.remote, els.local].forEach(v => v.addEventListener('dblclick', ()=> toggleFS(v)));
 
+  // На мобільних — тап по відео також відкриває fullscreen
   function isMobile(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
   if (isMobile()){
     els.remote.addEventListener('click', ()=> enterFullscreen(els.remote), { passive:true });
