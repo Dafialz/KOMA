@@ -80,12 +80,16 @@ a:hover{text-decoration:underline}
 }
 .header nav a:hover,.site-header nav a:hover{ background:rgba(255,255,255,.12); }
 
-.hamb{display:none}
+/* ===== Гамбургер ===== */
+.hamb{display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px;}
+.hamb span{
+  display:block; width:22px; height:2px; background:#fff; border-radius:2px;
+}
 @media (max-width:960px){
   /* На мобільному в хедері — лише бренд і бургер */
   .menu{display:none !important;}
   .hamb{
-    display:inline-flex; align-items:center; justify-content:center;
+    display:flex;
     height:40px; width:44px; border-radius:10px;
     border:1px solid rgba(255,255,255,.35); background:transparent; color:#fff;
     margin-left:auto; /* бургер вправо */
