@@ -350,6 +350,24 @@ window.closeConsultation = function (){
   document.body.classList.remove('modal-open');
 };
 
+// ===== ЗБЕРЕГТИ «останній запис» → для кнопки «Приєднатись» у шапці
+function saveLastBookingLocally(data){
+  if(!data || !data.date || !data.time) return;
+  const rec = {
+    consultant: data.consultantName || data.consultant || '',
+    fullName:   data.fullName || '',
+    email:      data.email || '',
+    date:       data.date,
+    time:       data.time,
+    startTS:    tsKyiv(data.date, data.time)
+  };
+  try {
+    localStorage.setItem('koma_last_booking', JSON.stringify(rec));
+    // тригер для інших вкладок/хедера
+    window.dispatchEvent(new StorageEvent('storage', { key: 'koma_last_booking' }));
+  } catch {}
+}
+
 async function submitConsultation(e){
   if (e && e.preventDefault) e.preventDefault();
   var form = getForm();
@@ -390,18 +408,23 @@ async function submitConsultation(e){
     if (window.__bk && window.__bk.createBooking){
       const res = await window.__bk.createBooking(data);
       if (res && res.ok){
+        // одразу активуємо «Приєднатись»
+        saveLastBookingLocally(data);
         alert('Заявку надіслано. Очікуйте підтвердження.');
         closeConsultation();
         try{ updateQuotaBadges(data.date); }catch(_){}
         return false;
       }
     }
-    // fallback: якщо API недоступний — редірект на сторінку підтвердження
+    // fallback: якщо API недоступний — збережемо і перейдемо на запис-підтвердження
+    saveLastBookingLocally(data);
     var qs = new URLSearchParams(data).toString();
     location.href = 'zapis.html?' + qs;
     return false;
   }catch(e){
     console.warn('submitConsultation error', e);
+    // помилка мережі: теж зберігаємо і ведемо на zapis.html
+    saveLastBookingLocally(data);
     var qs = new URLSearchParams(data).toString();
     location.href = 'zapis.html?' + qs;
     return false;
