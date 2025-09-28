@@ -9,139 +9,151 @@
   <link rel="stylesheet" href="css/main.css" />
 
   <style>
-    .hero { padding: 40px 0 20px; text-align: center; }
-    .hero h1 { margin: 0 0 10px; }
-    .hero .lead { color: var(--muted,#4b5563); max-width: 880px; margin: 0 auto; }
+    .hero{padding:40px 0 20px;text-align:center}
+    .hero h1{margin:0 0 10px}
+    .hero .lead{color:var(--muted,#4b5563);max-width:880px;margin:0 auto}
 
-    .about-grid { 
-      --cols: 3;
-      display: grid;
-      gap: 18px;
-      grid-template-columns: repeat(var(--cols), 1fr);
-    }
-    @media (max-width: 980px){ .about-grid{ --cols: 2; } }
-    @media (max-width: 640px){ .about-grid{ --cols: 1; } }
+    /* Верхній блок з 2-ма великими картками */
+    .grid-2{display:grid;gap:18px;grid-template-columns:repeat(2,1fr)}
+    @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
 
-    .about-card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: var(--radius,16px);
-      box-shadow: var(--shadow,0 10px 30px rgba(0,0,0,.06));
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+    .about-card{
+      background:#fff;border:1px solid var(--border);
+      border-radius:var(--radius,16px);
+      box-shadow:var(--shadow,0 10px 30px rgba(0,0,0,.06));
+      overflow:hidden;display:flex;flex-direction:column
     }
-    .about-card img {
-      width: 100%;
-      height: 240px;
-      object-fit: cover;
-      display: block;
+
+    /* ВАЖЛИВО: не обрізати фото, вирівняти по центру, зробити більшими */
+    .about-card img{
+      width:100%;
+      height:320px;                 /* трошки більші */
+      object-fit:contain;           /* без підрізання */
+      object-position:center;
+      background:#f6f7f8;           /* м’який фон для «порожніх» полів */
+      display:block
     }
-    .about-body {
-      padding: 14px 16px 18px;
-      display: grid;
-      gap: 8px;
+
+    /* Трохи більші зображення у верхніх 2-х картках */
+    .about-card.wide img{height:360px}
+
+    .about-body{padding:14px 16px 18px;display:grid;gap:8px}
+    .about-body h3{margin:0;font-size:1.1rem}
+    .about-body p{margin:0;color:var(--muted,#4b5563)}
+
+    /* Сітка з 6 карток нижче */
+    .about-grid{
+      --cols:3;
+      display:grid;gap:18px;
+      grid-template-columns:repeat(var(--cols),1fr)
     }
-    .about-body h3 { margin: 0; font-size: 1.1rem; }
-    .about-body p  { margin: 0; color: var(--muted,#4b5563); }
+    @media (max-width:980px){.about-grid{--cols:2}}
+    @media (max-width:640px){.about-grid{--cols:1}}
   </style>
 </head>
 <body>
-  <!-- Шапка така ж, як на інших сторінках -->
   <div data-include="partials/header.html"></div>
 
   <section class="section hero">
     <div class="container">
       <h1>Про нас</h1>
       <p class="lead">
-        “КОМА” — християнський центр ментального здоров’я. Ми надаємо індивідуальні консультації,
-        групові та терапевтичні заняття, проводимо навчальні заходи та онлайн-послуги. Наша мета —
+        «КОМА» — християнський центр ментального здоров’я. Надаємо індивідуальні консультації,
+        групові та терапевтичні заняття, проводимо навчальні події та онлайн-послуги. Наша мета —
         робити кваліфіковану допомогу доступною і якісною.
       </p>
     </div>
   </section>
 
+  <!-- ДВА ВЕЛИКІ ФОТО З ОПИСОМ НАВЕРХУ -->
   <section class="section">
-    <div class="container about-grid">
-      <!-- 1 -->
-      <article class="about-card">
-        <img src="icon/pro-nas/banda1.jpg" alt="Команда центру КОМА — хто ми" />
+    <div class="container grid-2">
+      <article class="about-card wide">
+        <img src="icon/pro-nas/koma.jpg" alt="Айдентика та логотип КОМА">
         <div class="about-body">
-          <h3>Хто ми</h3>
+          <h3>Наш бренд</h3>
           <p>
-            Християнський центр ментального здоров’я, що об’єднує фахівців-практиків:
-            психологів, душеопікунів, коучів групової терапії. Працюємо з повагою до гідності,
-            конфіденційно та етично.
+            Візуальна айдентика КОМА — про цілісність і ясність. Ми поєднуємо професійний підхід,
+            християнські цінності та повагу до гідності кожної людини.
           </p>
         </div>
       </article>
 
-      <!-- 2 -->
-      <article class="about-card">
-        <img src="icon/pro-nas/banda2.jpg" alt="Місія та бачення" />
+      <article class="about-card wide">
+        <img src="icon/pro-nas/koma-centr.jpg" alt="Простір центру КОМА">
         <div class="about-body">
-          <h3>Місія та бачення</h3>
+          <h3>Наш простір</h3>
           <p>
-            Покращувати ментальне здоров’я українського суспільства. Короткостроково —
-            створити доступний центр допомоги; довгостроково — мережу центрів по Україні.
-          </p>
-        </div>
-      </article>
-
-      <!-- 3 -->
-      <article class="about-card">
-        <img src="icon/pro-nas/banda3.jpg" alt="Послуги центру" />
-        <div class="about-body">
-          <h3>Наші послуги</h3>
-          <p>
-            Індивідуальні консультації, групові та терапевтичні заняття, навчальні події (семінари,
-            лекції, конференції), а також онлайн-консультації — зручні формати під ваш запит.
-          </p>
-        </div>
-      </article>
-
-      <!-- 4 -->
-      <article class="about-card">
-        <img src="icon/pro-nas/banda4.jpg" alt="Для кого ми працюємо" />
-        <div class="about-body">
-          <h3>Для кого</h3>
-          <p>
-            Для підлітків і дорослих, які потребують підтримки: депресивні та тривожні розлади,
-            ПТСР, стрес і вигорання, фобії, панічні атаки, залежності, РХП, ОКР та інші стани.
-          </p>
-        </div>
-      </article>
-
-      <!-- 5 -->
-      <article class="about-card">
-        <img src="icon/pro-nas/banda5.jpg" alt="Наш підхід і переваги" />
-        <div class="about-body">
-          <h3>Наш підхід</h3>
-          <p>
-            Практичні інструменти саморегуляції, робота з підтримувальними групами клієнтів,
-            можливість ретритів, колаборація з душеопікунством та церквами, увага до цілісності людини.
-          </p>
-        </div>
-      </article>
-
-      <!-- 6 -->
-      <article class="about-card">
-        <img src="icon/pro-nas/banda6.jpg" alt="Локація та інфраструктура" />
-        <div class="about-body">
-          <h3>Простір і команда</h3>
-          <p>
-            Інклюзивний простір із кабінетами для індивідуальної роботи, дитячої та нейропсихології,
-            залою для групових занять (15–20 осіб) і приймальнею. Команда — дипломовані фахівці,
-            адміністратор, PM, бухгалтерія та підтримка.
+            Інклюзивні приміщення для індивідуальної та групової роботи, зручні формати
+            офлайн та онлайн. Створюємо безпечне середовище для відновлення та розвитку.
           </p>
         </div>
       </article>
     </div>
   </section>
 
-  <!-- Футер як на сайті -->
-  <div data-include="partials/footer.html"></div>
+  <!-- СІТКА ІЗ 6 КАРТОК -->
+  <section class="section">
+    <div class="container about-grid">
 
+      <article class="about-card">
+        <img src="icon/pro-nas/banda1.jpg" alt="Команда центру КОМА — хто ми">
+        <div class="about-body">
+          <h3>Хто ми</h3>
+          <p>Християнський центр ментального здоров’я, що об’єднує фахівців-практиків:
+            психологів, душеопікунів, коучів групової терапії. Працюємо гідно, етично та конфіденційно.</p>
+        </div>
+      </article>
+
+      <article class="about-card">
+        <img src="icon/pro-nas/banda2.jpg" alt="Місія та бачення">
+        <div class="about-body">
+          <h3>Місія та бачення</h3>
+          <p>Покращувати ментальне здоров’я українського суспільства: сьогодні — доступний центр
+            допомоги, завтра — мережа центрів по Україні.</p>
+        </div>
+      </article>
+
+      <article class="about-card">
+        <img src="icon/pro-nas/banda3.jpg" alt="Наші послуги">
+        <div class="about-body">
+          <h3>Наші послуги</h3>
+          <p>Індивідуальні консультації, групові та терапевтичні заняття, навчальні події
+            (семінари, лекції, конференції) та онлайн-консультації.</p>
+        </div>
+      </article>
+
+      <article class="about-card">
+        <img src="icon/pro-nas/banda4.jpg" alt="Для кого ми працюємо">
+        <div class="about-body">
+          <h3>Для кого</h3>
+          <p>Підлітки та дорослі з запитами: депресія, тривога, ПТСР, стрес і вигорання,
+            фобії, панічні атаки, залежності, РХП, ОКР та інші стани.</p>
+        </div>
+      </article>
+
+      <article class="about-card">
+        <img src="icon/pro-nas/banda5.jpg" alt="Наш підхід">
+        <div class="about-body">
+          <h3>Наш підхід</h3>
+          <p>Практичні інструменти саморегуляції, групова підтримка, співпраця з церквами
+            і душеопікунством, увага до цілісності людини.</p>
+        </div>
+      </article>
+
+      <article class="about-card">
+        <img src="icon/pro-nas/banda6.jpg" alt="Простір і команда">
+        <div class="about-body">
+          <h3>Простір і команда</h3>
+          <p>Кабінети для індивідуальної роботи, зала для груп (15–20 осіб), дитяча та нейропсихологія.
+            Команда — дипломовані фахівці, адміністратор, PM та підтримка.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <div data-include="partials/footer.html"></div>
   <script src="js/partials.js"></script>
 </body>
 </html>
