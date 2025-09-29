@@ -2,24 +2,24 @@
 (function (global) {
   const SESSION_KEY = 'koma_session';
 
-  // Дозволені користувачі (email у нижньому регістрі)
+  // Дозволені користувачі (email у нижньому регістрі) — синхронізовано з users.json
   const allowlist = [
     'oksanakokoten@gmail.com',
-    'andriysavchuk@gmail.com',
-    'irynashevchenko@gmail.com',
-    'maksymkoval@gmail.com',
-    'nadiyaromaniyk@gmail.com',
-    'oleglitvin@gmail.com'
+    'andriyoyovych@gmail.com',
+    'anastasiyaoyovych@gmail.com',
+    'oleksandrtkachuk@gmail.com',
+    'tetianamakovska@gmail.com',
+    'kristinakokoten@gmail.com'
   ].map(e => e.toLowerCase());
 
   // Email → ім'я для зручного відображення/генерації лінків
   const names = {
-    'oksanakokoten@gmail.com': 'Оксана Кокотень',
-    'andriysavchuk@gmail.com': 'Андрій Савчук',
-    'irynashevchenko@gmail.com': 'Ірина Шевченко',
-    'maksymkoval@gmail.com': 'Максим Коваль',
-    'nadiyaromaniyk@gmail.com': 'Надія Романюк',
-    'oleglitvin@gmail.com': 'Олег Литвин'
+    'oksanakokoten@gmail.com'     : 'Оксана Кокотень',
+    'andriyoyovych@gmail.com'     : 'Андрій Йовович',
+    'anastasiyaoyovych@gmail.com' : 'Анастасія Йовович',
+    'oleksandrtkachuk@gmail.com'  : 'Олександр Ткачук',
+    'tetianamakovska@gmail.com'   : 'Тетяна Маковська',
+    'kristinakokoten@gmail.com'   : 'Крістіна Кокотень'
   };
 
   // -------- helpers --------
