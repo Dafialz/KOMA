@@ -1,40 +1,29 @@
 // html/js/bookings.js
-// Клієнт для API бронювань (+ надійні фоли).
-// Працює як із config.js (іменований export const API_BASE = '...'),
-// так і з window.API_BASE, або з поточним origin як запасний варіант.
+// Клієнт для API бронювань з безпечним визначенням API_BASE.
 
-// ---- визначаємо API_BASE без падінь, навіть якщо в config.js нічого не експортовано
+// ---- визначаємо API_BASE (config.js -> window.API_BASE -> location.origin)
 let API_BASE_DETECTED = '';
 try {
-  // пробуємо імпорт як модуль (іменований або default)
-  // ВАЖЛИВО: цей рядок не ламає бандл, якщо config.js не має потрібного експорту
-  // тому імпорт здійснюємо через динамічний доступ до властивостей.
-  // У браузері це працює, бо ES-модулі підставляються на етапі збірки/завантаження.
-  // eslint-disable-next-line import/namespace, no-undef
   const cfg = await import('./config.js').catch(() => ({}));
   API_BASE_DETECTED =
     (cfg && (cfg.API_BASE || (cfg.default && cfg.default.API_BASE))) || '';
-} catch (_) {
-  // ігноруємо — підемо за фолбеками нижче
-}
+} catch {}
 if (!API_BASE_DETECTED && typeof window !== 'undefined' && window.API_BASE) {
   API_BASE_DETECTED = window.API_BASE;
 }
-// запасний варіант — поточний origin (наприклад, якщо API розгорнуте поруч)
 if (!API_BASE_DETECTED && typeof location !== 'undefined') {
   API_BASE_DETECTED = location.origin;
 }
 const API_BASE = String(API_BASE_DETECTED || '').replace(/\/+$/, '');
 
-// підкажемо в консолі, що використовується саме зараз
-if (!API_BASE || API_BASE === location.origin) {
-  console.warn(
-    '[bookings] API_BASE не задано у config.js — використовую поточний origin:',
-    API_BASE
-  );
-} else {
-  console.info('[bookings] API_BASE =', API_BASE);
-}
+// Трохи підказок у консоль
+try {
+  if (!API_BASE || API_BASE === location.origin) {
+    console.warn('[bookings] API_BASE не задано у config.js — використовую поточний origin:', API_BASE);
+  } else {
+    console.info('[bookings] API_BASE =', API_BASE);
+  }
+} catch {}
 
 /** Внутрішній запит з охайною обробкою помилок та без кешу */
 async function request(input, init = {}) {
@@ -45,29 +34,21 @@ async function request(input, init = {}) {
   });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
-    try {
-      const txt = await res.text();
-      msg += `: ${txt}`;
-    } catch {}
+    try { msg += `: ${await res.text()}`; } catch {}
     throw new Error(msg);
   }
   if (res.status === 204) return null; // без тіла
   return res.json();
 }
 
-/** Приводимо відповідь сервера до єдиного формату { list: [] } */
+/** Приводимо відповідь сервера до формату { list: [] } */
 function normalizeList(json) {
   if (Array.isArray(json)) return { list: json };
-  const list =
-    (json && (json.list || json.items || json.bookings || json.data)) || [];
+  const list = (json && (json.list || json.items || json.bookings || json.data)) || [];
   return { list: Array.isArray(list) ? list : [] };
 }
 
-/**
- * Створити бронювання.
- * Якщо payload.file задано (File/Blob) — використовуємо FormData,
- * інакше — JSON. Повертаємо об’єкт створеного запису.
- */
+/** Створити бронювання (FormData якщо є file, інакше JSON) */
 export async function createBooking(payload) {
   if (payload && payload.file) {
     const fd = new FormData();
@@ -76,7 +57,6 @@ export async function createBooking(payload) {
     });
     return request(`${API_BASE}/api/bookings`, { method: 'POST', body: fd });
   }
-
   return request(`${API_BASE}/api/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -84,21 +64,16 @@ export async function createBooking(payload) {
   });
 }
 
-/**
- * Отримати список бронювань консультанта.
- * Завжди повертає { list: Booking[] }.
- * Можна передати { date: 'YYYY-MM-DD' } для фільтрації (якщо сервер підтримує).
- */
+/** Отримати список бронювань по email (опц. date=YYYY-MM-DD) */
 export async function fetchBookings(consultantEmail, opts = {}) {
   const url = new URL(`${API_BASE}/api/bookings`);
   if (consultantEmail) url.searchParams.set('consultantEmail', consultantEmail);
   if (opts.date) url.searchParams.set('date', opts.date);
-
   const json = await request(url.toString());
   return normalizeList(json);
 }
 
-/** Видалити бронювання за id. Повертає відповідь сервера як є. */
+/** Видалити бронювання */
 export async function deleteBooking(id) {
   return request(`${API_BASE}/api/bookings/${encodeURIComponent(id)}`, {
     method: 'DELETE',

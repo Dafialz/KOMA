@@ -1,205 +1,187 @@
-// server.js
-// Простий API для бронювань з підтримкою завантаження файлів (чеків).
+// /js/clients.js
+import { fetchBookings, deleteBooking } from './bookings.js';
 
-import express from 'express';
-import path from 'path';
-import fs from 'fs-extra';
-import crypto from 'crypto';
-import multer from 'multer';
-import dotenv from 'dotenv';
+// ── Захист сторінки ─────────────────────────────────────────────────────────
+guard.protect();
+const me = guard.getSession();
+const myName  = (guard.emailToName && guard.emailToName(me.email)) || 'Консультант';
+const myEmail = String(me.email || '').toLowerCase();
 
-dotenv.config();
+const meLine    = document.getElementById('meLine');
+const logoutBtn = document.getElementById('logout');
+if (meLine)    meLine.textContent = `Користувач: ${myEmail} (${myName})`;
+if (logoutBtn) logoutBtn.onclick = () => guard.logout();
 
-const app = express();
-const PORT = process.env.PORT || 10000;
+const listEl     = document.getElementById('list');
+const emptyEl    = document.getElementById('empty');
+const errEl      = document.getElementById('error');
+const spinEl     = document.getElementById('spin');
+const refreshBtn = document.getElementById('refresh');
 
-// ----- CORS (дозволяємо Netlify / або всіх) -----
-const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || '*';
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
-
-// ----- Парсери -----
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// ----- ФС -----
-const __dirname = path.resolve();
-const DATA_DIR = path.join(__dirname, 'data');
-const DB_FILE  = path.join(DATA_DIR, 'db.json');
-const UPLOADS  = path.join(__dirname, 'uploads');
-
-await fs.ensureDir(DATA_DIR);
-await fs.ensureDir(UPLOADS);
-
-// Завантаження зберігаємо у /uploads/<uuid>__origName.ext
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, UPLOADS),
-  filename: (_, file, cb) => {
-    const uid = crypto.randomUUID();
-    const safe = (file.originalname || 'file').replace(/[^\w.\-]+/g, '_');
-    cb(null, `${uid}__${safe}`);
-  }
-});
-const upload = multer({ storage });
-
-// Віддаємо статику з /uploads
-app.use('/uploads', express.static(UPLOADS, { fallthrough: true }));
-
-// ----- «БД» у файлі -----
-/** @type {Array<any>} */
-let bookings = [];
-async function loadDB() {
-  try {
-    const raw = await fs.readFile(DB_FILE, 'utf8');
-    bookings = JSON.parse(raw);
-    if (!Array.isArray(bookings)) bookings = [];
-  } catch {
-    bookings = [];
-  }
+// ── Утиліти ─────────────────────────────────────────────────────────────────
+function fmt(date, time) {
+  // YYYY-MM-DD -> DD.MM.YYYY HH:MM
+  const p = (String(date||'').split('-'));
+  if (p.length !== 3) return `${date} ${time||''}`;
+  return `${p[2]}.${p[1]}.${p[0]} ${time||''}`;
 }
-async function saveDB() {
-  await fs.writeFile(DB_FILE, JSON.stringify(bookings, null, 2), 'utf8');
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-await loadDB();
-
-// ----- Utils -----
-const nowISO = () => new Date().toISOString();
-const absUrl = (req, rel) => {
-  if (!rel) return '';
-  if (/^https?:\/\//i.test(rel)) return rel;
-  const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
-  return `${base}${rel.startsWith('/') ? '' : '/'}${rel}`;
+const uniqById = (arr)=> {
+  const seen = new Set();
+  return (arr||[]).filter(x => {
+    const id = x && x.id;
+    if (!id || seen.has(id)) return false;
+    seen.add(id); return true;
+  });
 };
 
-// ----- API -----
+// Підтягнемо API_BASE аби будувати абсолютні посилання на файли
+let API_BASE_CACHE = null;
+async function getApiBase(){
+  if (API_BASE_CACHE) return API_BASE_CACHE;
+  let mod = {};
+  try { mod = await import('./config.js'); } catch {}
+  API_BASE_CACHE =
+    (mod && (mod.API_BASE || (mod.default && mod.default.API_BASE))) ||
+    (typeof window !== 'undefined' && window.API_BASE) ||
+    (typeof location !== 'undefined' && location.origin) ||
+    '';
+  API_BASE_CACHE = String(API_BASE_CACHE).replace(/\/+$/,'');
+  return API_BASE_CACHE;
+}
+function joinUrl(base, rel){
+  if (!rel) return '';
+  if (/^https?:\/\//i.test(rel)) return rel;
+  if (rel.startsWith('/')) return `${base}${rel}`;
+  return `${base}/${rel}`;
+}
 
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, time: nowISO() });
-});
+// ── Рендер ──────────────────────────────────────────────────────────────────
+async function render(items) {
+  if (!listEl) return;
+  listEl.innerHTML = '';
 
-/**
- * GET /api/bookings
- * Параметри:
- *  - consultantEmail (string)
- *  - consultantName (string)
- *  - date=YYYY-MM-DD (optional)
- */
-app.get('/api/bookings', (req, res) => {
-  const { consultantEmail, consultantName, date } = req.query;
-
-  let list = bookings.slice();
-
-  if (consultantEmail) {
-    const key = String(consultantEmail).toLowerCase();
-    list = list.filter(b => String(b.consultantEmail || '').toLowerCase() === key);
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) {
+    if (emptyEl) emptyEl.style.display='block';
+    if (errEl)   errEl.style.display='none';
+    return;
   }
-  if (consultantName) {
-    const key = String(consultantName).trim().toLowerCase();
-    list = list.filter(b => String(b.consultantName || '').trim().toLowerCase() === key);
-  }
-  if (date) {
-    list = list.filter(b => b.date === String(date));
-  }
+  if (emptyEl) emptyEl.style.display='none';
+  if (errEl)   errEl.style.display='none';
 
-  res.json({ list });
-});
+  // Сортуємо за датою/часом (найближчі вгорі)
+  safeItems.sort((a,b) => (String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
 
-/**
- * POST /api/bookings
- * Приймає:
- *  - consultantName, consultantEmail, fullName, email, date, time, notes, paid
- *  - file (multipart) — необов'язково
- * Повертає: { ok:true, item }
- */
-app.post('/api/bookings', upload.single('file'), async (req, res) => {
+  const API_BASE = await getApiBase();
+
+  for (const b of safeItems) {
+    const fileUrlAbs = b.fileUrl ? joinUrl(API_BASE, b.fileUrl) : '';
+    const hasFile = !!fileUrlAbs;
+
+    const fileBlock = hasFile ? `
+      <div class="fileline" style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <span class="muted">Прикріплене фото:</span>
+        <a class="filebtn btn light" href="${fileUrlAbs}" target="_blank" rel="noopener" download>
+          📎 Завантажити чек${b.fileName ? ` (${escapeHtml(b.fileName)})` : ''}
+        </a>
+        <a class="filethumb" href="${fileUrlAbs}" target="_blank" rel="noopener" title="Відкрити в новій вкладці" style="line-height:0">
+          <img src="${fileUrlAbs}" alt="Прикріплене фото" loading="lazy"
+               style="height:56px;width:56px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+        </a>
+      </div>
+    ` : '';
+
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `
+      <div>
+        <div class="when">${fmt(b.date, b.time)}</div>
+        <div><strong>${escapeHtml(b.fullName||'')}</strong>${b.email ? ` • <a href="mailto:${escapeHtml(b.email)}">${escapeHtml(b.email)}</a>` : ''}</div>
+        ${b.notes ? `<div class="muted">${escapeHtml(b.notes)}</div>` : ''} 
+        ${fileBlock}
+      </div>
+      <div class="row" style="gap:10px;align-items:center">
+        <a class="btn ghost" href="video.html?room=${encodeURIComponent(myName)}" target="_blank" rel="noopener">Приєднатися до відеочату</a>
+        <button class="btn gray" data-id="${escapeHtml(b.id)}">Завершити</button>
+      </div>
+    `;
+
+    // кнопка "Завершити"
+    const delBtn = div.querySelector('button[data-id]');
+    if (delBtn) {
+      delBtn.onclick = async (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        try {
+          e.currentTarget.disabled = true;
+          await deleteBooking(id);
+          await load(false);
+        } catch {
+          e.currentTarget.disabled = false;
+          alert('Не вдалося видалити запис. Спробуйте ще раз.');
+        }
+      };
+    }
+
+    // якщо користувач клацне саме по <img>, все одно відкриємо в новій вкладці
+    const img = div.querySelector('.filethumb img');
+    if (img && fileUrlAbs){
+      img.style.cursor = 'zoom-in';
+      img.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        window.open(fileUrlAbs, '_blank', 'noopener');
+      });
+    }
+
+    listEl.appendChild(div);
+  }
+}
+
+// ── Додатковий фетч по імені (варіант B) ────────────────────────────────────
+async function fetchByName(name){
+  try{
+    let mod = {};
+    try { mod = await import('./config.js'); } catch {}
+    const API_BASE =
+      (mod && (mod.API_BASE || (mod.default && mod.default.API_BASE))) ||
+      (typeof window !== 'undefined' && window.API_BASE) ||
+      (typeof location !== 'undefined' && location.origin) || '';
+    const url = `${String(API_BASE).replace(/\/+$/,'')}/api/bookings?consultantName=${encodeURIComponent(String(name||''))}`;
+    const r = await fetch(url, { headers:{ 'Accept':'application/json' }});
+    if (!r.ok) return { list: [] };
+    const j = await r.json().catch(()=> ({}));
+    return j && (j.list ? j : { list: Array.isArray(j) ? j : [] });
+  }catch(_){ return { list: [] }; }
+}
+
+// ── Завантаження ────────────────────────────────────────────────────────────
+async function load(showSpinner=true){
   try {
-    // Якщо прилетів JSON — беремо з body, якщо multipart — теж з body + file
-    const {
-      consultantName = '',
-      consultantEmail = '',
-      fullName = '',
-      email = '',
-      date = '',
-      time = '',
-      notes = '',
-      paid = false,
-    } = req.body || {};
+    if (showSpinner && spinEl) spinEl.style.display = 'inline-block';
 
-    if (!consultantName || !consultantEmail || !fullName || !email || !date || !time) {
-      return res.status(400).json({ ok: false, error: 'Missing required fields' });
-    }
+    // 1) за email консультанта (основний шлях)
+    const byEmail = await fetchBookings(myEmail).catch(()=>({ list: [] }));
 
-    let fileUrl = '';
-    let fileName = '';
-    if (req.file) {
-      fileUrl = `/uploads/${req.file.filename}`;
-      fileName = req.file.originalname || '';
-    }
+    // 2) додатково за іменем консультанта (щоб не залежати від збігу email/ім’я)
+    const byName  = await fetchByName(myName).catch(()=>({ list: [] }));
 
-    const item = {
-      id: crypto.randomUUID(),
-      createdAt: nowISO(),
-      consultantName,
-      consultantEmail: String(consultantEmail).toLowerCase(),
-      fullName,
-      email,
-      date,
-      time,
-      notes,
-      paid: !!(paid === true || paid === 'true' || paid === 'on'),
-      fileUrl,
-      fileName
-    };
+    // змерджимо унікально (за id)
+    const merged = uniqById([...(byEmail?.list||[]), ...(byName?.list||[])]);
 
-    bookings.push(item);
-    await saveDB();
-
-    // Додаємо абсолютну URL до файлу у відповіді
-    const itemOut = { ...item };
-    if (itemOut.fileUrl) itemOut.fileUrl = absUrl(req, itemOut.fileUrl);
-
-    res.status(201).json({ ok: true, item: itemOut });
-  } catch (e) {
-    console.error('POST /api/bookings error:', e);
-    res.status(500).json({ ok: false, error: 'Server error' });
+    await render(merged);
+  } catch {
+    if (listEl) listEl.innerHTML = '';
+    if (emptyEl) emptyEl.style.display='none';
+    if (errEl)   errEl.style.display='block';
+  } finally {
+    if (spinEl) spinEl.style.display = 'none';
   }
-});
+}
 
-/**
- * DELETE /api/bookings/:id
- */
-app.delete('/api/bookings/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const idx = bookings.findIndex(b => b.id === id);
-    if (idx === -1) return res.status(404).json({ ok: false, error: 'Not found' });
+if (refreshBtn) refreshBtn.onclick = () => load();
 
-    const [removed] = bookings.splice(idx, 1);
-    await saveDB();
-
-    // Спробувати видалити файл
-    if (removed && removed.fileUrl && removed.fileUrl.startsWith('/uploads/')) {
-      const p = path.join(__dirname, removed.fileUrl);
-      fs.remove(p).catch(() => {});
-    }
-
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('DELETE /api/bookings/:id error:', e);
-    res.status(500).json({ ok: false, error: 'Server error' });
-  }
-});
-
-// Fallback 404 для API
-app.use('/api', (_req, res) => res.status(404).json({ ok: false, error: 'Not found' }));
-
-// ----- Старт -----
-app.listen(PORT, () => {
-  console.log(`API is up on :${PORT}`);
-  console.log(`CORS ALLOW_ORIGIN=${ALLOW_ORIGIN}`);
-});
+// первинне завантаження + м’яке автооновлення
+await load(false);
+setInterval(load, 60*1000);
