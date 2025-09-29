@@ -1,19 +1,54 @@
-import { API_BASE } from './config.js';
-
 // html/js/bookings.js
-// Єдиний клієнт для API бронювань.
-// !!! Обов'язково заміни API_BASE на свій Render-домен з цим сервером.
+// Клієнт для API бронювань (+ надійні фоли).
+// Працює як із config.js (іменований export const API_BASE = '...'),
+// так і з window.API_BASE, або з поточним origin як запасний варіант.
+
+// ---- визначаємо API_BASE без падінь, навіть якщо в config.js нічого не експортовано
+let API_BASE_DETECTED = '';
+try {
+  // пробуємо імпорт як модуль (іменований або default)
+  // ВАЖЛИВО: цей рядок не ламає бандл, якщо config.js не має потрібного експорту
+  // тому імпорт здійснюємо через динамічний доступ до властивостей.
+  // У браузері це працює, бо ES-модулі підставляються на етапі збірки/завантаження.
+  // eslint-disable-next-line import/namespace, no-undef
+  const cfg = await import('./config.js').catch(() => ({}));
+  API_BASE_DETECTED =
+    (cfg && (cfg.API_BASE || (cfg.default && cfg.default.API_BASE))) || '';
+} catch (_) {
+  // ігноруємо — підемо за фолбеками нижче
+}
+if (!API_BASE_DETECTED && typeof window !== 'undefined' && window.API_BASE) {
+  API_BASE_DETECTED = window.API_BASE;
+}
+// запасний варіант — поточний origin (наприклад, якщо API розгорнуте поруч)
+if (!API_BASE_DETECTED && typeof location !== 'undefined') {
+  API_BASE_DETECTED = location.origin;
+}
+const API_BASE = String(API_BASE_DETECTED || '').replace(/\/+$/, '');
+
+// підкажемо в консолі, що використовується саме зараз
+if (!API_BASE || API_BASE === location.origin) {
+  console.warn(
+    '[bookings] API_BASE не задано у config.js — використовую поточний origin:',
+    API_BASE
+  );
+} else {
+  console.info('[bookings] API_BASE =', API_BASE);
+}
 
 /** Внутрішній запит з охайною обробкою помилок та без кешу */
 async function request(input, init = {}) {
   const res = await fetch(input, {
-    cache: "no-store",
-    headers: { Accept: "application/json", ...(init.headers || {}) },
+    cache: 'no-store',
+    headers: { Accept: 'application/json', ...(init.headers || {}) },
     ...init,
   });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
-    try { msg += `: ${await res.text()}`; } catch {}
+    try {
+      const txt = await res.text();
+      msg += `: ${txt}`;
+    } catch {}
     throw new Error(msg);
   }
   if (res.status === 204) return null; // без тіла
@@ -39,12 +74,12 @@ export async function createBooking(payload) {
     Object.entries(payload).forEach(([k, v]) => {
       if (v !== undefined && v !== null) fd.append(k, v);
     });
-    return request(`${API_BASE}/api/bookings`, { method: "POST", body: fd });
+    return request(`${API_BASE}/api/bookings`, { method: 'POST', body: fd });
   }
 
   return request(`${API_BASE}/api/bookings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload || {}),
   });
 }
@@ -56,8 +91,8 @@ export async function createBooking(payload) {
  */
 export async function fetchBookings(consultantEmail, opts = {}) {
   const url = new URL(`${API_BASE}/api/bookings`);
-  if (consultantEmail) url.searchParams.set("consultantEmail", consultantEmail);
-  if (opts.date) url.searchParams.set("date", opts.date);
+  if (consultantEmail) url.searchParams.set('consultantEmail', consultantEmail);
+  if (opts.date) url.searchParams.set('date', opts.date);
 
   const json = await request(url.toString());
   return normalizeList(json);
@@ -66,6 +101,6 @@ export async function fetchBookings(consultantEmail, opts = {}) {
 /** Видалити бронювання за id. Повертає відповідь сервера як є. */
 export async function deleteBooking(id) {
   return request(`${API_BASE}/api/bookings/${encodeURIComponent(id)}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
 }
