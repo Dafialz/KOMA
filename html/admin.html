@@ -17,7 +17,7 @@
     /* Аватар без підрізання */
     .vk-avatar{
       width:100%;
-      height:auto;              /* висота за пропорціями */
+      height:auto;              /* зберігає пропорції */
       object-fit:contain;       /* не обрізає фото */
       background:#f3f4f6;
       border:1px solid var(--border);
@@ -65,9 +65,7 @@
 
         <!-- ЗАМІСТЬ ГАЛЕРЕЇ -->
         <div class="vk-support">
-          <a id="supportBtn" class="btn outline w100" href="mailto:support@koma.example?subject=Підтримка%20КОМА">
-            Служба підтримки
-          </a>
+          <a id="supportBtn" class="btn outline w100" href="support.html">Служба підтримки</a>
         </div>
       </aside>
 
@@ -144,16 +142,33 @@
     avatarEl.src = AVATAR_MAP[myEmail] || 'icon/avatar.png';
     avatarEl.onerror = () => { avatarEl.src = 'icon/avatar.png'; };
 
-    // Статистика «фото» тепер дорівнює 0 (галереї немає)
+    // Статистика «фото» тепер 0 (бо галереї немає)
     document.getElementById('statPhotos').textContent = 0;
 
-    // ===== Дата/час за замовчуванням (сьогодні +1 день, таймзона Київ)
-    const kyivNow = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Kyiv' }));
-    kyivNow.setDate(kyivNow.getDate()+1);
-    document.getElementById('date').value = kyivNow.toISOString().slice(0,10);
-    const hh = String(kyivNow.getHours()).padStart(2,'0');
-    const mm = String(kyivNow.getMinutes()).padStart(2,'0');
-    document.getElementById('time').value = `${hh}:${mm}`;
+    // ===== Дата/час за замовчуванням (Київ, завтра) — без проблем з toISOString()
+    function kyivDateTime(offsetDays = 1) {
+      const now = new Date();
+      const fmt = new Intl.DateTimeFormat('uk-UA', {
+        timeZone: 'Europe/Kyiv',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+      const parts = Object.fromEntries(fmt.formatToParts(now).map(p => [p.type, p.value]));
+      // Локальний Date з урахуванням київського часу на момент now
+      const base = new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00`);
+      base.setDate(base.getDate() + offsetDays);
+
+      const Y  = base.getFullYear();
+      const M  = String(base.getMonth() + 1).padStart(2,'0');
+      const D  = String(base.getDate()).padStart(2,'0');
+      const HH = String(base.getHours()).padStart(2,'0');
+      const MM = String(base.getMinutes()).padStart(2,'0');
+
+      return { date: `${Y}-${M}-${D}`, time: `${HH}:${MM}` };
+    }
+    const def = kyivDateTime(1);
+    document.getElementById('date').value = def.date;
+    document.getElementById('time').value = def.time;
 
     // ===== Генерація лінку
     const out = document.getElementById('out');
@@ -189,8 +204,8 @@
     // Вихід
     document.getElementById('logout').onclick = () => guard.logout();
 
-    // Якщо хочеш динамічно підставляти email підтримки — зроби так:
-    // document.getElementById('supportBtn').href = `mailto:support@koma.example?subject=Підтримка%20для%20${encodeURIComponent(myName)}`;
+    // Якщо захочеш персоналізувати email підтримки:
+    // document.getElementById('supportBtn').href = `support.html?from=${encodeURIComponent(myEmail)}`;
   </script>
   <script src="js/partials.js"></script>
 </body>

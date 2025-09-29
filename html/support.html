@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Служба підтримки — КОМА</title>
+  <link rel="icon" href="icon/favicon.ico" />
+  <meta name="theme-color" content="#0f5257" />
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .support-wrap{max-width:880px;margin:24px auto;padding:0 20px}
+    .support-form{padding:22px}
+    textarea.input{min-height:160px;resize:vertical}
+    .log{margin-top:18px}
+    .log-item{padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+  </style>
+</head>
+<body>
+  <div data-include="partials/header.html"></div>
+
+  <section class="section">
+    <div class="support-wrap">
+      <div class="card support-form">
+        <h1>Служба підтримки</h1>
+        <p class="lead">Опишіть проблему чи запит. Ми відповімо на вказану вами електронну пошту.</p>
+
+        <div id="err" class="error"></div>
+        <div id="ok" class="ok"></div>
+
+        <form id="f" novalidate>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div>
+              <label>Ваше ім’я</label>
+              <input id="name" class="input" placeholder="Ім’я та прізвище">
+            </div>
+            <div>
+              <label>Ел. пошта</label>
+              <input id="email" class="input" type="email" placeholder="you@example.com" required>
+            </div>
+            <div>
+              <label>Тема</label>
+              <select id="topic" class="input">
+                <option>Технічна проблема</option>
+                <option>Запит щодо навчання</option>
+                <option>Запит щодо консультацій</option>
+                <option>Побажання / ідея</option>
+                <option>Інше</option>
+              </select>
+            </div>
+            <div>
+              <label>Пріоритет</label>
+              <select id="prio" class="input">
+                <option>Звичайний</option>
+                <option>Високий</option>
+                <option>Низький</option>
+              </select>
+            </div>
+          </div>
+
+          <label style="margin-top:10px">Повідомлення</label>
+          <textarea id="msg" class="input" placeholder="Опишіть ситуацію максимально конкретно…" required></textarea>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn" type="submit">Надіслати</button>
+            <button class="btn gray" type="button" id="clearLog">Очистити журнал</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card log">
+        <h3>Останні звернення (локально)</h3>
+        <div id="logList" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
+      </div>
+    </div>
+  </section>
+
+  <div data-include="partials/footer.html"></div>
+
+  <script src="js/guard.js"></script>
+  <script type="module" src="js/partials.js"></script>
+  <script>
+    const err = document.getElementById('err');
+    const ok  = document.getElementById('ok');
+    const LKEY = 'koma_support_outbox';
+
+    function showErr(t){ err.textContent=t; err.style.display='block'; ok.style.display='none'; }
+    function showOk(t){ ok.textContent=t; ok.style.display='block'; err.style.display='none'; }
+
+    // Підставляємо імʼя/пошту, якщо є сесія
+    (function prefill(){
+      try{
+        const s = window.guard?.getSession?.();
+        if(s?.email){
+          document.getElementById('email').value = s.email;
+          const nm = window.guard?.emailToName?.(s.email);
+          if(nm) document.getElementById('name').value = nm;
+        }
+      }catch{}
+    })();
+
+    // Журнал в localStorage
+    function readLog(){ try{ return JSON.parse(localStorage.getItem(LKEY)||'[]'); }catch{ return []; } }
+    function writeLog(arr){ localStorage.setItem(LKEY, JSON.stringify(arr.slice(-20))); }
+    function renderLog(){
+      const list = document.getElementById('logList');
+      list.innerHTML = '';
+      readLog().slice().reverse().forEach(i=>{
+        const div = document.createElement('div');
+        div.className='log-item';
+        div.innerHTML = `<strong>${i.topic}</strong> • ${i.email} • <span class="muted">${new Date(i.ts).toLocaleString('uk-UA')}</span><br>${i.msg}`;
+        list.appendChild(div);
+      });
+    }
+    renderLog();
+
+    document.getElementById('clearLog').onclick = ()=>{
+      localStorage.removeItem(LKEY);
+      renderLog();
+      showOk('Журнал очищено.');
+    };
+
+    // Надсилання
+    document.getElementById('f').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const email= document.getElementById('email').value.trim();
+      const topic= document.getElementById('topic').value;
+      const prio = document.getElementById('prio').value;
+      const msg  = document.getElementById('msg').value.trim();
+
+      if(!email || !msg){ showErr('Вкажіть email і заповніть повідомлення.'); return; }
+
+      // лог локально
+      const rec = { name, email, topic:`${topic} (${prio})`, msg, ts: Date.now() };
+      const log = readLog(); log.push(rec); writeLog(log); renderLog();
+
+      // mailto (змінити адресу на робочу підтримки)
+      const to = 'info@nacc.example';
+      const subject = encodeURIComponent(`[КОМА] ${topic} (${prio}) — ${name||'користувач'}`);
+      const body = encodeURIComponent(`Від: ${name||'-'} <${email}>\nТема: ${topic}\nПріоритет: ${prio}\n\n${msg}\n\n— надіслано зі сторінки служби підтримки`);
+      const url = `mailto:${to}?subject=${subject}&body=${body}`;
+      window.location.href = url;
+
+      showOk('Чернетку для листа відкрито у вашому поштовому клієнті. Також звернення збережено локально.');
+      e.target.reset();
+    });
+  </script>
+</body>
+</html>
