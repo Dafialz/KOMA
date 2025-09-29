@@ -44,19 +44,24 @@
     "url": "https://koma-hcmz.netlify.app/",
     "logo": "https://koma-hcmz.netlify.app/icon/logo.png",
     "sameAs": [
-      "https://www.facebook.com/", 
+      "https://www.facebook.com/",
       "https://www.instagram.com/"
     ]
   }
   </script>
 
-  <!-- JSON-LD: WebSite (можливість покращених посилань у видачі) -->
+  <!-- JSON-LD: WebSite + SearchAction -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "КОМА",
-    "url": "https://koma-hcmz.netlify.app/"
+    "url": "https://koma-hcmz.netlify.app/",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://koma-hcmz.netlify.app/directory.html?search={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
   }
   </script>
 </head>

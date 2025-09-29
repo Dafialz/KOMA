@@ -3,10 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Пожертви — КОМА</title>
+  <title>Пожертви та підтримка — центр ментального здоров’я «КОМА»</title>
+  <meta name="description" content="Підтримайте центр ментального здоров’я «КОМА». Благодійні пожертви, щомісячні внески та партнерство допомагають робити психологічну допомогу доступною." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://koma-hcmz.netlify.app/donate.html" />
+
+  <!-- Favicon / OG -->
   <link rel="icon" href="icon/favicon.ico" />
+  <meta property="og:title" content="Пожертви та підтримка — КОМА" />
+  <meta property="og:description" content="Зробіть внесок: одноразова пожертва, щомісячний платіж або партнерство. Ваша підтримка допомагає нам розвивати програми." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://koma-hcmz.netlify.app/donate.html" />
+  <meta property="og:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Пожертви та підтримка — КОМА" />
+  <meta name="twitter:description" content="Допоможіть зробити психологічну допомогу доступною. Оберіть формат підтримки." />
+  <meta name="twitter:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+
   <meta name="theme-color" content="#0f5257" />
   <link rel="stylesheet" href="css/main.css" />
+
+  <!-- JSON-LD: DonateAction -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"DonateAction",
+    "name":"Пожертви для центру «КОМА»",
+    "description":"Підтримайте благодійну діяльність: консультації, програми та події центру ментального здоров’я «КОМА».",
+    "target":"https://koma-hcmz.netlify.app/donate.html",
+    "recipient":{
+      "@type":"Organization",
+      "name":"Християнський центр ментального здоров’я «КОМА»",
+      "url":"https://koma-hcmz.netlify.app/",
+      "logo":"https://koma-hcmz.netlify.app/icon/logo.png"
+    }
+  }
+  </script>
 </head>
 <body>
   <div data-include="partials/header.html"></div>
@@ -57,9 +90,7 @@
     </div>
   </section>
 
-  <!-- Віджет фраз + служба підтримки -->
   <div data-include="partials/support.html"></div>
-
   <div data-include="partials/footer.html"></div>
   <script type="module" src="js/partials.js"></script>
   <script src="js/support.js" defer></script>

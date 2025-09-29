@@ -3,24 +3,74 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Запис на консультацію — КОМА</title>
-  <meta name="description" content="Підтвердження запису, підключення до відеочату КОМА та вбудований чат із консультантом у призначений час." />
 
-  <!-- Favicon / OpenGraph (все з папки html/icon) -->
+  <!-- SEO -->
+  <title>Запис на консультацію — центр ментального здоров’я «КОМА»</title>
+  <meta name="description" content="Запишіться на консультацію у центрі «КОМА»: підтвердження зустрічі, відеочат та вбудований чат із консультантом у призначений час." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://koma-hcmz.netlify.app/zapis.html" />
+
+  <!-- Favicon / OpenGraph (absolute URLs) -->
   <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta property="og:title" content="Запис на консультацію — КОМА" />
-  <meta property="og:description" content="Деталі вашого запису, відеочат та вбудований чат повідомлень." />
+  <meta property="og:description" content="Обрати час, підтвердити зустріч, приєднатись до відеочату та спілкуватись у чаті." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="icon/baner.jpg" />
+  <meta property="og:url" content="https://koma-hcmz.netlify.app/zapis.html" />
+  <meta property="og:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+  <meta property="og:image:alt" content="КОМА — Християнський центр ментального здоров’я" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Запис на консультацію — КОМА" />
+  <meta name="twitter:description" content="Швидкий запис, підтвердження зустрічі та відеочат у призначений час." />
+  <meta name="twitter:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+
   <meta name="theme-color" content="#0f5257" />
 
-  <!-- CSS (папка css лежить рівнем вище за html/) -->
-  <link rel="stylesheet" href="../css/main.css" />
-  <link rel="stylesheet" href="../css/zapis.css" />
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/zapis.css" />
+
+  <!-- JSON-LD: Service + ScheduleAction -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Service",
+    "name":"Запис на консультацію психолога",
+    "description":"Онлайн-запис на індивідуальну чи сімейну консультацію у центрі «КОМА».",
+    "areaServed": "Україна",
+    "provider":{
+      "@type":"Organization",
+      "name":"Християнський центр ментального здоров’я «КОМА»",
+      "url":"https://koma-hcmz.netlify.app/",
+      "logo":"https://koma-hcmz.netlify.app/icon/logo.png"
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Консультаційні послуги",
+      "itemListElement": [
+        {"@type":"Offer","name":"Діагностична консультація"},
+        {"@type":"Offer","name":"Індивідуальна сесія"},
+        {"@type":"Offer","name":"Парна терапія"},
+        {"@type":"Offer","name":"Групова терапія"}
+      ]
+    },
+    "potentialAction":{
+      "@type":"ScheduleAction",
+      "target":{
+        "@type":"EntryPoint",
+        "urlTemplate":"https://koma-hcmz.netlify.app/zapis.html",
+        "actionPlatform":[
+          "http://schema.org/DesktopWebPlatform",
+          "http://schema.org/MobileWebPlatform"
+        ]
+      }
+    }
+  }
+  </script>
 </head>
 <body>
   <!-- header partial -->
-  <!-- partials живуть у html/partials/ -->
   <div id="site-header" data-include="partials/header.html"></div>
 
   <!-- PAGE CONTENT -->
@@ -115,7 +165,7 @@
   <!-- footer partial -->
   <div id="site-footer" data-include="partials/footer.html"></div>
 
-  <!-- JS (усі відносно html/) -->
+  <!-- JS -->
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
   <script type="module" src="js/zapis.js"></script>
