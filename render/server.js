@@ -1,13 +1,11 @@
 // server.js
 // ─────────────────────────────────────────────────────────────────────────────
-// 1) WebSocket-сигналінг для video.html (join / offer / answer / ice / bye)
-// 2) REST API бронювань із збереженням у bookings.json та файлами в /uploads
+// 1) WebSocket-сигналінг (join / offer / answer / ice / bye)
+// 2) REST API бронювань з файлами (multer) і збереженням у bookings.json:
 //    POST   /api/bookings
-//    GET    /api/bookings?consultantEmail=...   -> { ok, list: [...] }
-//    DELETE /api/bookings/:id                    (також видаляє прикріплений файл)
-// 3) Віддаємо статичний сайт із папки /html
-//
-// Примітка: автоочистку за часом ВИМКНЕНО. Запис живе, доки його не видалять.
+//    GET    /api/bookings?consultantEmail=...      -> { ok, list: [...] }
+//    DELETE /api/bookings/:id
+// 3) Статика сайту з директорії /html
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require("express");
@@ -20,11 +18,11 @@ const multer = require("multer");
 
 // ── Конфіг ───────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*"; // напр.: "https://koma-hcmz.netlify.app"
-const DATA_DIR       = process.env.DATA_DIR       || "."; // на Render можна "/data"
-const BOOK_FILE      = path.join(DATA_DIR, "bookings.json");
-const UPLOAD_DIR     = path.join(DATA_DIR, "uploads");
+const DATA_DIR   = process.env.DATA_DIR || ".";           // на Render можна "/data"
+const BOOK_FILE  = path.join(DATA_DIR, "bookings.json");
+const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 
-// Створюємо директорії, якщо їх нема
+// Гарантуємо наявність директорій
 try { fs.mkdirSync(DATA_DIR,   { recursive: true }); } catch {}
 try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch {}
 
@@ -39,17 +37,28 @@ const storage = multer.diskStorage({
     cb(null, `${stamp}-${safe}`);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10 МБ
 
 // ── App / HTTP / WS ──────────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// ── Middlewares ──────────────────────────────────────────────────────────────
-app.use(
-  cors(ALLOWED_ORIGIN === "*" ? {} : { origin: ALLOWED_ORIGIN })
-);
+// ── CORS + префлайт ──────────────────────────────────────────────────────────
+const corsOptions = (ALLOWED_ORIGIN === "*")
+  ? {} : { origin: ALLOWED_ORIGIN, credentials: false };
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // відповіді на preflight для всіх маршрутів
+
+// Дублюємо заголовок (деякі платформи кешують відповіді CORS)
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN === "*" ? "*" : ALLOWED_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+  next();
+});
+
 app.use(express.json());
 app.use("/uploads", express.static(UPLOAD_DIR)); // віддаємо завантажені файли
 
@@ -66,12 +75,9 @@ wss.on("connection", (ws) => {
       if (!ws.room) return;
       if (!rooms.has(ws.room)) rooms.set(ws.room, new Set());
       rooms.get(ws.room).add(ws);
-      // можна сповістити інших, якщо треба:
-      // broadcast(ws.room, { type: "peer-join" }, ws);
       return;
     }
 
-    // Перекидаємо SDP/ICE/bye іншим клієнтам у кімнаті
     if (
       ws.room &&
       (msg.type === "offer" || msg.type === "answer" || msg.type === "ice" || msg.type === "bye")
@@ -83,7 +89,6 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     if (ws.room && rooms.has(ws.room)) {
       rooms.get(ws.room).delete(ws);
-      // broadcast(ws.room, { type: "peer-leave" }, ws);
       if (rooms.get(ws.room).size === 0) rooms.delete(ws.room);
     }
   });
@@ -99,7 +104,7 @@ function broadcast(room, message, exceptWs) {
   }
 }
 
-// ── Бронювання ───────────────────────────────────────────────────────────────
+// ── Збереження бронювань ─────────────────────────────────────────────────────
 let bookings = [];
 try {
   if (fs.existsSync(BOOK_FILE)) {
@@ -112,15 +117,17 @@ try {
 function saveBookings() {
   try {
     fs.writeFileSync(BOOK_FILE, JSON.stringify(bookings, null, 2), "utf-8");
-  } catch (e) { console.error("saveBookings error:", e.message); }
+  } catch (e) {
+    console.error("saveBookings error:", e.message);
+  }
 }
 
-// Health (корисно для Render)
+// Healthcheck (зручно для Render)
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, rooms: rooms.size, bookings: bookings.length });
 });
 
-// Створити бронювання (JSON або multipart form-data з полем "file")
+// Створити бронювання (JSON або multipart з полем "file")
 app.post("/api/bookings", upload.single("file"), (req, res) => {
   let {
     consultantEmail,
@@ -129,16 +136,18 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     email,
     date,
     time,
-    note,
+    notes, // із фронта може приходити як notes
+    note,  // або як note
   } = req.body || {};
 
+  // нормалізуємо поля
   consultantEmail = String(consultantEmail || "").trim().toLowerCase();
   consultantName  = String(consultantName  || "").trim();
   fullName        = String(fullName        || "").trim();
   email           = String(email           || "").trim();
   date            = String(date            || "").trim();
   time            = String(time            || "").trim();
-  note            = String(note            || "").trim();
+  note            = String(note || notes || "").trim();
 
   if (!consultantEmail || !consultantName || !fullName || !date || !time) {
     if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
@@ -149,14 +158,14 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     return res.status(400).json({ error: "Bad email" });
   }
 
-  // Таймштамп початку (Київ). Якщо потрібна точна сезонність — краще передавати з фронта.
+  // Простий таймштамп початку (Київ). За потреби передавайте готовий startTS із клієнта.
   const startTS = Date.parse(`${date}T${time}:00+03:00`);
   if (Number.isNaN(startTS)) {
     if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Bad date/time" });
   }
 
-  // Інфо про файл (якщо прикріплено)
+  // Інформація про файл
   let fileName = "";
   let fileUrl  = "";
   if (req.file) {
@@ -185,7 +194,7 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
   return res.status(201).json({ ok: true, id, rec });
 });
 
-// Отримати список бронювань для консультанта
+// Список бронювань для консультанта
 app.get("/api/bookings", (req, res) => {
   const c = String(req.query.consultantEmail || "").trim().toLowerCase();
   if (!c) return res.status(400).json({ error: "consultantEmail required" });
@@ -197,12 +206,12 @@ app.get("/api/bookings", (req, res) => {
   res.json({ ok: true, list });
 });
 
-// Видалити бронювання (натиснули «Завершити»)
+// Видалити бронювання
 app.delete("/api/bookings/:id", (req, res) => {
   const id = String(req.params.id || "");
   const found = bookings.find((b) => b.id === id);
 
-  // Якщо був файл — видаляємо і його
+  // видаляємо файл, якщо був
   if (found && found.fileUrl) {
     const p = path.join(UPLOAD_DIR, path.basename(found.fileUrl));
     try { fs.unlinkSync(p); } catch {}
@@ -215,12 +224,12 @@ app.delete("/api/bookings/:id", (req, res) => {
   res.json({ ok: true, removed: before - bookings.length });
 });
 
-// ── Статика (корінь сайту — /html) ───────────────────────────────────────────
+// ── Статика сайту ────────────────────────────────────────────────────────────
 app.use(express.static("html"));
 
 // ── START ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`CORS: ${ALLOWED_ORIGIN}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`CORS ALLOWED_ORIGIN = ${ALLOWED_ORIGIN}`);
 });
