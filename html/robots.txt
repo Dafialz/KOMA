@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://koma-hcmz.netlify.app/sitemap.xml
