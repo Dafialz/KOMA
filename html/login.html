@@ -8,12 +8,10 @@
   <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta name="theme-color" content="#0f5257" />
   <link rel="stylesheet" href="css/main.css">
-
-
-  
 </head>
 <body>
   <div data-include="partials/header.html"></div>
+
   <div class="wrap">
     <div class="card">
       <div class="logo">
@@ -32,7 +30,7 @@
 
       <form id="form" autocomplete="on" novalidate>
         <label for="email">Ел. пошта</label>
-        <input class="input" id="email" name="email" type="email" placeholder="name@example.com" required autofocus autocomplete="email">
+        <input class="input" id="email" name="email" type="email" placeholder="name@example.com" required autofocus autocomplete="username">
 
         <label for="password">Пароль</label>
         <div class="row">
@@ -55,77 +53,99 @@
     <div data-include="partials/footer.html"></div>
   </div>
 
-<script>
-  // Рік у футері
-  // Мінімальна «сесія» в localStorage
-  const SESSION_KEY = 'koma_session';
-  function setSession(email, days){
-    const exp = Date.now() + days*24*60*60*1000;
-    localStorage.setItem(SESSION_KEY, JSON.stringify({email, exp}));
-  }
-  function clearSession(){
-    localStorage.removeItem(SESSION_KEY);
-    showOk('Сесію очищено.');
-  }
-  document.getElementById('clearSession').onclick = (e)=>{ e.preventDefault(); clearSession(); };
+  <script src="js/guard.js"></script>
+  <script type="module" src="js/partials.js"></script>
+  <script>
+    // ===== helpers =====
+    const SESSION_KEY = 'koma_session';
+    const errBox = document.getElementById('err');
+    const okBox  = document.getElementById('ok');
 
-  // Показ/приховати пароль
-  document.getElementById('toggle').onclick = ()=>{
-    const p = document.getElementById('password');
-    p.type = (p.type === 'password') ? 'text' : 'password';
-    document.getElementById('toggle').textContent = (p.type === 'password') ? 'Показати' : 'Сховати';
-  };
+    function basePath(){ return location.pathname.replace(/[^/]+$/,''); }
+    function showErr(t){ errBox.textContent = t; errBox.style.display='block'; okBox.style.display='none'; }
+    function showOk(t){  okBox.textContent  = t; okBox.style.display='block';  errBox.style.display='none'; }
 
-  // Повідомлення
-  const errBox = document.getElementById('err');
-  const okBox  = document.getElementById('ok');
-  function showErr(t){ errBox.textContent = t; errBox.style.display='block'; okBox.style.display='none'; }
-  function showOk(t){ okBox.textContent = t; okBox.style.display='block'; errBox.style.display='none'; }
+    function setSession(email, days){
+      const exp = Date.now() + days*24*60*60*1000;
+      localStorage.setItem(SESSION_KEY, JSON.stringify({email, exp}));
+    }
+    function clearSession(){
+      localStorage.removeItem(SESSION_KEY);
+      showOk('Сесію очищено.');
+      // оновити шапку, якщо вже підвантажена
+      if (window.guard?.applyAuthUI) window.guard.applyAuthUI({ desktop:'#authBtn', mobile:'#authBtnMobile' });
+    }
+    document.getElementById('clearSession').onclick = (e)=>{ e.preventDefault(); clearSession(); };
 
-  // Параметри редіректу після входу (можете змінити на admin.html)
-  const redirectTarget = 'admin.html';
+    // Показ/приховати пароль
+    document.getElementById('toggle').onclick = ()=>{
+      const p = document.getElementById('password');
+      p.type = (p.type === 'password') ? 'text' : 'password';
+      document.getElementById('toggle').textContent = (p.type === 'password') ? 'Показати' : 'Сховати';
+    };
 
-  // Крипто-хелпер: SHA-256 у hex через Web Crypto API
-  async function sha256Hex(str){
-    const enc = new TextEncoder().encode(str);
-    const digest = await crypto.subtle.digest('SHA-256', enc);
-    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
-  // Завантажити файл із користувачами (АБСОЛЮТНИЙ шлях від кореня сайту)
-  let users = [];
-  fetch('js/users.json', { cache:'no-store' })
-    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
-    .then(j => users = j)
-    .catch((e)=> showErr('Помилка завантаження даних користувачів. Перевірте, що файл доступний за адресою /js/users.json. Деталі: '+e.message));
-
-  // Обробка форми
-  document.getElementById('form').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    errBox.style.display='none'; okBox.style.display='none';
-
-    const email = (document.getElementById('email').value || '').trim().toLowerCase();
-    const pass  = document.getElementById('password').value || '';
-    const remember = document.getElementById('remember').checked;
-
-    if(!email || !pass){ showErr('Введіть пошту та пароль.'); return; }
-
-    const u = users.find(x => x.email.toLowerCase() === email);
-    if(!u){ showErr('Користувача не знайдено або немає доступу.'); return; }
-
-    // Перевірка: hash(salt + password)
-    const calc = await sha256Hex(u.salt + pass);
-    if(calc !== u.hash){
-      showErr('Невірний пароль.');
-      return;
+    // SHA-256 hex
+    async function sha256Hex(str){
+      const enc = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest('SHA-256', enc);
+      return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
     }
 
-    // Успіх — створюємо «сесію» та редірект
-    setSession(email, remember ? 30 : 1);
-    showOk('Вхід виконано. Перехід…');
-    setTimeout(()=>{ location.href = redirectTarget; }, 400);
-  });
-</script>
-  <script src="js/partials.js"></script>
+    // ===== users.json loader =====
+    let users = null;
+    let usersLoaded = (async () => {
+      try{
+        // users.json лежить поруч із login.html
+        const res = await fetch(`${basePath()}users.json`, { cache:'no-store' });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        users = await res.json();
+      }catch(e){
+        showErr('Помилка завантаження users.json. Перевірте розташування файлу. Деталі: ' + e.message);
+        users = [];
+      }
+    })();
+
+    // ===== submit =====
+    document.getElementById('form').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      errBox.style.display='none'; okBox.style.display='none';
+
+      // дочекаймося, якщо users.json ще не підвантажився
+      if (users === null) await usersLoaded;
+
+      const email = (document.getElementById('email').value || '').trim().toLowerCase();
+      const pass  = document.getElementById('password').value || '';
+      const remember = document.getElementById('remember').checked;
+
+      if(!email || !pass){ showErr('Введіть пошту та пароль.'); return; }
+
+      const u = (users || []).find(x => String(x.email).toLowerCase() === email);
+      if(!u){ showErr('Користувача не знайдено або немає доступу.'); return; }
+
+      // Перевірка: hash(salt + password)
+      let calc;
+      try{
+        calc = await sha256Hex(String(u.salt) + pass);
+      }catch(e){
+        showErr('Ваш браузер не підтримує Web Crypto API.');
+        return;
+      }
+      if(calc !== String(u.hash)){
+        showErr('Невірний пароль.');
+        return;
+      }
+
+      // Перевірка доступу через guard.js (allowlist)
+      if(!window.guard?.hasAccess(email)){
+        showErr('Немає доступу до кабінету.');
+        return;
+      }
+
+      // Успіх — створюємо «сесію» та редірект
+      setSession(email, remember ? 30 : 1);
+      showOk('Вхід виконано. Перехід…');
+      setTimeout(()=>{ location.replace(`${basePath()}admin.html`); }, 400);
+    });
+  </script>
 </body>
 </html>
