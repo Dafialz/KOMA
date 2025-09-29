@@ -7,12 +7,12 @@
   {
     "email": "sergiyoyovych@gmail.com",
     "salt": "b7a83f2bea57ece1",
-    "hash": "55aa6b026efe3ef6507c028e0a16468e003cffcc406c9093bc770222a64403f6"
+    "hash": "4e1a668cf13a03d44fda2b700dddcc3c107c48362ae8a170728622e157e8313e"
   },
   {
     "email": "anastasiyamakovska@gmail.com",
     "salt": "20d52c9e43ce6461",
-    "hash": "4423e05ed9fb2e3b7e0c8077cb435857dcd5569589e38be5d64f0a7dd84d205d"
+    "hash": "7dc89b493808c5fd86c88300fe6297a0dfcb1c4debf997a3cc7ee2f04ac77377"
   },
   {
     "email": "oleksandrtkachuk@gmail.com",
@@ -22,7 +22,7 @@
   {
     "email": "tetianaoyovych@gmail.com",
     "salt": "2b3d92f578bea24f",
-    "hash": "cf0908c02042ac8f2c957c6d5479d30551f61bee0d764ad1c6ba979f8d47fccf"
+    "hash": "a6fc1d48c95cb3205b13b7b991bbf9bc84023776d1cd536eda138c56743d64bd"
   },
   {
     "email": "kristinakokoten@gmail.com",
