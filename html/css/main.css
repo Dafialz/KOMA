@@ -192,9 +192,19 @@ label{display:block;font-weight:700;margin:8px 0 6px}
   border:1px solid rgba(255,255,255,.35); box-shadow:var(--shadow);
   transition:transform .15s ease;
 }
+.koma-help img{width:26px;height:26px;display:block}
 .koma-help:hover{ transform:translateY(-1px); }
+
+/* Мобільна адаптація віджета — БУЛЬБАШКА ВИДИМА */
 @media (max-width:640px){
-  .koma-phrase{ display:none; } /* на дуже малих екранах лишаємо тільки кнопку */
+  .koma-phrase{
+    display:inline-flex;
+    font-size:.82rem;
+    padding:.45rem .75rem;
+    max-width:72vw;
+  }
+  .koma-help{ width:44px; height:44px; }
+  .koma-help img{ width:24px; height:24px; }
 }
 
 /* ===== Modal ===== */
