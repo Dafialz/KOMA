@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Support Bot (solid)</title>
+  <desc>Robot head with headphones for support widget</desc>
+  <g>
+    <!-- Head -->
+    <rect x="10" y="12" width="28" height="22" rx="10" fill="#FFFFFF"/>
+    <!-- Eyes -->
+    <circle cx="19" cy="23" r="2.5" fill="#0F5257"/>
+    <circle cx="29" cy="23" r="2.5" fill="#0F5257"/>
+    <!-- Smile -->
+    <path d="M18 28c1.8 1.8 4.2 2.7 6 2.7s4.2-.9 6-2.7" fill="none" stroke="#0F5257" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Antenna -->
+    <rect x="22.25" y="8" width="3.5" height="6" rx="1.75" fill="#FFFFFF"/>
+    <circle cx="24" cy="6" r="3" fill="#FFFFFF"/>
+    <!-- Headphones band -->
+    <path d="M12 24a12 12 0 1 1 24 0" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+    <!-- Left earcup -->
+    <rect x="6" y="19" width="6" height="10" rx="3" fill="#FFFFFF"/>
+    <!-- Right earcup with mic boom -->
+    <rect x="36" y="19" width="6" height="10" rx="3" fill="#FFFFFF"/>
+    <path d="M42 29c0 3-2.5 5-5.5 5H34" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>
