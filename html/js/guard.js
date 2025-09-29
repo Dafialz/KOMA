@@ -5,20 +5,20 @@
   // Дозволені користувачі (email у нижньому регістрі) — синхронізовано з users.json
   const allowlist = [
     'oksanakokoten@gmail.com',
-    'andriyoyovych@gmail.com',
-    'anastasiyaoyovych@gmail.com',
+    'sergiyoyovych@gmail.com',
+    'tetianaoyovych@gmail.com',
     'oleksandrtkachuk@gmail.com',
-    'tetianamakovska@gmail.com',
+    'anastasiyamakovska@gmail.com',
     'kristinakokoten@gmail.com'
   ].map(e => e.toLowerCase());
 
   // Email → ім'я для зручного відображення/генерації лінків
   const names = {
     'oksanakokoten@gmail.com'     : 'Оксана Кокотень',
-    'andriyoyovych@gmail.com'     : 'Андрій Йовович',
-    'anastasiyaoyovych@gmail.com' : 'Анастасія Йовович',
+    'sergiyoyovych@gmail.com'     : 'Сергій Йовович',
+    'tetianaoyovych@gmail.com' : 'Тетяна Йовович',
     'oleksandrtkachuk@gmail.com'  : 'Олександр Ткачук',
-    'tetianamakovska@gmail.com'   : 'Тетяна Маковська',
+    'anastasiyamakovska@gmail.com'   : 'Анастасія Маковська',
     'kristinakokoten@gmail.com'   : 'Крістіна Кокотень'
   };
 
