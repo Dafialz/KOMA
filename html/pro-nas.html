@@ -3,22 +3,67 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Про нас — КОМА</title>
+
+  <!-- SEO -->
+  <title>Про нас — Християнський центр ментального здоров’я «КОМА» | Луцьк, Україна</title>
+  <meta name="description" content="Християнський центр ментального здоров’я «КОМА» у Луцьку. Консультації психолога, групові заняття, події та навчальні програми. Допомога при депресії, тривозі, стресі, ПТСР." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://koma-hcmz.netlify.app/pro-nas.html" />
+
+  <!-- Favicon -->
   <link rel="icon" href="icon/favicon.ico" />
+
+  <!-- OpenGraph -->
+  <meta property="og:title" content="Про нас — Християнський центр ментального здоров’я «КОМА»" />
+  <meta property="og:description" content="КОМА — центр ментального здоров’я у Луцьку. Консультації, групові програми, події та навчання. Онлайн та офлайн підтримка." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://koma-hcmz.netlify.app/pro-nas.html" />
+  <meta property="og:image" content="https://koma-hcmz.netlify.app/icon/pro-nas/koma.jpg" />
+  <meta property="og:image:alt" content="КОМА — Християнський центр ментального здоров’я" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Про нас — Християнський центр ментального здоров’я «КОМА»" />
+  <meta name="twitter:description" content="Консультації психолога, навчальні програми та події. Християнський центр ментального здоров’я у Луцьку." />
+  <meta name="twitter:image" content="https://koma-hcmz.netlify.app/icon/pro-nas/koma.jpg" />
+
   <meta name="theme-color" content="#0f5257" />
   <link rel="stylesheet" href="css/main.css" />
+
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "name": "Про нас — Християнський центр ментального здоров’я «КОМА»",
+    "description": "КОМА — центр ментального здоров’я у Луцьку. Консультації психолога, групові заняття, події та навчальні програми.",
+    "url": "https://koma-hcmz.netlify.app/pro-nas.html",
+    "isPartOf": {
+      "@type": "WebSite",
+      "url": "https://koma-hcmz.netlify.app/",
+      "name": "КОМА"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Християнський центр ментального здоров’я «КОМА»",
+      "url": "https://koma-hcmz.netlify.app/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://koma-hcmz.netlify.app/icon/logo.png"
+      }
+    }
+  }
+  </script>
 
   <style>
     .hero{padding:40px 0 20px;text-align:center}
     .hero h1{margin:0 0 10px}
     .hero .lead{color:var(--muted,#4b5563);max-width:880px;margin:0 auto}
 
-    /* Верхній блок з 3-ма великими картками */
     .grid-3{display:grid;gap:18px;grid-template-columns:repeat(3,1fr)}
     @media (max-width:1100px){.grid-3{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:700px){.grid-3{grid-template-columns:1fr}}
 
-    /* Картка без рамок і тіні */
     .about-card{
       background: transparent;
       border: 0;
@@ -28,7 +73,6 @@
       flex-direction: column;
     }
 
-    /* Фото без підрізаних «рамок» */
     .about-card img{
       width:100%;
       height:360px;
@@ -39,12 +83,10 @@
       border:0;
     }
 
-    /* Тіло картки */
     .about-body{padding:12px 2px 0}
     .about-body h3{margin:0 0 6px;font-size:1.1rem}
     .about-body p{margin:0;color:var(--muted,#4b5563)}
 
-    /* Сітка з 6 карток */
     .about-grid{
       --cols:3;
       display:grid;gap:24px;
@@ -61,9 +103,9 @@
     <div class="container">
       <h1>Про нас</h1>
       <p class="lead">
-        «КОМА» — християнський центр ментального здоров’я. Надаємо індивідуальні консультації,
-        групові та терапевтичні заняття, проводимо навчальні події та онлайн-послуги. Наша мета —
-        робити кваліфіковану допомогу доступною і якісною. наш телефон +380775558055
+        «КОМА» — християнський центр ментального здоров’я у Луцьку. Надаємо індивідуальні та сімейні консультації,
+        групові та терапевтичні заняття, проводимо навчальні події та онлайн-послуги. Допомагаємо при депресії, тривозі,
+        стресі, вигоранні та ПТСР. Наш телефон: +380775558055
       </p>
     </div>
   </section>
@@ -72,7 +114,7 @@
   <section class="section">
     <div class="container grid-3">
       <article class="about-card">
-        <img src="icon/pro-nas/koma.jpg" alt="Айдентика та логотип КОМА">
+        <img src="icon/pro-nas/koma.jpg" alt="Айдентика та логотип центру КОМА">
         <div class="about-body">
           <h3>Наш бренд</h3>
           <p>Візуальна айдентика КОМА — про цілісність і ясність. Ми поєднуємо професійний підхід,
@@ -81,7 +123,7 @@
       </article>
 
       <article class="about-card">
-        <img src="icon/pro-nas/koma-centr.jpg" alt="Простір центру КОМА">
+        <img src="icon/pro-nas/koma-centr.jpg" alt="Простір центру ментального здоров’я КОМА">
         <div class="about-body">
           <h3>Наш простір</h3>
           <p>Інклюзивні приміщення для індивідуальної та групової роботи, зручні формати
@@ -106,16 +148,16 @@
     <div class="container about-grid">
 
       <article class="about-card">
-        <img src="icon/pro-nas/banda1.jpg" alt="Команда центру КОМА — хто ми">
+        <img src="icon/pro-nas/banda1.jpg" alt="Команда центру ментального здоров’я КОМА">
         <div class="about-body">
           <h3>Хто ми</h3>
-          <p>Християнський центр ментального здоров’я, що об’єднує фахівців-практиків:
-            психологів, душеопікунів, коучів групової терапії. Працюємо гідно, етично та конфіденційно.</p>
+          <p>Християнський центр ментального здоров’я, що об’єднує психологів, душеопікунів, коучів групової терапії.
+            Працюємо гідно, етично та конфіденційно.</p>
         </div>
       </article>
 
       <article class="about-card">
-        <img src="icon/pro-nas/banda2.jpg" alt="Місія та бачення">
+        <img src="icon/pro-nas/banda2.jpg" alt="Місія та бачення КОМА">
         <div class="about-body">
           <h3>Місія та бачення</h3>
           <p>Покращувати ментальне здоров’я українського суспільства: сьогодні — доступний центр
@@ -124,7 +166,7 @@
       </article>
 
       <article class="about-card">
-        <img src="icon/pro-nas/banda3.jpg" alt="Наші послуги">
+        <img src="icon/pro-nas/banda3.jpg" alt="Послуги центру ментального здоров’я КОМА">
         <div class="about-body">
           <h3>Наші послуги</h3>
           <p>Індивідуальні консультації, групові та терапевтичні заняття, навчальні події
@@ -133,16 +175,16 @@
       </article>
 
       <article class="about-card">
-        <img src="icon/pro-nas/banda4.jpg" alt="Для кого ми працюємо">
+        <img src="icon/pro-nas/banda4.jpg" alt="Для кого корисні послуги КОМА">
         <div class="about-body">
           <h3>Для кого</h3>
           <p>Підлітки та дорослі з запитами: депресія, тривога, ПТСР, стрес і вигорання,
-            фобії, панічні атаки, залежності, РХП, ОКР та інші стани.</p>
+            фобії, панічні атаки, залежності, розлади харчової поведінки (РХП), ОКР та інші стани.</p>
         </div>
       </article>
 
       <article class="about-card">
-        <img src="icon/pro-nas/banda5.jpg" alt="Наш підхід">
+        <img src="icon/pro-nas/banda5.jpg" alt="Наш підхід у центрі КОМА">
         <div class="about-body">
           <h3>Наш підхід</h3>
           <p>Практичні інструменти саморегуляції, групова підтримка, співпраця з церквами
@@ -151,7 +193,7 @@
       </article>
 
       <article class="about-card">
-        <img src="icon/pro-nas/banda6.jpg" alt="Простір і команда">
+        <img src="icon/pro-nas/banda6.jpg" alt="Простір і команда центру КОМА">
         <div class="about-body">
           <h3>Простір і команда</h3>
           <p>Кабінети для індивідуальної роботи, зала для груп (15–20 осіб), дитяча та нейропсихологія.
@@ -162,10 +204,9 @@
     </div>
   </section>
 
-  <!-- Віджет фраз + служба підтримки -->
   <div data-include="partials/support.html"></div>
-
   <div data-include="partials/footer.html"></div>
+
   <script src="js/partials.js" type="module"></script>
   <script src="js/support.js" defer></script>
 </body>

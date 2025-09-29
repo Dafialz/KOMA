@@ -3,19 +3,62 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>КОМА — Християнський центр ментального здоров’я «КОМА»</title>
-  <meta name="description" content="Навчання, сертифікація, консультації та ресурси Християнського центру ментального здоров’я «КОМА»." />
 
-  <!-- Favicon / OpenGraph (шляхи відносно html/) -->
+  <!-- Primary SEO -->
+  <title>КОМА — Християнський центр ментального здоров’я | Консультації, події, навчальні програми</title>
+  <meta name="description" content="Християнський центр ментального здоров’я «КОМА». Індивідуальні та сімейні консультації, групові програми, навчання та події. Онлайн і офлайн. Київ • Україна." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <link rel="canonical" href="https://koma-hcmz.netlify.app/" />
+  <link rel="alternate" href="https://koma-hcmz.netlify.app/" hreflang="uk" />
+  <link rel="alternate" href="https://koma-hcmz.netlify.app/" hreflang="x-default" />
+
+  <!-- Favicon -->
   <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
-  <meta property="og:title" content="КОМА — Християнський центр ментального здоров’я «КОМА»" />
-  <meta property="og:description" content="Навчання, сертифікація, консультації та ресурси." />
+
+  <!-- OpenGraph / Facebook / Telegram -->
+  <meta property="og:title" content="КОМА — Християнський центр ментального здоров’я" />
+  <meta property="og:description" content="Консультації, групові програми, навчання та події. Онлайн і офлайн. Запишіться на консультацію вже сьогодні." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="icon/baner.jpg" />
+  <meta property="og:url" content="https://koma-hcmz.netlify.app/" />
+  <meta property="og:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+  <meta property="og:image:alt" content="КОМА — Християнський центр ментального здоров’я" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="КОМА — Християнський центр ментального здоров’я" />
+  <meta name="twitter:description" content="Індивідуальні та сімейні консультації, групові програми, навчання та події." />
+  <meta name="twitter:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+
+  <!-- PWA / Theme -->
   <meta name="theme-color" content="#0f5257" />
 
-  <!-- Головні стилі -->
+  <!-- Styles -->
   <link rel="stylesheet" href="css/main.css" />
+
+  <!-- JSON-LD: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "КОМА — Християнський центр ментального здоров’я",
+    "url": "https://koma-hcmz.netlify.app/",
+    "logo": "https://koma-hcmz.netlify.app/icon/logo.png",
+    "sameAs": [
+      "https://www.facebook.com/", 
+      "https://www.instagram.com/"
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: WebSite (можливість покращених посилань у видачі) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "КОМА",
+    "url": "https://koma-hcmz.netlify.app/"
+  }
+  </script>
 </head>
 
 <body>
@@ -129,7 +172,6 @@
   <!-- Скрипти -->
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
-  <!-- ВАЖЛИВО: support.js після partials і з defer -->
   <script src="js/support.js" defer></script>
 </body>
 </html>

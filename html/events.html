@@ -3,10 +3,105 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Події — КОМА</title>
+
+  <!-- SEO -->
+  <title>Події — вебінари, інтенсиви, групи підтримки | КОМА, Луцьк та онлайн</title>
+  <meta name="description" content="Навчальні події центру «КОМА»: онлайн вебінари, інтенсиви, групи підтримки. Записуйтеся на найближчі заходи у Луцьку та онлайн." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://koma-hcmz.netlify.app/events.html" />
+
+  <!-- Icons / OG / Twitter -->
   <link rel="icon" href="icon/favicon.ico" />
+  <meta property="og:title" content="Події — центр ментального здоров’я «КОМА»" />
+  <meta property="og:description" content="Вебінари, інтенсиви й групи підтримки. Долучайтеся до найближчих подій онлайн або офлайн." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://koma-hcmz.netlify.app/events.html" />
+  <meta property="og:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+  <meta property="og:image:alt" content="КОМА — Християнський центр ментального здоров’я" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Події — вебінари та інтенсиви | КОМА" />
+  <meta name="twitter:description" content="Навчальні події: онлайн та офлайн. Оберіть зручний формат і долучайтеся." />
+  <meta name="twitter:image" content="https://koma-hcmz.netlify.app/icon/baner.jpg" />
+
   <meta name="theme-color" content="#0f5257" />
   <link rel="stylesheet" href="css/main.css" />
+
+  <!-- JSON-LD: сторінка + окремі події -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Події — КОМА",
+    "url": "https://koma-hcmz.netlify.app/events.html",
+    "description": "Навчальні події центру «КОМА»: вебінари, інтенсиви, групи підтримки."
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@graph":[
+      {
+        "@type":"Event",
+        "name":"Zoom Class: Foundations",
+        "eventAttendanceMode":"https://schema.org/OnlineEventAttendanceMode",
+        "eventStatus":"https://schema.org/EventScheduled",
+        "startDate":"2025-03-12",
+        "endDate":"2025-04-14",
+        "location":{
+          "@type":"VirtualLocation",
+          "url":"https://koma-hcmz.netlify.app/zapis.html"
+        },
+        "image":"https://koma-hcmz.netlify.app/icon/baner.jpg",
+        "description":"6 тижнів живих занять + записи та матеріали.",
+        "organizer":{
+          "@type":"Organization",
+          "name":"Християнський центр ментального здоров’я «КОМА»",
+          "url":"https://koma-hcmz.netlify.app/"
+        }
+      },
+      {
+        "@type":"Event",
+        "name":"Intensive: Trauma Care",
+        "eventAttendanceMode":"https://schema.org/OfflineEventAttendanceMode",
+        "eventStatus":"https://schema.org/EventScheduled",
+        "startDate":"2025-04-05",
+        "endDate":"2025-04-07",
+        "location":{
+          "@type":"Place",
+          "name":"Київ",
+          "address":{"@type":"PostalAddress","addressLocality":"Київ","addressCountry":"UA"}
+        },
+        "image":"https://koma-hcmz.netlify.app/icon/baner.jpg",
+        "description":"Інтенсив для практиків: кейси, рольові ігри, супервізія.",
+        "organizer":{
+          "@type":"Organization",
+          "name":"Християнський центр ментального здоров’я «КОМА»",
+          "url":"https://koma-hcmz.netlify.app/"
+        }
+      },
+      {
+        "@type":"Event",
+        "name":"CE Webinar: Ethics",
+        "eventAttendanceMode":"https://schema.org/OnlineEventAttendanceMode",
+        "eventStatus":"https://schema.org/EventScheduled",
+        "startDate":"2025-04-22",
+        "endDate":"2025-04-22",
+        "location":{
+          "@type":"VirtualLocation",
+          "url":"https://koma-hcmz.netlify.app/zapis.html"
+        },
+        "image":"https://koma-hcmz.netlify.app/icon/baner.jpg",
+        "description":"Оновлення етичних стандартів, Q&A з екзаменаторами.",
+        "organizer":{
+          "@type":"Organization",
+          "name":"Християнський центр ментального здоров’я «КОМА»",
+          "url":"https://koma-hcmz.netlify.app/"
+        }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <div data-include="partials/header.html"></div>
@@ -63,9 +158,7 @@
     </div>
   </section>
 
-  <!-- Віджет фраз + служба підтримки -->
   <div data-include="partials/support.html"></div>
-
   <div data-include="partials/footer.html"></div>
   <script type="module" src="js/partials.js"></script>
   <script src="js/support.js" defer></script>
