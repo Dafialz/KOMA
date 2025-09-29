@@ -1,32 +1,32 @@
 [
   {
     "email": "oksanakokoten@gmail.com",
-    "salt": "c9ebf4b36caf3bfe",
-    "hash": "4641c3c883a3603ee15ecae152003b072e8efe82665060998dee0bafc8d9b181"
+    "salt": "7954661491fda802",
+    "hash": "dfe00a2ce96c20cda504814471054acaaa029cf72f94de3cf3a3522f0b0aae7d"
   },
   {
     "email": "sergiyoyovych@gmail.com",
-    "salt": "45b492e8407aadb8",
-    "hash": "d9d08cf0a9224d52abc681b4bd0d2247c26b12670ea0236d741ca751e00766a9"
+    "salt": "919223405ec4e03b",
+    "hash": "714f0de1c523b6be265d50d7ab025567868d43d6d65101c8e09b59ce4d63997e"
   },
   {
     "email": "tetianaoyovych@gmail.com",
-    "salt": "40321e4ed0169a43",
-    "hash": "109dcba510e516aa185e167b07751c32f316bfc3fd7d52e78f43d4ba464a4db8"
+    "salt": "09eab885b12130b8",
+    "hash": "c60120e38cb45eaa65e6a66d06f5482ddae0783fa8a5a7d7b99bfb6b8e4329c5"
   },
   {
     "email": "oleksandrtkachuk@gmail.com",
-    "salt": "84a8a99f9ada7d32",
-    "hash": "27379fd343b50fbf3afc561288380dfa445b163dd7ec5add89bf33f991965592"
+    "salt": "f16e1a1083dde372",
+    "hash": "b6c961cb2ab11844150008522c219ac7d0ad41cd54cade161a503dd82532150a"
   },
   {
     "email": "anastasiyamakovska@gmail.com",
-    "salt": "686fd31903d623c7",
-    "hash": "be0ffde7e9f103f0cde69ed7a2d07583bdd538712ff214f1016de151bee3c01f"
+    "salt": "ae8a08fd5874d1ec",
+    "hash": "9d0744b67df99829f20bbe880b4db2d1adb0b8ed4fccc030712de711735a0760"
   },
   {
     "email": "kristinakokoten@gmail.com",
-    "salt": "156e4075fbe4630b",
-    "hash": "3fc6bfb1f34f548e343f55745a8d77580ba487173c0d8657546e4d04f9340a7d"
+    "salt": "368caa81f0156a65",
+    "hash": "d8eaafb3f25c691dff5e1541ae8078f1186811d50dddfce6b671f83eec5d1b8f"
   }
 ]
