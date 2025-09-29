@@ -270,6 +270,18 @@ window.openConsultation = function (el) {
   if (focusEl) setTimeout(function(){ focusEl.focus(); }, 0);
 };
 
+// Позначити зайняті слоти у гріді
+function markBusy(grid, busyList){
+  if (!grid || !busyList || !busyList.length) return;
+  Array.prototype.forEach.call(grid.children, function(btn){
+    var t = btn.getAttribute('data-time');
+    if (busyList.indexOf(t) >= 0){
+      btn.classList.add('taken');
+      btn.setAttribute('aria-disabled','true');
+    }
+  });
+}
+
 // Створення слотів 08:00–19:00 і вибір слоту
 function renderSlots(){
   var grid = document.getElementById('slotGrid');
@@ -288,22 +300,7 @@ function renderSlots(){
     email = findEmailByName(name);
   }
 
-  var busy = [];
-
-  (async function(){
-    try{
-      var list = await getBookings(email);
-      busy = list.filter(b => b.date === dateInput.value).map(b => b.time);
-      Array.prototype.forEach.call(grid.children, function(btn){
-        var t = btn.getAttribute('data-time');
-        if (busy.indexOf(t) >= 0){
-          btn.classList.add('taken');
-          btn.setAttribute('aria-disabled','true');
-        }
-      });
-    }catch(e){/* ignore */}
-  })();
-
+  // спочатку рендеримо всі слоти
   slots.forEach(function(t){
     var b = document.createElement('button');
     b.type = 'button';
@@ -318,6 +315,15 @@ function renderSlots(){
     });
     grid.appendChild(b);
   });
+
+  // потім підтягнемо зайняті на обрану дату і відмітимо їх
+  (async function(){
+    try{
+      var list = await getBookings(email);
+      var busy = list.filter(function(b){ return b.date === dateInput.value; }).map(function(b){ return b.time; });
+      markBusy(grid, busy);
+    }catch(e){/* ignore */}
+  })();
 
   timeInput.value = '';
 }
@@ -392,9 +398,9 @@ async function submitConsultation(e){
     email:      (document.getElementById('c_email')||{}).value || '',
     date:       (document.getElementById('c_date')||{}).value || '',
     time:       (document.getElementById('c_time')||{}).value || '',
-    notes:      (document.getElementById('c_notes')||{}).value || '',
+    note:       (document.getElementById('c_notes')||{}).value || '', // <-- ВАЖЛИВО: note (не notes)
     paid:       !!((document.getElementById('c_paid')||{}).checked),
-    file        // <- ВАЖЛИВО: передаємо файл у payload (FormData збере bookings.js)
+    file        // <- bookings.js збере FormData з ключем `file`
   };
 
   if (!data.consultantName || !data.consultantEmail || !data.fullName || !data.email || !data.date || !data.time){
