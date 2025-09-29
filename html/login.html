@@ -98,7 +98,7 @@
     let usersLoaded = (async () => {
       try{
         // users.json ЛЕЖИТЬ ПОРУЧ із login.html -> /html/users.json
-        const res = await fetch(`${basePath()}users.json`, { cache:'no-store' });
+        const res = await fetch(`${basePath()}js/users.json`, { cache:'no-store' });
         if(!res.ok) throw new Error('HTTP '+res.status);
         users = await res.json();
       }catch(e){
