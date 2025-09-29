@@ -20,7 +20,6 @@ const refreshBtn = document.getElementById('refresh');
 
 // ── Утиліти ─────────────────────────────────────────────────────────────────
 function fmt(date, time) {
-  // YYYY-MM-DD -> DD.MM.YYYY HH:MM
   const p = (String(date||'').split('-'));
   if (p.length !== 3) return `${date} ${time||''}`;
   return `${p[2]}.${p[1]}.${p[0]} ${time||''}`;
@@ -109,7 +108,6 @@ async function render(items) {
       </div>
     `;
 
-    // кнопка "Завершити"
     const delBtn = div.querySelector('button[data-id]');
     if (delBtn) {
       delBtn.onclick = async (e) => {
@@ -125,7 +123,6 @@ async function render(items) {
       };
     }
 
-    // якщо користувач клацне саме по <img>, все одно відкриємо в новій вкладці
     const img = div.querySelector('.filethumb img');
     if (img && fileUrlAbs){
       img.style.cursor = 'zoom-in';
@@ -139,36 +136,17 @@ async function render(items) {
   }
 }
 
-// ── Додатковий фетч по імені (варіант B) ────────────────────────────────────
-async function fetchByName(name){
-  try{
-    let mod = {};
-    try { mod = await import('./config.js'); } catch {}
-    const API_BASE =
-      (mod && (mod.API_BASE || (mod.default && mod.default.API_BASE))) ||
-      (typeof window !== 'undefined' && window.API_BASE) ||
-      (typeof location !== 'undefined' && location.origin) || '';
-    const url = `${String(API_BASE).replace(/\/+$/,'')}/api/bookings?consultantName=${encodeURIComponent(String(name||''))}`;
-    const r = await fetch(url, { headers:{ 'Accept':'application/json' }});
-    if (!r.ok) return { list: [] };
-    const j = await r.json().catch(()=> ({}));
-    return j && (j.list ? j : { list: Array.isArray(j) ? j : [] });
-  }catch(_){ return { list: [] }; }
-}
-
-// ── Завантаження ────────────────────────────────────────────────────────────
+// ── Завантаження (тільки за email консультанта) ────────────────────────────
 async function load(showSpinner=true){
   try {
     if (showSpinner && spinEl) spinEl.style.display = 'inline-block';
 
-    // 1) за email консультанта (основний шлях)
+    // Основний і єдиний шлях: за email консультанта
     const byEmail = await fetchBookings(myEmail).catch(()=>({ list: [] }));
 
-    // 2) додатково за іменем консультанта (щоб не залежати від збігу email/ім’я)
-    const byName  = await fetchByName(myName).catch(()=>({ list: [] }));
-
-    // змерджимо унікально (за id)
-    const merged = uniqById([...(byEmail?.list||[]), ...(byName?.list||[])]);
+    // Сервер повертає { list: [...] } або { ok:true, list: [...] }
+    const list = Array.isArray(byEmail?.list) ? byEmail.list : [];
+    const merged = uniqById(list);
 
     await render(merged);
   } catch {

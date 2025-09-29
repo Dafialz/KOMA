@@ -115,7 +115,7 @@ async function updateQuotaBadges(dateStr){
   const cards = $all('.card.person');
   for (const card of cards){
     const email = (card.dataset && card.dataset.email) || '';
-    theName  = (card.dataset && card.dataset.name)  || (card.querySelector('.p-name') || {}).textContent || '';
+    var theName  = (card.dataset && card.dataset.name)  || (card.querySelector('.p-name') || {}).textContent || '';
     const btn   = card.querySelector('.p-actions .btn');
     const badge = card.querySelector('.quota-badge');
     if (!email || !btn || !badge) continue;
@@ -369,7 +369,6 @@ function saveLastBookingLocally(data){
   };
   try {
     localStorage.setItem('koma_last_booking', JSON.stringify(rec));
-    // тригер для інших вкладок/хедера
     window.dispatchEvent(new StorageEvent('storage', { key: 'koma_last_booking' }));
   } catch {}
 }
@@ -392,15 +391,15 @@ async function submitConsultation(e){
 
   var data = {
     consultant: consultantName,                 // для сумісності з фронтом
-    consultantName: consultantName,             // те, що очікує сервер
-    consultantEmail: consultantEmail,           // те, що очікує сервер (НЕ залежить від збігу з ім'ям)
+    consultantName: consultantName,             // ім’я — просто як довідкова інфа
+    consultantEmail: consultantEmail,           // головне поле для бекенду
     fullName:   (document.getElementById('c_fullName')||{}).value || '',
     email:      (document.getElementById('c_email')||{}).value || '',
     date:       (document.getElementById('c_date')||{}).value || '',
     time:       (document.getElementById('c_time')||{}).value || '',
-    note:       (document.getElementById('c_notes')||{}).value || '', // <-- ВАЖЛИВО: note (не notes)
+    note:       (document.getElementById('c_notes')||{}).value || '', // бек очікує note
     paid:       !!((document.getElementById('c_paid')||{}).checked),
-    file        // <- bookings.js збере FormData з ключем `file`
+    file        // bookings.js збере FormData з ключем `file`
   };
 
   if (!data.consultantName || !data.consultantEmail || !data.fullName || !data.email || !data.date || !data.time){
@@ -419,7 +418,6 @@ async function submitConsultation(e){
     if (window.__bk && window.__bk.createBooking){
       const res = await window.__bk.createBooking(data);
       if (res && res.ok){
-        // одразу активуємо «Приєднатись»
         saveLastBookingLocally(data);
         alert('Заявку надіслано. Очікуйте підтвердження.');
         closeConsultation();
@@ -427,14 +425,13 @@ async function submitConsultation(e){
         return false;
       }
     }
-    // fallback: якщо API недоступний — збережемо і перейдемо на запис-підтвердження
+    // fallback
     saveLastBookingLocally(data);
     var qs = new URLSearchParams(data).toString();
     location.href = 'zapis.html?' + qs;
     return false;
   }catch(e){
     console.warn('submitConsultation error', e);
-    // помилка мережі: теж зберігаємо і ведемо на zapis.html
     saveLastBookingLocally(data);
     var qs = new URLSearchParams(data).toString();
     location.href = 'zapis.html?' + qs;
