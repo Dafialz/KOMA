@@ -27,13 +27,10 @@
     'Кома — не час здаватися'
   ];
 
-  // базовий шлях /html/
-  function basePath() {
-    return location.pathname.replace(/[^/]+$/, '');
-  }
-  const SUPPORT_URL = `${basePath()}support.html`; // КЛІЄНТСЬКА сторінка
+  // куди ведемо: клієнтська сторінка підтримки
+  const SUPPORT_URL = '/partials/support';
 
-  // Почекати на елемент (partials підвантажуються асинхронно)
+  // Почекати на елемент (partials можуть вантажитись асинхронно)
   function waitFor(sel, { timeout = 10000 } = {}) {
     const el = document.querySelector(sel);
     if (el) return Promise.resolve(el);
@@ -49,10 +46,11 @@
 
   async function init() {
     try {
-      const phraseEl = await waitFor('#komaPhrase');
-      const helpBtn  = await waitFor('#komaHelpBtn');
+      // Підтримуємо і id, і класи — щоб віджет працював з будь-якою розміткою
+      const phraseEl = await waitFor('#komaPhrase, .koma-phrase');
+      const helpBtn  = await waitFor('#komaHelpBtn, #komaHelp, #komaBtn, .koma-help');
 
-      // ротація фраз
+      // Ротація фраз
       let i = 0;
       phraseEl.textContent = PHRASES[i];
       setInterval(() => {
@@ -60,11 +58,12 @@
         phraseEl.textContent = PHRASES[i];
       }, 5000);
 
-      // відкриття клієнтської підтримки
+      // Перехід на сторінку підтримки
       const openSupport = () => { window.location.href = SUPPORT_URL; };
       phraseEl.addEventListener('click', openSupport);
       helpBtn.addEventListener('click', openSupport);
     } catch (e) {
+      // тихий фейл, щоб не ламати сторінку
       console.warn('[support.js]', e.message);
     }
   }
