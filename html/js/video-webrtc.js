@@ -49,7 +49,7 @@
 
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
-    setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
+    setBadge('Статус: ' + st, st === 'connected' ? 'ок' : (st === 'failed' ? 'danger' : 'muted'));
     if (st === 'connected') {
       els.start.textContent = 'З’єднано';
       els.start.disabled = true;
@@ -173,7 +173,6 @@
 
         try {
           if (collision) {
-            // rollback перед прийомом чужого офера
             await Promise.all([
               pc.setLocalDescription({ type: 'rollback' }),
               pc.setRemoteDescription(offerDesc),
