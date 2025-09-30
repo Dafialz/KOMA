@@ -25,8 +25,8 @@
       <h1>Вхід</h1>
       <p class="muted">Увійдіть за корпоративною електронною поштою та паролем.</p>
 
-      <div id="err" class="error"></div>
-      <div id="ok" class="ok"></div>
+      <div id="err" class="error" style="display:none"></div>
+      <div id="ok" class="ok" style="display:none"></div>
 
       <form id="form" autocomplete="on" novalidate>
         <label for="email">Ел. пошта</label>
@@ -74,7 +74,6 @@
     function clearSession(){
       localStorage.removeItem(SESSION_KEY);
       showOk('Сесію очищено.');
-      // оновити шапку, якщо вже підвантажена
       if (window.guard?.applyAuthUI) window.guard.applyAuthUI({ desktop:'#authBtn', mobile:'#authBtnMobile' });
     }
     document.getElementById('clearSession').onclick = (e)=>{ e.preventDefault(); clearSession(); };
@@ -93,18 +92,29 @@
       return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
     }
 
-    // ===== users.json loader =====
+    // ===== users.json loader з fallback-шляхами =====
     let users = null;
     let usersLoaded = (async () => {
-      try{
-        // users.json ЛЕЖИТЬ ПОРУЧ із login.html -> /html/users.json
-        const res = await fetch(`${basePath()}js/users.json`, { cache:'no-store' });
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        users = await res.json();
-      }catch(e){
-        showErr('Помилка завантаження users.json. Переконайтесь, що файл розміщено поруч із login.html. Деталі: ' + e.message);
-        users = [];
+      const paths = [
+        `${basePath()}js/users.json`,   // /html/js/users.json
+        `${basePath()}users.json`,      // /html/users.json
+        `/js/users.json`,               // /js/users.json (на випадок іншої структури)
+        `/users.json`                   // /users.json (корінь)
+      ];
+      let lastErr;
+      for (const url of paths) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          users = await res.json();
+          // Консольна підказка, щоб швидко бачити, звідки підтягнулося
+          console.log('[login] users.json loaded from:', url, 'count=', Array.isArray(users)?users.length:0);
+          return;
+        } catch (e) { lastErr = e; }
       }
+      users = [];
+      showErr('Не вдалося завантажити users.json. Переконайтесь, що файл існує в /html/js/ або /html/.');
+      console.warn('users.json load failed. Last error:', lastErr);
     })();
 
     // ===== submit =====
@@ -112,7 +122,6 @@
       e.preventDefault();
       errBox.style.display='none'; okBox.style.display='none';
 
-      // Якщо users.json ще підвантажується — дочекаймося
       if (users === null) await usersLoaded;
 
       const email = (document.getElementById('email').value || '').trim().toLowerCase();
@@ -122,7 +131,12 @@
       if(!email || !pass){ showErr('Введіть пошту та пароль.'); return; }
 
       const u = (users || []).find(x => String(x.email).toLowerCase() === email);
-      if(!u){ showErr('Користувача не знайдено або немає доступу.'); return; }
+      if(!u){
+        // Додамо підказку у консоль, щоб ти бачив список e-mail з актуального файлу
+        console.warn('[login] user not found. Available emails:', (users||[]).map(x=>x.email));
+        showErr('Користувача не знайдено або немає доступу.');
+        return;
+      }
 
       // Перевірка: hash(salt + password)
       let calc;
