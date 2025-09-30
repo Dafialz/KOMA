@@ -2,12 +2,32 @@
   publish = "."
   command = ""
 
+# Головна -> /html/index.html
 [[redirects]]
   from = "/"
-  to = "/html/index.html"
+  to   = "/html/index.html"
   status = 301
 
+# Глобальний кеш для статики (окрім винятків нижче)
 [[headers]]
   for = "/*"
   [headers.values]
     Cache-Control = "public, max-age=600"
+
+# ВИНЯТОК 1: users.json — ніколи не кешувати (щоб логін бачив свіжі хеші)
+[[headers]]
+  for = "/**/users.json"
+  [headers.values]
+    Cache-Control = "no-store"
+
+# ВИНЯТОК 2: сторінка логіну — не кешувати (щоб не тягнула старі шляхи/скрипти)
+[[headers]]
+  for = "/login.html"
+  [headers.values]
+    Cache-Control = "no-store"
+
+# На випадок якщо логін лежить у /html/login.html
+[[headers]]
+  for = "/html/login.html"
+  [headers.values]
+    Cache-Control = "no-store"
