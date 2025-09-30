@@ -6,20 +6,20 @@
   const allowlist = [
     'oksanakokoten@gmail.com',
     'sergiyoyovych@gmail.com',
-    'tetianaoyovych@gmail.com',
+    'tetianamakovska@gmail.com',
     'oleksandrtkachuk@gmail.com',
-    'anastasiyamakovska@gmail.com',
+    'anastasiyoyovych@gmail.com',
     'kristinakokoten@gmail.com'
   ].map(e => e.toLowerCase());
 
   // Email → ім'я для зручного відображення/генерації лінків
   const names = {
-    'oksanakokoten@gmail.com'     : 'Оксана Кокотень',
-    'sergiyoyovych@gmail.com'     : 'Сергій Йовович',
-    'tetianaoyovych@gmail.com' : 'Тетяна Йовович',
-    'oleksandrtkachuk@gmail.com'  : 'Олександр Ткачук',
-    'anastasiyamakovska@gmail.com'   : 'Анастасія Маковська',
-    'kristinakokoten@gmail.com'   : 'Крістіна Кокотень'
+    'oksanakokoten@gmail.com'    : 'Оксана Кокотень',
+    'sergiyoyovych@gmail.com'    : 'Сергій Йовович',
+    'tetianamakovska@gmail.com'  : 'Тетяна Маковська',
+    'oleksandrtkachuk@gmail.com' : 'Олександр Ткачук',
+    'anastasiyoyovych@gmail.com' : 'Анастасія Йовович',
+    'kristinakokoten@gmail.com'  : 'Крістіна Кокотень'
   };
 
   // -------- helpers --------
