@@ -1,4 +1,4 @@
-// support.js — віджет «Кома»: ротація слоганів + перехід на сторінку підтримки
+// html/js/support.js — віджет «Кома» + модалка підтримки
 (() => {
   const PHRASES = [
     'Кома — час набиратися сил',
@@ -27,17 +27,17 @@
     'Кома — не час здаватися'
   ];
 
-  // частини підвантажуються через partials → чекаємо появи елементів
-  function waitFor(sel, t = 10000) {
-    return new Promise((res, rej) => {
-      const ready = () => {
-        const el = document.querySelector(sel);
-        if (el) return res(el);
-      };
-      ready();
-      const mo = new MutationObserver(ready);
-      mo.observe(document.documentElement, { childList: true, subtree: true });
-      setTimeout(() => { mo.disconnect(); rej(new Error('timeout ' + sel)); }, t);
+  // чекаємо на вузли (partials підвантажуються асинхронно)
+  function waitFor(selector, {timeout = 10000} = {}) {
+    return new Promise((resolve, reject) => {
+      const el = document.querySelector(selector);
+      if (el) return resolve(el);
+      const obs = new MutationObserver(() => {
+        const found = document.querySelector(selector);
+        if (found) { obs.disconnect(); resolve(found); }
+      });
+      obs.observe(document.documentElement, {childList: true, subtree: true});
+      setTimeout(() => { obs.disconnect(); reject(new Error('timeout')); }, timeout);
     });
   }
 
@@ -45,26 +45,47 @@
     try {
       const phraseEl = await waitFor('#komaPhrase');
       const btn      = await waitFor('#komaBtn');
+      const modal    = await waitFor('#komaModal');
+      const closeBtn = await waitFor('#komaClose');
+      const cancel   = await waitFor('#komaCancel');
+      const form     = await waitFor('#komaForm');
 
-      // ротація кожні 5 сек
-      let i = 0;
-      phraseEl.textContent = PHRASES[i];
+      // ротація слоганів (кожні 5 сек)
+      let idx = 0;
+      phraseEl.textContent = PHRASES[idx];
       setInterval(() => {
-        i = (i + 1) % PHRASES.length;
-        phraseEl.textContent = PHRASES[i];
+        idx = (idx + 1) % PHRASES.length;
+        phraseEl.textContent = PHRASES[idx];
       }, 5000);
 
-      // перехід на сторінку підтримки (видима всім)
-      const go = (newTab = false) => {
-        const href = (location.pathname.replace(/[^/]+$/, '')) + 'support.html';
-        if (newTab) window.open(href, '_blank');
-        else location.href = href;
+      // відкриття/закриття модалки
+      const open = () => {
+        modal.setAttribute('aria-hidden', 'false');
+        btn.setAttribute('aria-expanded', 'true');
+        form.querySelector('input, textarea')?.focus();
       };
-      btn.addEventListener('click', e => {
-        if (e.ctrlKey || e.metaKey) go(true); else go(false);
+      const close = () => {
+        modal.setAttribute('aria-hidden', 'true');
+        btn.setAttribute('aria-expanded', 'false');
+      };
+
+      btn.addEventListener('click', open);
+      closeBtn.addEventListener('click', close);
+      cancel.addEventListener('click', close);
+      modal.querySelector('.koma-modal__backdrop').addEventListener('click', close);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+      // “відправка” форми (поки що імпровізовано)
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        form.querySelector('#komaOk').style.display = 'block';
+        setTimeout(() => {
+          form.reset();
+          form.querySelector('#komaOk').style.display = 'none';
+          close();
+        }, 1200);
       });
     } catch (e) {
-      // тихо, щоб не ламати сторінку
       console.warn('[support.js]', e.message);
     }
   }
