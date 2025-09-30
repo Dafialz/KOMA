@@ -20,9 +20,9 @@
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
 
   let localStream, screenTrack, dc;
-  let makingOffer = false;                 // Perfect Negotiation
-  let isSettingRemoteAnswerPending = false; // Perfect Negotiation
-  let ignoreOffer = false;                 // Perfect Negotiation
+  let makingOffer = false;                   // Perfect Negotiation
+  let isSettingRemoteAnswerPending = false;  // Perfect Negotiation
+  let ignoreOffer = false;                   // Perfect Negotiation
   let isUnloading = false;
   let iceProbe = null;
   let lastRemoteStream = null;
@@ -72,9 +72,10 @@
     setBadge('З’єднано', 'ok');
   };
 
-  // negotiationneeded (після заміни треків тощо)
+  // ---------- negotiationneeded ----------
   pc.onnegotiationneeded = async () => {
-    if (makingOffer) return;
+    // ВАЖЛИВО: не створюємо offer, поки стан не stable
+    if (makingOffer || pc.signalingState !== 'stable') return;
     await createAndSendOffer();
   };
 
@@ -110,6 +111,9 @@
 
   function bindDataChannel() {
     if (!dc) return;
+    if (dc._bound) return;
+    dc._bound = true;
+
     dc.onmessage = (e) => logChat(e.data, 'peer');
     dc.onopen = () => {
       if (els.hint) els.hint.textContent = 'Чат підключено';
@@ -159,6 +163,8 @@
 
   // ---------- Offer / Answer (Perfect Negotiation) ----------
   async function createAndSendOffer() {
+    // дубль-ґард: offer тільки у stable
+    if (pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
       const offer = await pc.createOffer();
@@ -197,6 +203,11 @@
   }
 
   async function acceptAnswer(answerDesc) {
+    // Критично: приймати answer тільки коли ми у стані have-local-offer
+    if (pc.signalingState !== 'have-local-offer') {
+      logChat('Отримав answer у стані ' + pc.signalingState + ' — ігнорую', 'sys');
+      return;
+    }
     try {
       await pc.setRemoteDescription(answerDesc);
       logChat('Прийняв answer', 'sys');
@@ -236,7 +247,8 @@
     });
 
     ws.addEventListener('message', async (e) => {
-      const msg = JSON.parse(e.data);
+      let msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
       if (!msg || (msg.room && msg.room !== room)) return;
 
       if (msg.type === 'offer') {
