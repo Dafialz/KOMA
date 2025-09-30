@@ -20,10 +20,12 @@
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
 
   let localStream, screenTrack, dc;
-  let makingOffer = false;
-  let ignoreOffer = false;
+  let makingOffer = false;                 // Perfect Negotiation
+  let isSettingRemoteAnswerPending = false; // Perfect Negotiation
+  let ignoreOffer = false;                 // Perfect Negotiation
   let isUnloading = false;
   let iceProbe = null;
+  let lastRemoteStream = null;
 
   // ---------- ICE ----------
   pc.onicecandidate = ({ candidate }) => {
@@ -32,10 +34,8 @@
 
   pc.oniceconnectionstatechange = () => {
     logChat('ICE: ' + pc.iceConnectionState, 'sys');
-
     clearTimeout(iceProbe);
     if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
-      // якщо зависли — спробуємо перезапустити ICE
       iceProbe = setTimeout(() => {
         if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
           logChat('ICE завис — виконуємо iceRestart…', 'sys');
@@ -50,23 +50,21 @@
     const stream = streams && streams[0];
     if (!stream) return;
 
-    // Призначаємо стрім, лише якщо він новий
-    if (els.remote.srcObject !== stream) {
-      els.remote.srcObject = stream;
+    if (lastRemoteStream !== stream) {
+      lastRemoteStream = stream;
 
-      // Дозволяємо автоплей на мобільних: спершу muted → play()
-      els.remote.muted = true;
+      if (els.remote.srcObject !== stream) {
+        // для автоплею на мобільних спочатку глушимо
+        els.remote.muted = true;
+        els.remote.srcObject = stream;
+      }
 
       const tryPlay = () => {
         if (els.remote.paused) {
-          els.remote.play().catch(err => {
-            // На мобільних autoplay з аудіо часто фейлиться до кліку — це ок
-            console.warn('Autoplay failed:', err && err.name);
-          });
+          els.remote.play().catch(() => { /* мобільні можуть блокувати – це ок */ });
         }
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
-      // Чекаємо, поки відео знатиме розміри — тільки тоді play()
       els.remote.addEventListener('loadedmetadata', tryPlay);
     }
 
@@ -74,10 +72,9 @@
     setBadge('З’єднано', 'ok');
   };
 
-  // negotiationneeded (наприклад, після заміни треків)
+  // negotiationneeded (після заміни треків тощо)
   pc.onnegotiationneeded = async () => {
-    if (makingOffer || pc.signalingState !== 'stable') return;
-    logChat('onnegotiationneeded → створюю offer', 'sys');
+    if (makingOffer) return;
     await createAndSendOffer();
   };
 
@@ -99,9 +96,15 @@
   };
 
   // ---------- DataChannel / чат ----------
+  // Створюємо локально, щоб зменшити glare і швидше активувати чат
+  try {
+    dc = pc.createDataChannel('chat');
+    app.dc = dc;
+    bindDataChannel();
+  } catch (_) {}
   pc.ondatachannel = (e) => {
     dc = e.channel;
-    app.dc = dc;          // тримаємо посилання актуальним у app
+    app.dc = dc;
     bindDataChannel();
   };
 
@@ -154,7 +157,7 @@
     return localStream;
   }
 
-  // ---------- Offer / Answer ----------
+  // ---------- Offer / Answer (Perfect Negotiation) ----------
   async function createAndSendOffer() {
     try {
       makingOffer = true;
@@ -162,8 +165,43 @@
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
       wsSend({ type: 'offer', room, payload: pc.localDescription });
+    } catch (err) {
+      logChat('Помилка createOffer/setLocalDescription: ' + (err.message || err.name), 'sys');
     } finally {
       makingOffer = false;
+    }
+  }
+
+  async function acceptOffer(offerDesc) {
+    const offerCollision =
+      makingOffer || pc.signalingState !== 'stable' || isSettingRemoteAnswerPending;
+
+    ignoreOffer = !app.polite && offerCollision;
+    if (ignoreOffer) {
+      logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys');
+      return;
+    }
+
+    try {
+      isSettingRemoteAnswerPending = (pc.signalingState !== 'stable');
+      await pc.setRemoteDescription(offerDesc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      logChat('Надіслав answer', 'sys');
+      wsSend({ type: 'answer', room, payload: pc.localDescription });
+    } catch (err) {
+      logChat('acceptOffer error: ' + (err.message || err.name), 'sys');
+    } finally {
+      isSettingRemoteAnswerPending = false;
+    }
+  }
+
+  async function acceptAnswer(answerDesc) {
+    try {
+      await pc.setRemoteDescription(answerDesc);
+      logChat('Прийняв answer', 'sys');
+    } catch (err) {
+      logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
     }
   }
 
@@ -201,55 +239,17 @@
       const msg = JSON.parse(e.data);
       if (!msg || (msg.room && msg.room !== room)) return;
 
-      // ----- OFFER -----
       if (msg.type === 'offer') {
         logChat('Отримав offer', 'sys');
-        const offerDesc = new RTCSessionDescription(msg.payload);
-        const collision = (makingOffer || pc.signalingState !== 'stable');
-        ignoreOffer = !app.polite && collision;
-
-        if (ignoreOffer) {
-          logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys');
-          return;
-        }
-
-        try {
-          if (collision) {
-            await Promise.all([
-              pc.setLocalDescription({ type: 'rollback' }),
-              pc.setRemoteDescription(offerDesc),
-            ]);
-          } else {
-            await pc.setRemoteDescription(offerDesc);
-          }
-
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          logChat('Надіслав answer', 'sys');
-          wsSend({ type: 'answer', room, payload: pc.localDescription });
-        } catch (err) {
-          logChat('Помилка setRemoteDescription(offer): ' + (err.message || err.name), 'sys');
-        }
+        await acceptOffer(new RTCSessionDescription(msg.payload));
         return;
       }
 
-      // ----- ANSWER -----
       if (msg.type === 'answer') {
-        // Приймаємо answer лише коли ми реально в стані очікування відповіді
-        if (pc.signalingState !== 'have-local-offer') {
-          logChat('Пропущено чужий answer (стан: ' + pc.signalingState + ')', 'sys');
-          return;
-        }
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
-          logChat('Прийняв answer', 'sys');
-        } catch (err) {
-          logChat('Помилка setRemoteDescription(answer): ' + (err.message || err.name), 'sys');
-        }
+        await acceptAnswer(new RTCSessionDescription(msg.payload));
         return;
       }
 
-      // ----- ICE -----
       if (msg.type === 'ice') {
         try { await pc.addIceCandidate(msg.payload); } catch {}
         return;
@@ -257,6 +257,7 @@
 
       if (msg.type === 'bye') {
         els.remote.srcObject = null;
+        lastRemoteStream = null;
         logChat('Співрозмовник покинув кімнату', 'sys');
         return;
       }
