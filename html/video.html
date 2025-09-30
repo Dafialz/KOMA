@@ -67,7 +67,6 @@
 </head>
 <body>
 
-  <!-- header через partials -->
   <div data-include="partials/header.html"></div>
 
   <div class="wrap">
@@ -79,23 +78,19 @@
       </div>
 
       <div class="controls">
-        <!-- Головна дія -->
         <button id="btnStart" class="btn green btn-pill">🔌 Під’єднатися</button>
 
-        <!-- Пристрої -->
         <div class="btn-group" role="group" aria-label="Пристрої">
           <button id="btnMic"    class="btn gray"    disabled>🎙️ Мікрофон</button>
           <button id="btnCam"    class="btn gray"    disabled>📷 Камера</button>
           <button id="btnScreen" class="btn outline" disabled>🖥️ Поділитись екраном</button>
         </div>
 
-        <!-- Повноекранно -->
         <div class="btn-group" role="group" aria-label="Екран">
           <button id="btnFullRemote" class="btn ghost">⤢ Співрозмовник</button>
           <button id="btnFullLocal"  class="btn ghost">⤢ Моє відео</button>
         </div>
 
-        <!-- Статуси -->
         <div class="meta">
           <span id="status" class="badge muted">Не під’єднано</span>
           <span id="roomLabel" class="badge"></span>
@@ -120,387 +115,15 @@
     </aside>
   </div>
 
-  <!-- WebRTC adapter (поліфіл) -->
+  <!-- WebRTC adapter -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
-  <script>
-  /* ========= Допоміжне ========= */
-  const qs = new URLSearchParams(location.search);
-  const UA_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  // Форсимо TURN на мобільних (якщо явно не relay=0) або коли relay=1
-  const FORCE_RELAY = qs.get('relay') === '1' || (UA_MOBILE && qs.get('relay') !== '0');
+  <!-- Розбиті модулі -->
+  <script src="js/video-config.js"></script>
+  <script src="js/video-webrtc.js"></script>
+  <script src="js/video-ui.js"></script>
 
-  function makeRoomIdFromQS(qs){
-    const r = qs.get('room');
-    if (r) return decodeURIComponent(r);
-    const consultant = (qs.get('consultant')||'').trim();
-    const date = (qs.get('date')||'').trim();
-    const time = (qs.get('time')||'').trim();
-    const raw = `${consultant}__${date}__${time}`.replace(/\s+/g,'');
-    return raw || 'KOMA_room';
-  }
-  const room   = makeRoomIdFromQS(qs);
-  const polite = true;
-
-  const rl = document.getElementById('roomLabel');
-  const rr = document.getElementById('roleLabel');
-  if (rl) rl.textContent = `Кімната: ${room}`;
-  if (rr) rr.textContent = 'Роль: учасник';
-
-  /* ========= Сигналінг ========= */
-  const RENDER_WSS = 'wss://koma-uaue.onrender.com';
-  const SIGNAL_URL = (location.hostname === 'localhost') ? 'ws://localhost:3000' : RENDER_WSS;
-
-  /* ========= Елементи ========= */
-  const els = {
-    local:  document.getElementById('local'),
-    remote: document.getElementById('remote'),
-    start:  document.getElementById('btnStart'),
-    mic:    document.getElementById('btnMic'),
-    cam:    document.getElementById('btnCam'),
-    screen: document.getElementById('btnScreen'),
-    fullRemote: document.getElementById('btnFullRemote'),
-    fullLocal:  document.getElementById('btnFullLocal'),
-    status: document.getElementById('status'),
-    chatlog:document.getElementById('chatlog'),
-    msg:    document.getElementById('msg'),
-    send:   document.getElementById('send'),
-    hint:   document.getElementById('hint'),
-    unmute: document.getElementById('btnUnmute'),
-    vwrap:  document.getElementById('videoWrap'),
-  };
-  function setBadge(text, cls){
-    if(!els.status) return;
-    els.status.textContent = text;
-    els.status.className = 'badge ' + (cls||'');
-  }
-
-  // Рендер повідомлень у чаті
-  function logChat(text, who='sys'){
-    const item = document.createElement('div');
-    if (who === 'me')       item.className = 'msg me';
-    else if (who === 'peer')item.className = 'msg peer';
-    else                    item.className = 'msg sys';
-
-    if (who === 'sys'){
-      item.textContent = text;
-    } else {
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = who === 'me' ? 'Я' : 'Співрозмовник';
-      const span = document.createElement('span');
-      span.textContent = text;
-      bubble.appendChild(name);
-      bubble.appendChild(span);
-      item.appendChild(bubble);
-    }
-    els.chatlog.appendChild(item);
-    els.chatlog.scrollTop = els.chatlog.scrollHeight;
-  }
-
-  /* ========= RTCPeerConnection ========= */
-  const pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: ['stun:stun.l.google.com:19302','stun:global.stun.twilio.com:3478'] },
-      { urls:'turn:global.relay.metered.ca:80',  username:'openrelayproject', credential:'openrelayproject' },
-      { urls:'turn:global.relay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
-      { urls:'turn:global.relay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject' },
-    ],
-    iceTransportPolicy: FORCE_RELAY ? 'relay' : 'all',
-  });
-
-  const txAudio = pc.addTransceiver('audio', { direction:'sendrecv' });
-  const txVideo = pc.addTransceiver('video', { direction:'sendrecv' });
-
-  let localStream, screenTrack, dc;
-  let makingOffer = false;
-  let ignoreOffer = false;
-  let isUnloading = false;
-  let iceProbe; // таймер для auto-iceRestart
-
-  pc.onicecandidate = ({candidate}) => { if (candidate) wsSend({ type:'ice', room, payload: candidate }); };
-  pc.ontrack = ({streams}) => {
-    if (!els.remote.srcObject) els.remote.srcObject = streams[0];
-    try { els.remote.play(); } catch {}
-    maybeShowUnmute();
-    setBadge('З’єднано','ok');
-  };
-  pc.onconnectionstatechange = () => {
-    const st = pc.connectionState;
-    setBadge('Статус: ' + st, st==='connected'?'ok':(st==='failed'?'danger':'muted'));
-    if (st === 'connected') {
-      els.start.textContent = 'З’єднано'; els.start.disabled = true; els.start.classList.add('active');
-    }
-    if (st === 'failed') {
-      logChat('З’єднання втрачено. Пробуємо відновити…','sys');
-      restartIce();
-    }
-  };
-  pc.oniceconnectionstatechange = () => {
-    logChat('ICE: ' + pc.iceConnectionState, 'sys');
-
-    clearTimeout(iceProbe);
-    if (['checking','new','disconnected'].includes(pc.iceConnectionState)) {
-      // якщо зависли — спробуємо перезапустити ICE
-      iceProbe = setTimeout(() => {
-        if (['checking','new','disconnected'].includes(pc.iceConnectionState)) {
-          logChat('ICE завис — виконуємо iceRestart…', 'sys');
-          restartIce();
-        }
-      }, 8000);
-    }
-  };
-  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
-  pc.ondatachannel = (e) => { dc = e.channel; bindDataChannel(); };
-
-  async function restartIce(){
-    try{
-      const offer = await pc.createOffer({ iceRestart: true });
-      await pc.setLocalDescription(offer);
-      wsSend({ type:'offer', room, payload: pc.localDescription });
-    }catch(e){ console.warn('ICE restart failed', e); }
-  }
-
-  /* ========= Девайси ========= */
-  async function startLocal(constraints){
-    if (localStream) return localStream;
-    const base = constraints || {
-      audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true },
-      video: { width: {ideal:1280}, height:{ideal:720}, frameRate:{ideal:30} }
-    };
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia(base);
-    } catch (err) {
-      if (err && (err.name === 'NotReadableError' || err.name === 'NotAllowedError' || err.name === 'NotFoundError')) {
-        logChat('Камера/мікрофон недоступні. Спроба лише з мікрофоном…', 'sys');
-        if (els.hint) els.hint.textContent = 'Камера зайнята або заборонена. Використаємо лише мікрофон.';
-        localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
-      } else {
-        logChat('Помилка доступу до пристроїв: ' + (err.message||err.name), 'sys');
-        throw err;
-      }
-    }
-    const a = localStream.getAudioTracks()[0] || null;
-    const v = localStream.getVideoTracks()[0] || null;
-    if (a) await txAudio.sender.replaceTrack(a);
-    if (v) await txVideo.sender.replaceTrack(v);
-
-    els.local.srcObject = localStream;
-    try { els.local.play(); } catch {}
-    els.mic.disabled = !a;
-    els.cam.disabled = !v;
-    els.screen.disabled = false;
-    return localStream;
-  }
-
-  /* ========= Perfect Negotiation ========= */
-  async function createAndSendOffer(){
-    try{
-      makingOffer = true;
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      wsSend({ type:'offer', room, payload: pc.localDescription });
-    } finally {
-      makingOffer = false;
-    }
-  }
-
-  /* ========= WebSocket (сигналінг) + реконект ========= */
-  let ws, wsReadyResolve;
-  const wsReady = new Promise(r => wsReadyResolve = r);
-  let reconnectTimer = null;
-
-  function wsSend(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
-
-  function connectWS(){
-    clearTimeout(reconnectTimer);
-    ws = new WebSocket(SIGNAL_URL);
-
-    ws.addEventListener('open', () => {
-      wsReadyResolve?.();
-      wsSend({ type:'join', room });
-      if (els.hint) els.hint.textContent = 'Під’єднуйтесь і чекайте на співрозмовника.';
-      logChat('Під’єднано до сигналінгу', 'sys');
-    });
-
-    ws.addEventListener('message', async (e) => {
-      const msg = JSON.parse(e.data);
-      if (!msg || (msg.room && msg.room !== room)) return;
-
-      if (msg.type === 'offer') {
-        const offerDesc = new RTCSessionDescription(msg.payload);
-        const collision = (makingOffer || pc.signalingState !== 'stable');
-        ignoreOffer = !polite && collision;
-        if (ignoreOffer) { logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys'); return; }
-        if (collision) {
-          await Promise.all([
-            pc.setLocalDescription({type:'rollback'}),
-            pc.setRemoteDescription(offerDesc)
-          ]);
-        } else {
-          await pc.setRemoteDescription(offerDesc);
-        }
-        // answer
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        wsSend({ type:'answer', room, payload: pc.localDescription });
-        return;
-      }
-
-      if (msg.type === 'answer') {
-        if (!ignoreOffer) await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
-        return;
-      }
-
-      if (msg.type === 'ice') {
-        try { await pc.addIceCandidate(msg.payload); } catch {}
-        return;
-      }
-
-      if (msg.type === 'bye') {
-        els.remote.srcObject = null;
-        logChat('Співрозмовник покинув кімнату', 'sys');
-        return;
-      }
-    });
-
-    ws.addEventListener('close', () => {
-      logChat('Сигналінг відключено', 'sys');
-      if (!isUnloading) reconnectTimer = setTimeout(connectWS, 1500);
-    });
-  }
-  connectWS();
-
-  /* ========= DataChannel / чат ========= */
-  function bindDataChannel(){
-    if (!dc) return;
-    dc.onmessage = (e)=> logChat(e.data, 'peer');
-    dc.onopen = ()=>{
-      if (els.hint) els.hint.textContent = 'Чат підключено';
-      els.msg.disabled = false;
-      els.send.disabled = false;
-      logChat('Чат підключено', 'sys');
-    };
-    dc.onclose = ()=>{
-      els.msg.disabled = true;
-      els.send.disabled = true;
-      logChat('Чат закрито', 'sys');
-    };
-  }
-  function sendChat(){
-    const txt = els.msg.value.trim();
-    if (!txt || !dc || dc.readyState!=='open') return;
-    dc.send(txt);
-    logChat(txt, 'me');
-    els.msg.value = '';
-  }
-  els.send.onclick = sendChat;
-  els.msg.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendChat(); }});
-
-  /* ========= UI події ========= */
-  els.start.onclick = async () => {
-    try{
-      await wsReady;
-      await startLocal();
-      if (!dc) { dc = pc.createDataChannel('chat'); bindDataChannel(); }
-      await createAndSendOffer();
-      els.start.disabled = true;
-      els.start.classList.add('active');
-      setBadge('Очікуємо відповідь…','muted');
-    }catch(err){
-      setBadge('Помилка: ' + (err.message||err.name),'danger');
-    }
-  };
-
-  els.mic.onclick = () => {
-    const track = localStream && localStream.getAudioTracks()[0];
-    if (track){
-      track.enabled = !track.enabled;
-      els.mic.textContent = track.enabled ? '🎙️ Мікрофон' : '🔇 Мікрофон';
-      els.mic.classList.toggle('active', !track.enabled);
-    }
-  };
-  els.cam.onclick = () => {
-    const track = localStream && localStream.getVideoTracks()[0];
-    if (!track) return;
-    track.enabled = !track.enabled;
-    els.cam.textContent = track.enabled ? '📷 Камера' : '🚫 Камера';
-    els.cam.classList.toggle('active', !track.enabled);
-  };
-  els.screen.onclick = async () => {
-    try{
-      const stream = await navigator.mediaDevices.getDisplayMedia({video:true});
-      screenTrack = stream.getVideoTracks()[0];
-      await txVideo.sender.replaceTrack(screenTrack);
-      els.screen.classList.add('active');
-      screenTrack.onended = async () => {
-        const cam = localStream && localStream.getVideoTracks()[0];
-        await txVideo.sender.replaceTrack(cam || null);
-        els.screen.classList.remove('active');
-      };
-    }catch{}
-  };
-
-  /* ========= Повноекранний режим ========= */
-  function enterFullscreen(el){
-    if (!el) return;
-    try {
-      if (el.requestFullscreen) return el.requestFullscreen();
-      if (el.webkitEnterFullscreen) return el.webkitEnterFullscreen(); // iPhone Safari
-      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen(); // iPad
-      if (el.msRequestFullscreen) return el.msRequestFullscreen();
-    } catch {}
-  }
-  function exitFullscreen(){
-    try{
-      if (document.exitFullscreen) return document.exitFullscreen();
-      if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
-    }catch{}
-  }
-  function toggleFS(el){
-    if (!document.fullscreenElement && !(document.webkitFullscreenElement)) enterFullscreen(el);
-    else exitFullscreen();
-  }
-  els.fullRemote.addEventListener('click', ()=> toggleFS(els.remote));
-  els.fullLocal .addEventListener('click', ()=> toggleFS(els.local));
-  [els.remote, els.local].forEach(v => v.addEventListener('dblclick', ()=> toggleFS(v)));
-
-  // На мобільних — тап по відео також відкриває fullscreen
-  function isMobile(){ return UA_MOBILE; }
-  if (isMobile()){
-    els.remote.addEventListener('click', ()=> enterFullscreen(els.remote), { passive:true });
-    els.local .addEventListener('click', ()=> enterFullscreen(els.local),  { passive:true });
-  }
-
-  /* ========= Аудіо-анлок на мобільних ========= */
-  function maybeShowUnmute(){
-    if (!isMobile()) return;
-    els.vwrap.classList.add('has-unmute');
-  }
-  els.unmute.addEventListener('click', ()=>{
-    try { els.remote.muted = false; els.remote.play(); } catch {}
-    els.vwrap.classList.remove('has-unmute');
-  });
-
-  /* ========= Автостарт (опційно ?autostart=1) ========= */
-  if (qs.get('autostart') === '1') {
-    wsReady.then(()=> els.start.click()).catch(()=>{});
-  }
-
-  /* ========= Cleanup ========= */
-  window.addEventListener('beforeunload', () => {
-    isUnloading = true;
-    try { wsSend({ type:'bye', room }); } catch {}
-    if (dc) dc.close();
-    pc.getSenders().forEach(s => s.track && s.track.stop());
-    pc.close();
-    ws && ws.close();
-  });
-  </script>
-
-  <!-- Eruda (мобільна консоль): вмикається на мобільних або ?debug=1 -->
+  <!-- Eruda (мобільна консоль): мобільні або ?debug=1 -->
   <script>
     (function(){
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -519,17 +142,5 @@
   </script>
 
   <script src="js/partials.js"></script>
-
-  <!--
-    Як розбити на менші файли (готова структура):
-    1) js/video-config.js  — room/qs, FORCE_RELAY, SIGNAL_URL, елементи/утиліти setBadge/logChat
-    2) js/video-webrtc.js  — RTCPeerConnection, девайси, perfect negotiation, signaling/ws, datachannel, ICE таймер
-    3) js/video-ui.js      — кнопки/повноекранний/унмут/автостарт/cleanup
-    Тоді тут лишається лише підключення:
-      <script src="js/video-config.js"></script>
-      <script src="js/video-webrtc.js"></script>
-      <script src="js/video-ui.js"></script>
-    Скажи «ок», і я віддам ці три файли з уже розбитим кодом.
-  -->
 </body>
 </html>
