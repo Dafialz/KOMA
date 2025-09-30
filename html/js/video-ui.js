@@ -9,11 +9,24 @@
     try {
       await app.wsReady;
       await app.startLocal();
-      if (!app.dc) { app.dc = app.pc.createDataChannel('chat'); app.bindDataChannel(); }
-      await app.createAndSendOffer();
+
+      // якщо DC ще нема (на випадок, коли peer не створив його під час ініціалізації)
+      if (!app.dc) {
+        app.dc = app.pc.createDataChannel('chat');
+        app.bindDataChannel();
+      }
+
+      // ВАЖЛИВО: перший offer шле лише НЕ polite (ініціатор = консультант)
+      if (!app.polite) {
+        await app.createAndSendOffer();
+        setBadge('Очікуємо відповідь…', 'muted');
+      } else {
+        // polite-сторона просто чекає на offer від ініціатора
+        setBadge('Очікуємо пропозицію від співрозмовника…', 'muted');
+      }
+
       els.start.disabled = true;
       els.start.classList.add('active');
-      setBadge('Очікуємо відповідь…', 'muted');
     } catch (err) {
       setBadge('Помилка: ' + (err.message || err.name), 'danger');
     }
