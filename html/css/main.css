@@ -165,7 +165,7 @@ label{display:block;font-weight:700;margin:8px 0 6px}
 .error{display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:.6rem .8rem;border-radius:10px;margin:10px 0}
 .ok{display:none;background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;padding:.6rem .8rem;border-radius:10px;margin:10px 0}
 
-/* ========== KOMA widget & Support modal ========== */
+/* ========== KOMA widget (phrases + help button) ========== */
 .koma-widget{
   position:fixed; right:16px; bottom:16px; z-index:60;
   display:flex; align-items:center; gap:10px;
@@ -177,6 +177,7 @@ label{display:block;font-weight:700;margin:8px 0 6px}
   box-shadow:var(--shadow-sm); border-radius:999px;
   padding:.5rem .9rem; font-weight:700; white-space:nowrap;
   max-width:70vw; overflow:hidden; text-overflow:ellipsis;
+  cursor:pointer;                 /* ← додано для клікабельності */
 }
 .koma-help{
   pointer-events:auto;
@@ -186,6 +187,7 @@ label{display:block;font-weight:700;margin:8px 0 6px}
   color:#fff; background:linear-gradient(135deg,#0b2e33 0%,#0f5257 70%);
   border:1px solid rgba(255,255,255,.35); box-shadow:var(--shadow);
   transition:transform .15s ease;
+  cursor:pointer;                 /* ← додано для клікабельності */
 }
 .koma-help img{width:26px;height:26px;display:block}
 .koma-help:hover{ transform:translateY(-1px); }

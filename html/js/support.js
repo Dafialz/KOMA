@@ -27,8 +27,8 @@
     'Кома — не час здаватися'
   ];
 
-  // куди ведемо: клієнтська сторінка підтримки
-  const SUPPORT_URL = '/partials/support';
+  // ✅ ведемо на /support (без /partials/)
+  const SUPPORT_URL = '/support';
 
   // Почекати на елемент (partials можуть вантажитись асинхронно)
   function waitFor(sel, { timeout = 10000 } = {}) {
@@ -46,11 +46,10 @@
 
   async function init() {
     try {
-      // Підтримуємо і id, і класи — щоб віджет працював з будь-якою розміткою
       const phraseEl = await waitFor('#komaPhrase, .koma-phrase');
       const helpBtn  = await waitFor('#komaHelpBtn, #komaHelp, #komaBtn, .koma-help');
 
-      // Ротація фраз
+      // Ротація фраз кожні 5 секунд
       let i = 0;
       phraseEl.textContent = PHRASES[i];
       setInterval(() => {
@@ -58,12 +57,10 @@
         phraseEl.textContent = PHRASES[i];
       }, 5000);
 
-      // Перехід на сторінку підтримки
       const openSupport = () => { window.location.href = SUPPORT_URL; };
       phraseEl.addEventListener('click', openSupport);
       helpBtn.addEventListener('click', openSupport);
     } catch (e) {
-      // тихий фейл, щоб не ламати сторінку
       console.warn('[support.js]', e.message);
     }
   }

@@ -1,44 +1,57 @@
-<header class="header">
+<!-- html/partials/header.html -->
+<header class="header site-header">
   <div class="container nav">
-    <!-- Бренд -->
     <a class="brand" href="index.html">
-      <img src="icon/logo.png" alt="КОМА" width="40" height="40">
+      <img src="icon/logo.png" alt="КОМА" />
       <span>КОМА</span>
     </a>
 
     <!-- Desktop menu -->
-    <nav class="menu" aria-label="Головне меню" style="margin-left:auto;">
+    <nav class="menu" aria-label="Головна навігація">
       <a href="pro-nas.html">Про нас</a>
-      <a href="training.html">Навчання</a>
+      <a href="navchannia.html">Навчання</a>
       <a href="events.html">Події</a>
       <a href="donate.html">Пожертви</a>
       <a href="news.html">Новини</a>
-      <a href="/partials/support">Підтримка</a>
-      <!-- показуємо тільки консультантам -->
-      <a id="clientsNav" href="clients.html" style="display:none">Клієнти</a>
 
-      <!-- Дії -->
+      <!-- Клієнти (показуємо лише консультантам через guard.js) -->
+      <a id="clientsNav" style="display:none" href="clients.html">Клієнти</a>
+
+      <!-- Підтримка — завжди доступна і веде на /support -->
+      <a id="supportNav" class="outline" href="/support">Підтримка</a>
+
+      <!-- Кнопка Вхід / Кабінет (міняється скриптом) -->
       <a id="authBtn" class="btn green" href="login.html">Вхід</a>
     </nav>
 
-    <!-- Mobile hamburger -->
-    <button id="hamb" class="hamb" aria-label="Меню" aria-expanded="false" aria-controls="mobile">
+    <!-- Burger (mobile) -->
+    <button id="hamb" class="hamb" aria-label="Меню" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
   </div>
 
   <!-- Mobile menu -->
-  <nav id="mobile" class="mobile" aria-label="Мобільне меню">
-    <a href="pro-nas.html">Про нас</a>
-    <a href="training.html">Навчання</a>
-    <a href="events.html">Події</a>
-    <a href="donate.html">Пожертви</a>
-    <a href="news.html">Новини</a>
-    <a href="/partials/support">Підтримка</a>
-    <a id="clientsNavM" href="clients.html" style="display:none">Клієнти</a>
-
-    <div class="row" style="gap:10px;margin-top:8px">
-      <a id="authBtnMobile" class="btn green" href="login.html">Вхід</a>
+  <div id="mobile" class="mobile">
+    <div class="container" style="padding:10px 20px">
+      <a href="pro-nas.html">Про нас</a>
+      <a href="navchannia.html">Навчання</a>
+      <a href="events.html">Події</a>
+      <a href="donate.html">Пожертви</a>
+      <a href="news.html">Новини</a>
+      <a id="clientsNavM" style="display:none" href="clients.html">Клієнти</a>
+      <a id="supportNavM" href="/support">Підтримка</a>
+      <a id="authBtnMobile" class="btn green" href="login.html" style="margin-top:10px;display:inline-block">Вхід</a>
     </div>
-  </nav>
+  </div>
 </header>
+
+<!-- Віджет слоганів + кнопка допомоги (правий нижній кут) -->
+<div class="koma-widget" aria-live="polite">
+  <button id="komaHelpBtn" class="koma-help" aria-label="Відкрити підтримку">
+    <img src="icon/support-bot.svg" alt="" />
+  </button>
+  <span id="komaPhrase" class="koma-phrase" title="Відкрити підтримку"></span>
+</div>
+
+<!-- Підключення скрипта віджета (обробляє кнопку + ротацію фраз) -->
+<script src="js/support.js" defer></script>
