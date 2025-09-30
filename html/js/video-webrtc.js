@@ -4,7 +4,7 @@
   const app = global.videoApp;
   const { els, room, SIGNAL_URL, FORCE_RELAY, setBadge, logChat } = app;
 
-  // RTCPeerConnection
+  // ---------- RTCPeerConnection ----------
   const pc = new RTCPeerConnection({
     iceServers: [
       { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
@@ -25,11 +25,27 @@
   let isUnloading = false;
   let iceProbe = null;
 
+  // ---------- ICE ----------
   pc.onicecandidate = ({ candidate }) => {
     if (candidate) wsSend({ type: 'ice', room, payload: candidate });
   };
 
-  // Обережний attach remote-stream, щоб не ловити AbortError
+  pc.oniceconnectionstatechange = () => {
+    logChat('ICE: ' + pc.iceConnectionState, 'sys');
+
+    clearTimeout(iceProbe);
+    if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
+      // якщо зависли — спробуємо перезапустити ICE
+      iceProbe = setTimeout(() => {
+        if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
+          logChat('ICE завис — виконуємо iceRestart…', 'sys');
+          restartIce();
+        }
+      }, 8000);
+    }
+  };
+
+  // ---------- Remote media attach (анти AbortError) ----------
   pc.ontrack = ({ streams }) => {
     const stream = streams && streams[0];
     if (!stream) return;
@@ -38,24 +54,35 @@
     if (els.remote.srcObject !== stream) {
       els.remote.srcObject = stream;
 
+      // Дозволяємо автоплей на мобільних: спершу muted → play()
+      els.remote.muted = true;
+
       const tryPlay = () => {
-        // Запускаємо тільки якщо ще на паузі (уникає подвійних play() -> AbortError)
         if (els.remote.paused) {
           els.remote.play().catch(err => {
-            // На мобільних autoplay з аудіо може фейлитися до кліку — це ок
+            // На мобільних autoplay з аудіо часто фейлиться до кліку — це ок
             console.warn('Autoplay failed:', err && err.name);
           });
         }
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
-
-      // Чекаємо поки відео знатиме розміри — тоді play()
+      // Чекаємо, поки відео знатиме розміри — тільки тоді play()
       els.remote.addEventListener('loadedmetadata', tryPlay);
     }
 
     maybeShowUnmute();
     setBadge('З’єднано', 'ok');
   };
+
+  // negotiationneeded (наприклад, після заміни треків)
+  pc.onnegotiationneeded = async () => {
+    if (makingOffer || pc.signalingState !== 'stable') return;
+    logChat('onnegotiationneeded → створюю offer', 'sys');
+    await createAndSendOffer();
+  };
+
+  // ---------- States ----------
+  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
 
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
@@ -71,38 +98,30 @@
     }
   };
 
-  pc.oniceconnectionstatechange = () => {
-    logChat('ICE: ' + pc.iceConnectionState, 'sys');
-
-    clearTimeout(iceProbe);
-    if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
-      iceProbe = setTimeout(() => {
-        if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
-          logChat('ICE завис — виконуємо iceRestart…', 'sys');
-          restartIce();
-        }
-      }, 8000);
-    }
-  };
-
-  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
-
+  // ---------- DataChannel / чат ----------
   pc.ondatachannel = (e) => {
     dc = e.channel;
     app.dc = dc;          // тримаємо посилання актуальним у app
     bindDataChannel();
   };
 
-  async function restartIce() {
-    try {
-      const offer = await pc.createOffer({ iceRestart: true });
-      await pc.setLocalDescription(offer);
-      wsSend({ type: 'offer', room, payload: pc.localDescription });
-    } catch (e) {
-      console.warn('ICE restart failed', e);
-    }
+  function bindDataChannel() {
+    if (!dc) return;
+    dc.onmessage = (e) => logChat(e.data, 'peer');
+    dc.onopen = () => {
+      if (els.hint) els.hint.textContent = 'Чат підключено';
+      els.msg.disabled = false;
+      els.send.disabled = false;
+      logChat('Чат підключено', 'sys');
+    };
+    dc.onclose = () => {
+      els.msg.disabled = true;
+      els.send.disabled = true;
+      logChat('Чат закрито', 'sys');
+    };
   }
 
+  // ---------- Local media ----------
   async function startLocal(constraints) {
     if (localStream) return localStream;
     const base = constraints || {
@@ -135,18 +154,30 @@
     return localStream;
   }
 
+  // ---------- Offer / Answer ----------
   async function createAndSendOffer() {
     try {
       makingOffer = true;
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      logChat('Відправив offer', 'sys');
       wsSend({ type: 'offer', room, payload: pc.localDescription });
     } finally {
       makingOffer = false;
     }
   }
 
-  // WebSocket (signaling) + reconnection
+  async function restartIce() {
+    try {
+      const offer = await pc.createOffer({ iceRestart: true });
+      await pc.setLocalDescription(offer);
+      wsSend({ type: 'offer', room, payload: pc.localDescription });
+    } catch (e) {
+      console.warn('ICE restart failed', e);
+    }
+  }
+
+  // ---------- WebSocket (signaling) + reconnection ----------
   let ws, wsReadyResolve;
   const wsReady = new Promise(r => (wsReadyResolve = r));
   let reconnectTimer = null;
@@ -172,6 +203,7 @@
 
       // ----- OFFER -----
       if (msg.type === 'offer') {
+        logChat('Отримав offer', 'sys');
         const offerDesc = new RTCSessionDescription(msg.payload);
         const collision = (makingOffer || pc.signalingState !== 'stable');
         ignoreOffer = !app.polite && collision;
@@ -193,6 +225,7 @@
 
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
+          logChat('Надіслав answer', 'sys');
           wsSend({ type: 'answer', room, payload: pc.localDescription });
         } catch (err) {
           logChat('Помилка setRemoteDescription(offer): ' + (err.message || err.name), 'sys');
@@ -209,6 +242,7 @@
         }
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+          logChat('Прийняв answer', 'sys');
         } catch (err) {
           logChat('Помилка setRemoteDescription(answer): ' + (err.message || err.name), 'sys');
         }
@@ -235,30 +269,20 @@
   }
   connectWS();
 
-  // DataChannel / чат
-  function bindDataChannel() {
-    if (!dc) return;
-    dc.onmessage = (e) => logChat(e.data, 'peer');
-    dc.onopen = () => {
-      if (els.hint) els.hint.textContent = 'Чат підключено';
-      els.msg.disabled = false;
-      els.send.disabled = false;
-      logChat('Чат підключено', 'sys');
-    };
-    dc.onclose = () => {
-      els.msg.disabled = true;
-      els.send.disabled = true;
-      logChat('Чат закрито', 'sys');
-    };
-  }
-
-  // Допоміжне
+  // ---------- Допоміжне ----------
   function maybeShowUnmute() {
     if (!app.UA_MOBILE) return;
     els.vwrap.classList.add('has-unmute');
+    if (els.unmute) {
+      els.unmute.addEventListener('click', () => {
+        els.remote.muted = false;
+        els.remote.play().catch(() => {});
+        els.vwrap.classList.remove('has-unmute');
+      }, { once: true });
+    }
   }
 
-  // Експорт у app
+  // ---------- Експорт у app ----------
   app.pc = pc;
   app.txAudio = txAudio;
   app.txVideo = txVideo;
@@ -270,7 +294,7 @@
   app.wsReady = wsReady;
   app.createAndSendOffer = createAndSendOffer;
 
-  // При закритті вкладки
+  // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
     isUnloading = true;
     try { wsSend({ type: 'bye', room }); } catch {}
