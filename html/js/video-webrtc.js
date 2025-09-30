@@ -34,12 +34,22 @@
     const stream = streams && streams[0];
     if (!stream) return;
 
+    // Призначаємо стрім, лише якщо він новий
     if (els.remote.srcObject !== stream) {
       els.remote.srcObject = stream;
+
       const tryPlay = () => {
-        els.remote.play().catch(() => {});
+        // Запускаємо тільки якщо ще на паузі (уникає подвійних play() -> AbortError)
+        if (els.remote.paused) {
+          els.remote.play().catch(err => {
+            // На мобільних autoplay з аудіо може фейлитися до кліку — це ок
+            console.warn('Autoplay failed:', err && err.name);
+          });
+        }
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
+
+      // Чекаємо поки відео знатиме розміри — тоді play()
       els.remote.addEventListener('loadedmetadata', tryPlay);
     }
 
@@ -49,7 +59,7 @@
 
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
-    setBadge('Статус: ' + st, st === 'connected' ? 'ок' : (st === 'failed' ? 'danger' : 'muted'));
+    setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
     if (st === 'connected') {
       els.start.textContent = 'З’єднано';
       els.start.disabled = true;
@@ -118,7 +128,7 @@
     if (v) await txVideo.sender.replaceTrack(v);
 
     els.local.srcObject = localStream;
-    try { els.local.play(); } catch {}
+    try { if (els.local.paused) await els.local.play(); } catch {}
     els.mic.disabled = !a;
     els.cam.disabled = !v;
     els.screen.disabled = false;
