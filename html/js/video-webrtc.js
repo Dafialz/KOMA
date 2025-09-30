@@ -15,6 +15,7 @@
     iceTransportPolicy: FORCE_RELAY ? 'relay' : 'all',
   });
 
+  // Фіксуємо порядок m-lines: спочатку audio, потім video
   const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
 
@@ -28,22 +29,17 @@
     if (candidate) wsSend({ type: 'ice', room, payload: candidate });
   };
 
-  // ✅ Обережно підключаємо remote-stream, щоб не ловити AbortError
+  // Обережний attach remote-stream, щоб не ловити AbortError
   pc.ontrack = ({ streams }) => {
     const stream = streams && streams[0];
     if (!stream) return;
 
-    // Не пере-присвоюємо той самий stream
-    const needAttach = els.remote.srcObject !== stream;
-    if (needAttach) {
+    if (els.remote.srcObject !== stream) {
       els.remote.srcObject = stream;
-
       const tryPlay = () => {
-        // На мобільних звук все одно буде заблоковано до кліку — ок
         els.remote.play().catch(() => {});
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
-      // Чекаємо, поки відео знатиме розміри — тільки тоді play()
       els.remote.addEventListener('loadedmetadata', tryPlay);
     }
 
@@ -70,7 +66,6 @@
 
     clearTimeout(iceProbe);
     if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
-      // якщо зависли — спробуємо перезапустити ICE
       iceProbe = setTimeout(() => {
         if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
           logChat('ICE завис — виконуємо iceRestart…', 'sys');
@@ -84,7 +79,7 @@
 
   pc.ondatachannel = (e) => {
     dc = e.channel;
-    app.dc = dc;          // 🔄 тримаємо посилання актуальним у app
+    app.dc = dc;          // тримаємо посилання актуальним у app
     bindDataChannel();
   };
 
@@ -116,6 +111,7 @@
         throw err;
       }
     }
+
     const a = localStream.getAudioTracks()[0] || null;
     const v = localStream.getVideoTracks()[0] || null;
     if (a) await txAudio.sender.replaceTrack(a);
@@ -164,32 +160,53 @@
       const msg = JSON.parse(e.data);
       if (!msg || (msg.room && msg.room !== room)) return;
 
+      // ----- OFFER -----
       if (msg.type === 'offer') {
         const offerDesc = new RTCSessionDescription(msg.payload);
         const collision = (makingOffer || pc.signalingState !== 'stable');
         ignoreOffer = !app.polite && collision;
-        if (ignoreOffer) { logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys'); return; }
 
-        if (collision) {
-          await Promise.all([
-            pc.setLocalDescription({ type: 'rollback' }),
-            pc.setRemoteDescription(offerDesc)
-          ]);
-        } else {
-          await pc.setRemoteDescription(offerDesc);
+        if (ignoreOffer) {
+          logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys');
+          return;
         }
 
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        wsSend({ type: 'answer', room, payload: pc.localDescription });
+        try {
+          if (collision) {
+            // rollback перед прийомом чужого офера
+            await Promise.all([
+              pc.setLocalDescription({ type: 'rollback' }),
+              pc.setRemoteDescription(offerDesc),
+            ]);
+          } else {
+            await pc.setRemoteDescription(offerDesc);
+          }
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          wsSend({ type: 'answer', room, payload: pc.localDescription });
+        } catch (err) {
+          logChat('Помилка setRemoteDescription(offer): ' + (err.message || err.name), 'sys');
+        }
         return;
       }
 
+      // ----- ANSWER -----
       if (msg.type === 'answer') {
-        if (!ignoreOffer) await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        // Приймаємо answer лише коли ми реально в стані очікування відповіді
+        if (pc.signalingState !== 'have-local-offer') {
+          logChat('Пропущено чужий answer (стан: ' + pc.signalingState + ')', 'sys');
+          return;
+        }
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        } catch (err) {
+          logChat('Помилка setRemoteDescription(answer): ' + (err.message || err.name), 'sys');
+        }
         return;
       }
 
+      // ----- ICE -----
       if (msg.type === 'ice') {
         try { await pc.addIceCandidate(msg.payload); } catch {}
         return;
