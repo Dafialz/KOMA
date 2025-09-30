@@ -28,17 +28,13 @@
     </div>
   </div>
 
+  <!-- Скрипт залишаю як резерв; основне оновлення робить partials.js -->
   <script>
-    // Підміняємо «Вхід» на «Кабінет», якщо користувач авторизований
     (function () {
       try {
         const a = document.getElementById('footerCabLink');
-        if (!a || !window.guard?.getSession) return;
-        const s = window.guard.getSession();
-        if (s && s.email) {
-          a.textContent = 'Кабінет';
-          a.href = 'admin.html';
-        }
+        const s = window.guard?.getSession?.();
+        if (a && s && s.email) { a.textContent = 'Кабінет'; a.href = 'admin.html'; }
       } catch {}
     })();
   </script>
