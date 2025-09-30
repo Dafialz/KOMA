@@ -86,14 +86,19 @@
     function showErr(t){ err.textContent=t; err.style.display='block'; ok.style.display='none'; }
     function showOk(t){ ok.textContent=t; ok.style.display='block'; err.style.display='none'; }
 
-    // Підставляємо імʼя/пошту, якщо є сесія
+    // Підставляємо імʼя/пошту (залогінений консультант або гість)
     (function prefill(){
       try{
         const s = window.guard?.getSession?.();
-        if(s?.email){
+        if (s?.email) {
           document.getElementById('email').value = s.email;
           const nm = window.guard?.emailToName?.(s.email);
-          if(nm) document.getElementById('name').value = nm;
+          if (nm) document.getElementById('name').value = nm;
+          return;
+        }
+        const g = window.guard?.getGuest?.();
+        if (g) {
+          if (g.name) document.getElementById('name').value = g.name;
         }
       }catch{}
     })();
@@ -134,14 +139,14 @@
       const rec = { name, email, topic:`${topic} (${prio})`, msg, ts: Date.now() };
       const log = readLog(); log.push(rec); writeLog(log); renderLog();
 
-      // mailto (змінити адресу на робочу підтримки)
+      // mailto (поставиш бойовий e-mail підтримки)
       const to = 'info@nacc.example';
       const subject = encodeURIComponent(`[КОМА] ${topic} (${prio}) — ${name||'користувач'}`);
       const body = encodeURIComponent(`Від: ${name||'-'} <${email}>\nТема: ${topic}\nПріоритет: ${prio}\n\n${msg}\n\n— надіслано зі сторінки служби підтримки`);
       const url = `mailto:${to}?subject=${subject}&body=${body}`;
       window.location.href = url;
 
-      showOk('Чернетку для листа відкрито у вашому поштовому клієнті. Також звернення збережено локально.');
+      showOk('Чернетку листа відкрито у вашому поштовому клієнті. Звернення також збережено локально.');
       e.target.reset();
     });
   </script>

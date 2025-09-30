@@ -48,6 +48,6 @@ function broadcast(room, message, exceptWs) {
   }
 }
 
-app.use(express.static('html')); // щоб віддавати твої сторінки з папки html
+app.use(express.static('html')); // віддавати сторінки з /html
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Signaling server on http://localhost:${PORT}`));
