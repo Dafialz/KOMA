@@ -8,7 +8,7 @@
   const pc = new RTCPeerConnection({
     iceServers: [
       { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
-      { urls: 'turn:global.relay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     ],
@@ -24,28 +24,53 @@
   let isUnloading = false;
   let iceProbe = null;
 
-  pc.onicecandidate = ({ candidate }) => { if (candidate) wsSend({ type: 'ice', room, payload: candidate }); };
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) wsSend({ type: 'ice', room, payload: candidate });
+  };
+
+  // ✅ Обережно підключаємо remote-stream, щоб не ловити AbortError
   pc.ontrack = ({ streams }) => {
-    if (!els.remote.srcObject) els.remote.srcObject = streams[0];
-    try { els.remote.play(); } catch { }
+    const stream = streams && streams[0];
+    if (!stream) return;
+
+    // Не пере-присвоюємо той самий stream
+    const needAttach = els.remote.srcObject !== stream;
+    if (needAttach) {
+      els.remote.srcObject = stream;
+
+      const tryPlay = () => {
+        // На мобільних звук все одно буде заблоковано до кліку — ок
+        els.remote.play().catch(() => {});
+        els.remote.removeEventListener('loadedmetadata', tryPlay);
+      };
+      // Чекаємо, поки відео знатиме розміри — тільки тоді play()
+      els.remote.addEventListener('loadedmetadata', tryPlay);
+    }
+
     maybeShowUnmute();
     setBadge('З’єднано', 'ok');
   };
+
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
     if (st === 'connected') {
-      els.start.textContent = 'З’єднано'; els.start.disabled = true; els.start.classList.add('active');
+      els.start.textContent = 'З’єднано';
+      els.start.disabled = true;
+      els.start.classList.add('active');
     }
     if (st === 'failed') {
       logChat('З’єднання втрачено. Пробуємо відновити…', 'sys');
       restartIce();
     }
   };
+
   pc.oniceconnectionstatechange = () => {
     logChat('ICE: ' + pc.iceConnectionState, 'sys');
+
     clearTimeout(iceProbe);
     if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
+      // якщо зависли — спробуємо перезапустити ICE
       iceProbe = setTimeout(() => {
         if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
           logChat('ICE завис — виконуємо iceRestart…', 'sys');
@@ -54,15 +79,23 @@
       }, 8000);
     }
   };
+
   pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
-  pc.ondatachannel = (e) => { dc = e.channel; bindDataChannel(); };
+
+  pc.ondatachannel = (e) => {
+    dc = e.channel;
+    app.dc = dc;          // 🔄 тримаємо посилання актуальним у app
+    bindDataChannel();
+  };
 
   async function restartIce() {
     try {
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       wsSend({ type: 'offer', room, payload: pc.localDescription });
-    } catch (e) { console.warn('ICE restart failed', e); }
+    } catch (e) {
+      console.warn('ICE restart failed', e);
+    }
   }
 
   async function startLocal(constraints) {
@@ -89,7 +122,7 @@
     if (v) await txVideo.sender.replaceTrack(v);
 
     els.local.srcObject = localStream;
-    try { els.local.play(); } catch { }
+    try { els.local.play(); } catch {}
     els.mic.disabled = !a;
     els.cam.disabled = !v;
     els.screen.disabled = false;
@@ -109,10 +142,12 @@
 
   // WebSocket (signaling) + reconnection
   let ws, wsReadyResolve;
-  const wsReady = new Promise(r => wsReadyResolve = r);
+  const wsReady = new Promise(r => (wsReadyResolve = r));
   let reconnectTimer = null;
 
-  function wsSend(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+  function wsSend(obj) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  }
 
   function connectWS() {
     clearTimeout(reconnectTimer);
@@ -134,6 +169,7 @@
         const collision = (makingOffer || pc.signalingState !== 'stable');
         ignoreOffer = !app.polite && collision;
         if (ignoreOffer) { logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys'); return; }
+
         if (collision) {
           await Promise.all([
             pc.setLocalDescription({ type: 'rollback' }),
@@ -142,6 +178,7 @@
         } else {
           await pc.setRemoteDescription(offerDesc);
         }
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         wsSend({ type: 'answer', room, payload: pc.localDescription });
@@ -154,7 +191,7 @@
       }
 
       if (msg.type === 'ice') {
-        try { await pc.addIceCandidate(msg.payload); } catch { }
+        try { await pc.addIceCandidate(msg.payload); } catch {}
         return;
       }
 
@@ -199,24 +236,22 @@
   app.pc = pc;
   app.txAudio = txAudio;
   app.txVideo = txVideo;
-  app.dc = dc; // буде оновлено при створенні
+  app.dc = dc; // оновлюється при появі каналу
   app.startLocal = startLocal;
   app.restartIce = restartIce;
   app.bindDataChannel = bindDataChannel;
   app.wsSend = wsSend;
   app.wsReady = wsReady;
-
-  // щоб UI міг створити datachannel за потреби:
   app.createAndSendOffer = createAndSendOffer;
 
   // При закритті вкладки
   window.addEventListener('beforeunload', () => {
     isUnloading = true;
-    try { wsSend({ type: 'bye', room }); } catch { }
-    try { app.dc && app.dc.close(); } catch { }
-    try { app.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch { }
-    try { app.pc.close(); } catch { }
-    try { ws && ws.close(); } catch { }
+    try { wsSend({ type: 'bye', room }); } catch {}
+    try { app.dc && app.dc.close(); } catch {}
+    try { app.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
+    try { app.pc.close(); } catch {}
+    try { ws && ws.close(); } catch {}
   });
 
 })(window);
