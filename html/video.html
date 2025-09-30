@@ -56,6 +56,7 @@
 
     button:disabled,.btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
 
+    /* Кнопка для розблокування аудіо на мобільних */
     .unmute {
       position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
       background:#0f5257;color:#fff;border:none;border-radius:999px;padding:10px 14px;
@@ -66,6 +67,7 @@
 </head>
 <body>
 
+  <!-- header через partials -->
   <div data-include="partials/header.html"></div>
 
   <div class="wrap">
@@ -77,19 +79,23 @@
       </div>
 
       <div class="controls">
+        <!-- Головна дія -->
         <button id="btnStart" class="btn green btn-pill">🔌 Під’єднатися</button>
 
+        <!-- Пристрої -->
         <div class="btn-group" role="group" aria-label="Пристрої">
           <button id="btnMic"    class="btn gray"    disabled>🎙️ Мікрофон</button>
           <button id="btnCam"    class="btn gray"    disabled>📷 Камера</button>
           <button id="btnScreen" class="btn outline" disabled>🖥️ Поділитись екраном</button>
         </div>
 
+        <!-- Повноекранно -->
         <div class="btn-group" role="group" aria-label="Екран">
           <button id="btnFullRemote" class="btn ghost">⤢ Співрозмовник</button>
           <button id="btnFullLocal"  class="btn ghost">⤢ Моє відео</button>
         </div>
 
+        <!-- Статуси -->
         <div class="meta">
           <span id="status" class="badge muted">Не під’єднано</span>
           <span id="roomLabel" class="badge"></span>
@@ -120,6 +126,10 @@
   <script>
   /* ========= Допоміжне ========= */
   const qs = new URLSearchParams(location.search);
+  const UA_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Форсимо TURN на мобільних (якщо явно не relay=0) або коли relay=1
+  const FORCE_RELAY = qs.get('relay') === '1' || (UA_MOBILE && qs.get('relay') !== '0');
+
   function makeRoomIdFromQS(qs){
     const r = qs.get('room');
     if (r) return decodeURIComponent(r);
@@ -165,6 +175,7 @@
     els.status.className = 'badge ' + (cls||'');
   }
 
+  // Рендер повідомлень у чаті
   function logChat(text, who='sys'){
     const item = document.createElement('div');
     if (who === 'me')       item.className = 'msg me';
@@ -197,6 +208,7 @@
       { urls:'turn:global.relay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
       { urls:'turn:global.relay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject' },
     ],
+    iceTransportPolicy: FORCE_RELAY ? 'relay' : 'all',
   });
 
   const txAudio = pc.addTransceiver('audio', { direction:'sendrecv' });
@@ -206,6 +218,7 @@
   let makingOffer = false;
   let ignoreOffer = false;
   let isUnloading = false;
+  let iceProbe; // таймер для auto-iceRestart
 
   pc.onicecandidate = ({candidate}) => { if (candidate) wsSend({ type:'ice', room, payload: candidate }); };
   pc.ontrack = ({streams}) => {
@@ -225,9 +238,22 @@
       restartIce();
     }
   };
+  pc.oniceconnectionstatechange = () => {
+    logChat('ICE: ' + pc.iceConnectionState, 'sys');
+
+    clearTimeout(iceProbe);
+    if (['checking','new','disconnected'].includes(pc.iceConnectionState)) {
+      // якщо зависли — спробуємо перезапустити ICE
+      iceProbe = setTimeout(() => {
+        if (['checking','new','disconnected'].includes(pc.iceConnectionState)) {
+          logChat('ICE завис — виконуємо iceRestart…', 'sys');
+          restartIce();
+        }
+      }, 8000);
+    }
+  };
+  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
   pc.ondatachannel = (e) => { dc = e.channel; bindDataChannel(); };
-  pc.oniceconnectionstatechange = () => { logChat('ICE: ' + pc.iceConnectionState, 'sys'); };
-  pc.onsignalingstatechange    = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
 
   async function restartIce(){
     try{
@@ -316,6 +342,7 @@
         } else {
           await pc.setRemoteDescription(offerDesc);
         }
+        // answer
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         wsSend({ type:'answer', room, payload: pc.localDescription });
@@ -416,12 +443,13 @@
     }catch{}
   };
 
+  /* ========= Повноекранний режим ========= */
   function enterFullscreen(el){
     if (!el) return;
     try {
       if (el.requestFullscreen) return el.requestFullscreen();
-      if (el.webkitEnterFullscreen) return el.webkitEnterFullscreen();
-      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+      if (el.webkitEnterFullscreen) return el.webkitEnterFullscreen(); // iPhone Safari
+      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen(); // iPad
       if (el.msRequestFullscreen) return el.msRequestFullscreen();
     } catch {}
   }
@@ -439,12 +467,14 @@
   els.fullLocal .addEventListener('click', ()=> toggleFS(els.local));
   [els.remote, els.local].forEach(v => v.addEventListener('dblclick', ()=> toggleFS(v)));
 
-  function isMobile(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
+  // На мобільних — тап по відео також відкриває fullscreen
+  function isMobile(){ return UA_MOBILE; }
   if (isMobile()){
     els.remote.addEventListener('click', ()=> enterFullscreen(els.remote), { passive:true });
     els.local .addEventListener('click', ()=> enterFullscreen(els.local),  { passive:true });
   }
 
+  /* ========= Аудіо-анлок на мобільних ========= */
   function maybeShowUnmute(){
     if (!isMobile()) return;
     els.vwrap.classList.add('has-unmute');
@@ -454,10 +484,12 @@
     els.vwrap.classList.remove('has-unmute');
   });
 
+  /* ========= Автостарт (опційно ?autostart=1) ========= */
   if (qs.get('autostart') === '1') {
     wsReady.then(()=> els.start.click()).catch(()=>{});
   }
 
+  /* ========= Cleanup ========= */
   window.addEventListener('beforeunload', () => {
     isUnloading = true;
     try { wsSend({ type:'bye', room }); } catch {}
@@ -468,11 +500,11 @@
   });
   </script>
 
-  <!-- Підключаємо Eruda (мобільна консоль) автоматично на мобільних або з ?debug=1 -->
+  <!-- Eruda (мобільна консоль): вмикається на мобільних або ?debug=1 -->
   <script>
     (function(){
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const wantDebug = isMobile || /(?:\\?|&)debug(?:=1)?/i.test(location.search) || /on/i.test(localStorage.getItem('eruda'));
+      const wantDebug = isMobile || /(?:\?|&)debug(?:=1)?/i.test(location.search) || /on/i.test(localStorage.getItem('eruda'));
       if (!wantDebug) return;
       const s = document.createElement('script');
       s.src = 'https://cdn.jsdelivr.net/npm/eruda@3/eruda.min.js';
@@ -480,12 +512,24 @@
         eruda.init();
         try { eruda.position({ x: 12, y: 12 }); } catch {}
         console.log('[eruda] ready');
-        localStorage.setItem('eruda', 'on'); // запам’ятати
+        localStorage.setItem('eruda', 'on');
       };
       document.body.appendChild(s);
     })();
   </script>
 
   <script src="js/partials.js"></script>
+
+  <!--
+    Як розбити на менші файли (готова структура):
+    1) js/video-config.js  — room/qs, FORCE_RELAY, SIGNAL_URL, елементи/утиліти setBadge/logChat
+    2) js/video-webrtc.js  — RTCPeerConnection, девайси, perfect negotiation, signaling/ws, datachannel, ICE таймер
+    3) js/video-ui.js      — кнопки/повноекранний/унмут/автостарт/cleanup
+    Тоді тут лишається лише підключення:
+      <script src="js/video-config.js"></script>
+      <script src="js/video-webrtc.js"></script>
+      <script src="js/video-ui.js"></script>
+    Скажи «ок», і я віддам ці три файли з уже розбитим кодом.
+  -->
 </body>
 </html>
