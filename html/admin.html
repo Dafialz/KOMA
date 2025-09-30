@@ -17,8 +17,8 @@
     /* Аватар без підрізання */
     .vk-avatar{
       width:100%;
-      height:auto;              /* зберігає пропорції */
-      object-fit:contain;       /* не обрізає фото */
+      height:auto;
+      object-fit:contain;
       background:#f3f4f6;
       border:1px solid var(--border);
       border-radius:12px;
@@ -127,15 +127,15 @@
     document.getElementById('profMail').textContent = myEmail;
     document.getElementById('clientsBtn').style.display = 'inline-flex';
 
-    // ===== Мапи аватарів (під твою структуру icon/consultants/*)
+    // ===== Мапи аватарів під структуру icon/consultants/*
     const AVATAR_MAP = {
       'oksanakokoten@gmail.com'   : 'icon/consultants/oksana.jpg',
       'sergiyoyovych@gmail.com'   : 'icon/consultants/sergi.jpg',
-      'anastasiyoyovych@gmail.com'  : 'icon/consultants/nastya.jpg',
+      'anastasiyoyovych@gmail.com': 'icon/consultants/nastya.jpg',
       'oleksandrtkachuk@gmail.com': 'icon/consultants/sasha.jpg',
-      'tetianamakovska@gmail.com': 'icon/consultants/tanya.jpg',
+      'tetianamakovska@gmail.com' : 'icon/consultants/tanya.jpg',
       'kristinakokoten@gmail.com' : 'icon/consultants/kris.jpg',
-      'dafialz@gmail.com' : 'icon/support-bot.svg'
+      'dafialz@gmail.com'         : 'icon/support-bot.svg'
     };
 
     // Аватар (з фолбеком)
@@ -146,7 +146,7 @@
     // Статистика «фото» тепер 0 (бо галереї немає)
     document.getElementById('statPhotos').textContent = 0;
 
-    // ===== Дата/час за замовчуванням (Київ, завтра) — без проблем з toISOString()
+    // ===== Дата/час за замовчуванням (Київ, завтра)
     function kyivDateTime(offsetDays = 1) {
       const now = new Date();
       const fmt = new Intl.DateTimeFormat('uk-UA', {
@@ -155,7 +155,6 @@
         hour: '2-digit', minute: '2-digit', hour12: false
       });
       const parts = Object.fromEntries(fmt.formatToParts(now).map(p => [p.type, p.value]));
-      // Локальний Date з урахуванням київського часу на момент now
       const base = new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00`);
       base.setDate(base.getDate() + offsetDays);
 
@@ -204,9 +203,6 @@
 
     // Вихід
     document.getElementById('logout').onclick = () => guard.logout();
-
-    // Якщо захочеш персоналізувати email підтримки:
-    // document.getElementById('supportBtn').href = `support.html?from=${encodeURIComponent(myEmail)}`;
   </script>
   <script src="js/partials.js"></script>
 </body>
