@@ -5,9 +5,25 @@
   const qs = new URLSearchParams(location.search);
   const UA_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  // Форсимо TURN на мобільних (якщо явно не relay=0) або коли relay=1
-  const FORCE_RELAY = qs.get('relay') === '1' || (UA_MOBILE && qs.get('relay') !== '0');
+  // ===== РОЛЬ (consultant | client) =====
+  function detectRole() {
+    // 1) явний параметр у URL
+    const fromQS = (qs.get('role') || '').toLowerCase();
+    if (fromQS === 'consultant' || fromQS === 'client') return fromQS;
 
+    // 2) якщо є локальна сесія — вважаємо консультантом
+    try {
+      const raw = localStorage.getItem('koma_session');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && s.email) return 'consultant';
+      }
+    } catch {}
+    return 'client';
+  }
+  const role = detectRole();
+
+  // ===== КІМНАТА =====
   function makeRoomIdFromQS(qs) {
     const r = qs.get('room');
     if (r) return decodeURIComponent(r);
@@ -18,13 +34,21 @@
     return raw || 'KOMA_room';
   }
   const room = makeRoomIdFromQS(qs);
-  const polite = true;
 
-  // SIGNAL URL
+  // ===== TURN/RELAY =====
+  // За замовчуванням ВМИКАЄМО relay (TURN) — найнадійніше через мобільних операторів та CGNAT.
+  // Можна вимкнути через ?relay=0
+  const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
+
+  // ===== SIGNAL URL =====
   const RENDER_WSS = 'wss://koma-uaue.onrender.com';
   const SIGNAL_URL = (location.hostname === 'localhost') ? 'ws://localhost:3000' : RENDER_WSS;
 
-  // Елементи
+  // ===== Perfect Negotiation =====
+  // Ініціатором робимо консультанта: polite = false (ініціатор), client = true (слухає).
+  const polite = (role !== 'consultant');
+
+  // ===== Елементи
   const els = {
     local: document.getElementById('local'),
     remote: document.getElementById('remote'),
@@ -47,7 +71,7 @@
 
   // Підписи кімнати і ролі
   if (els.roomLabel) els.roomLabel.textContent = `Кімната: ${room}`;
-  if (els.roleLabel) els.roleLabel.textContent = 'Роль: учасник';
+  if (els.roleLabel) els.roleLabel.textContent = `Роль: ${role === 'consultant' ? 'консультант' : 'учасник'}`;
 
   function setBadge(text, cls) {
     if (!els.status) return;
@@ -55,7 +79,6 @@
     els.status.className = 'badge ' + (cls || '');
   }
 
-  // Акуратний рендер повідомлень у чаті
   function logChat(text, who = 'sys') {
     const item = document.createElement('div');
     if (who === 'me') item.className = 'msg me';
@@ -83,7 +106,7 @@
   // Експорт у глобал
   global.videoApp = {
     // конфіг
-    qs, UA_MOBILE, FORCE_RELAY, room, polite, SIGNAL_URL,
+    qs, UA_MOBILE, FORCE_RELAY, room, polite, SIGNAL_URL, role,
     // DOM
     els,
     // утиліти
