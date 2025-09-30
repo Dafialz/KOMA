@@ -1,4 +1,3 @@
-
 // html/js/partials.js
 (function () {
   'use strict';
@@ -17,7 +16,7 @@
     if (window.guard) return Promise.resolve();
     if (guardReady) return guardReady;
 
-    guardReady = new Promise((resolve, reject) => {
+    guardReady = new Promise((resolve) => {
       const s = document.createElement('script');
       s.src = `${basePath()}js/guard.js`;
       s.async = true;
@@ -88,49 +87,6 @@
     });
   }
 
-  // Кнопка «Приєднатись»
-  function initJoinButtons() {
-    const joinBtn  = document.getElementById('joinBtn');
-    const joinBtnM = document.getElementById('joinBtnM');
-    const OPEN_AFTER_MIN = 60;
-
-    const enable = (url) => {
-      [joinBtn, joinBtnM].forEach(b => { if (b) { b.href = url; b.removeAttribute('aria-disabled'); } });
-    };
-    const disable = () => {
-      [joinBtn, joinBtnM].forEach(b => { if (b) { b.href = '#'; b.setAttribute('aria-disabled', 'true'); } });
-    };
-
-    function startTSKyiv(d, t) { return Date.parse(`${d}T${t}:00+03:00`); }
-
-    function updateJoin() {
-      const raw = localStorage.getItem('koma_last_booking');
-      if (!raw) return disable();
-      let b;
-      try { b = JSON.parse(raw); } catch { return disable(); }
-      if (!b || !b.date || !b.time) return disable();
-
-      const start = Number(b.startTS ?? startTSKyiv(b.date, b.time));
-      if (!Number.isFinite(start)) return disable();
-      if (Date.now() > start + OPEN_AFTER_MIN * 60 * 1000) return disable();
-
-      const params = new URLSearchParams({
-        consultant: b.consultant || '',
-        fullName: b.fullName || '',
-        email: b.email || '',
-        date: b.date,
-        time: b.time
-      }).toString();
-
-      enable(`zapis.html?${params}`);
-    }
-
-    updateJoin();
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'koma_last_booking') updateJoin();
-    });
-  }
-
   function bindHeaderInteractions(root) {
     if (!root) return;
     const burger = root.querySelector('#hamb');
@@ -154,12 +110,11 @@
     // Після вставки обов’язково синхронізуємо UI
     applyAuth();
     applyClientsVisibility();
-    initJoinButtons();
 
     // Оновлюємо при поверненні (bfcache) та при зміні storage
     window.addEventListener('pageshow', () => { applyAuth(); applyClientsVisibility(); });
     window.addEventListener('storage', (e) => {
-      if (e.key === 'koma_session' || e.key === 'koma_last_booking') {
+      if (e.key === 'koma_session') {
         applyAuth(); applyClientsVisibility();
       }
     });

@@ -48,72 +48,12 @@
     "name": "Консультанти КОМА",
     "url": "https://koma-hcmz.netlify.app/directory.html",
     "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "item": {
-          "@type": "Person",
-          "name": "Оксана Кокотень",
-          "jobTitle": "Консультант-психолог",
-          "areaServed": "Луцьк, Україна; Онлайн",
-          "image": "https://koma-hcmz.netlify.app/icon/consultants/oksana.jpg"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "item": {
-          "@type": "Person",
-          "name": "Cергій Ойович",
-          "jobTitle": "Душеопікун, капелан",
-          "areaServed": "Луцьк, Україна; Онлайн",
-          "image": "https://koma-hcmz.netlify.app/icon/consultants/sergi.jpg"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "item": {
-          "@type": "Person",
-          "name": "Тетяна Маковська",
-          "jobTitle": "Психолог, КПТ",
-          "areaServed": "Луцьк, Україна; Онлайн",
-          "image": "https://koma-hcmz.netlify.app/icon/consultants/tanya.jpg"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 4,
-        "item": {
-          "@type": "Person",
-          "name": "Олександр Ткачук",
-          "jobTitle": "Дитячий та підлітковий психолог",
-          "areaServed": "Луцьк, Україна; Онлайн",
-          "image": "https://koma-hcmz.netlify.app/icon/consultants/sasha.jpg"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 5,
-        "item": {
-          "@type": "Person",
-          "name": "Анастасія Ойович",
-          "jobTitle": "Сімейний консультант",
-          "areaServed": "Луцьк, Україна; Онлайн",
-          "image": "https://koma-hcmz.netlify.app/icon/consultants/nastya.jpg"
-        }
-      },
-      {
-        "@type": "ListItem",
-        "position": 6,
-        "item": {
-          "@type": "Person",
-          "name": "Христина Кокотень",
-          "jobTitle": "Психотерапевт",
-          "areaServed": "Луцьк, Україна; Онлайн",
-          "image": "https://koma-hcmz.netlify.app/icon/consultants/kris.jpg"
-        }
-      }
+      { "@type": "ListItem", "position": 1, "item": { "@type": "Person", "name": "Оксана Кокотень", "jobTitle": "Консультант-психолог", "areaServed": "Луцьк, Україна; Онлайн", "image": "https://koma-hcmz.netlify.app/icon/consultants/oksana.jpg" } },
+      { "@type": "ListItem", "position": 2, "item": { "@type": "Person", "name": "Cергій Ойович", "jobTitle": "Душеопікун, капелан", "areaServed": "Луцьк, Україна; Онлайн", "image": "https://koma-hcmz.netlify.app/icon/consultants/sergi.jpg" } },
+      { "@type": "ListItem", "position": 3, "item": { "@type": "Person", "name": "Тетяна Маковська", "jobTitle": "Психолог, КПТ", "areaServed": "Луцьк, Україна; Онлайн", "image": "https://koma-hcmz.netlify.app/icon/consultants/tanya.jpg" } },
+      { "@type": "ListItem", "position": 4, "item": { "@type": "Person", "name": "Олександр Ткачук", "jobTitle": "Дитячий та підлітковий психолог", "areaServed": "Луцьк, Україна; Онлайн", "image": "https://koma-hcmz.netlify.app/icon/consultants/sasha.jpg" } },
+      { "@type": "ListItem", "position": 5, "item": { "@type": "Person", "name": "Анастасія Ойович", "jobTitle": "Сімейний консультант", "areaServed": "Луцьк, Україна; Онлайн", "image": "https://koma-hcmz.netlify.app/icon/consultants/nastya.jpg" } },
+      { "@type": "ListItem", "position": 6, "item": { "@type": "Person", "name": "Христина Кокотень", "jobTitle": "Психотерапевт", "areaServed": "Луцьк, Україна; Онлайн", "image": "https://koma-hcmz.netlify.app/icon/consultants/kris.jpg" } }
     ]
   }
   </script>
@@ -123,11 +63,14 @@
   <!-- Header (partials) -->
   <div id="site-header" data-include="partials/header.html"></div>
 
-  <!-- Заголовок сторінки -->
+  <!-- Заголовок сторінки + НОВА кнопка «Приєднатись» -->
   <section class="pagehead">
-    <div class="container">
-      <h1 style="margin:0 0 6px">Знайти консультанта</h1>
-      <p class="lead">Оберіть фахівця та запишіться на зручний час. Луцьк і онлайн.</p>
+    <div class="container" style="display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div>
+        <h1 style="margin:0 0 6px">Знайти консультанта</h1>
+        <p class="lead">Оберіть фахівця та запишіться на зручний час. Луцьк і онлайн.</p>
+      </div>
+      <a id="dirJoinLink" class="btn outline" href="#" aria-disabled="true">Приєднатись</a>
     </div>
   </section>
 
@@ -146,7 +89,7 @@
           <h3 class="p-name">Оксана Кокотень</h3>
           <p class="p-role">Консультант-психолог, MA</p>
           <div class="p-actions">
-            <button class="btn" data-name="Оксана Кокотень" onclick="openConsultation(this)">Записатись</button>
+            <button class="btn" data-name="Оксана Кокотень" data-email="oksanakokoten@gmail.com" onclick="openConsultation(this)">Записатись</button>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -173,7 +116,7 @@
           <h3 class="p-name">Cергій Ойович</h3>
           <p class="p-role">Душеопікун, капелан</p>
           <div class="p-actions">
-            <button class="btn" data-name="Cергій Ойович" onclick="openConsultation(this)">Записатись</button>
+            <button class="btn" data-name="Cергій Ойович" data-email="sergiyoyovych@gmail.com" onclick="openConsultation(this)">Записатись</button>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -199,7 +142,7 @@
           <h3 class="p-name">Анастасія Ойович</h3>
           <p class="p-role">Психолог, КПТ</p>
           <div class="p-actions">
-            <button class="btn" data-name="Анастасія Ойович" onclick="openConsultation(this)">Записатись</button>
+            <button class="btn" data-name="Анастасія Ойович" data-email="anastasiyoyovych@gmail.com" onclick="openConsultation(this)">Записатись</button>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -225,7 +168,7 @@
           <h3 class="p-name">Олександр Ткачук</h3>
           <p class="p-role">Дитячий та підлітковий психолог</p>
           <div class="p-actions">
-            <button class="btn" data-name="Олександр Ткачук" onclick="openConsultation(this)">Записатись</button>
+            <button class="btn" data-name="Олександр Ткачук" data-email="oleksandrtkachuk@gmail.com" onclick="openConsultation(this)">Записатись</button>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -251,7 +194,7 @@
           <h3 class="p-name">Тетяна Маковська</h3>
           <p class="p-role">Сімейний консультант</p>
           <div class="p-actions">
-            <button class="btn" data-name="Тетяна Маковська" onclick="openConsultation(this)">Записатись</button>
+            <button class="btn" data-name="Тетяна Маковська" data-email="tetianamakovska@gmail.com" onclick="openConsultation(this)">Записатись</button>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -277,7 +220,7 @@
           <h3 class="p-name">Христина Кокотень</h3>
           <p class="p-role">Психотерапевт</p>
           <div class="p-actions">
-            <button class="btn" data-name="Христина Кокотень" onclick="openConsultation(this)">Записатись</button>
+            <button class="btn" data-name="Христина Кокотень" data-email="kristinakokoten@gmail.com" onclick="openConsultation(this)">Записатись</button>
             <button class="btn outline small" onclick="togglePrice(this)">Ціна</button>
           </div>
           <div class="prices">
@@ -298,11 +241,9 @@
   <!-- Footer (partials) -->
   <div id="site-footer" data-include="partials/footer.html"></div>
 
-  <!-- Спільні скрипти -->
+  <!-- Скрипти -->
   <script src="js/guard.js"></script>
   <script src="js/partials.js"></script>
-
-  <!-- Локальний JS сторінки -->
   <script src="js/directory.js"></script>
 
   <!-- МОДАЛКА «Запис на консультацію» -->
@@ -383,6 +324,19 @@
           <button id="submitBtn" type="submit" class="btn">Записатися</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА УСПІХУ -->
+  <div id="successModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" onclick="closeSuccess()"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <button class="modal-close" aria-label="Закрити" onclick="closeSuccess()">×</button>
+      <h2 id="successTitle" style="margin-top:0">Запис створено</h2>
+      <p class="lead">Ви успішно зарезервували сеанс. Натисніть кнопку <b>«Приєднатись»</b>, щоб перейти до відеочату з психологом.</p>
+      <div class="row" style="justify-content:flex-end;margin-top:14px">
+        <a id="successJoin" class="btn" href="#" target="_self">Приєднатись</a>
+      </div>
     </div>
   </div>
 </body>
