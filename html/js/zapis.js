@@ -39,14 +39,15 @@ const params = {
   role:     q.get('role') || 'client'    // client | consultant
 };
 
-// Мапа ім'я → email (для бекенда)
+// Мапа ім'я → email (АКТУАЛЬНІ консультанти)
 const nameToEmail = {
-  'Оксана Кокотень': 'oksanakokoten@gmail.com',
-  'Андрій Савчук': 'andriysavchuk@gmail.com',
-  'Ірина Шевченко': 'irynashevchenko@gmail.com',
-  'Максим Коваль': 'maksymkoval@gmail.com',
-  'Надія Романюк': 'nadiyaromaniyk@gmail.com',
-  'Олег Литвин':   'oleglitvin@gmail.com'
+  'Оксана Кокотень'     : 'oksanakokoten@gmail.com',
+  'Сергій Йовович'      : 'sergiyoyovych@gmail.com',
+  'Тетяна Маковська'    : 'tetianamakovska@gmail.com',
+  'Олександр Ткачук'    : 'oleksandrtkachuk@gmail.com',
+  'Анастасія Йовович'   : 'anastasiyoyovych@gmail.com',
+  'Крістіна Кокотень'   : 'kristinakokoten@gmail.com'
+  // Примітка: адмін-акаунт DAFIALZ свідомо не додаємо як консультанта.
 };
 const consultantEmail = nameToEmail[params.consultant] || '';
 

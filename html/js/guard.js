@@ -9,7 +9,8 @@
     'tetianamakovska@gmail.com',
     'oleksandrtkachuk@gmail.com',
     'anastasiyoyovych@gmail.com',
-    'kristinakokoten@gmail.com'
+    'kristinakokoten@gmail.com',
+    'dafialz@gmail.com'
   ].map(e => e.toLowerCase());
 
   // Email → ім'я для зручного відображення/генерації лінків
@@ -19,7 +20,8 @@
     'tetianamakovska@gmail.com'  : 'Тетяна Маковська',
     'oleksandrtkachuk@gmail.com' : 'Олександр Ткачук',
     'anastasiyoyovych@gmail.com' : 'Анастасія Йовович',
-    'kristinakokoten@gmail.com'  : 'Крістіна Кокотень'
+    'kristinakokoten@gmail.com'  : 'Крістіна Кокотень',
+    'dafialz@gmail.com'          : 'DAFIALZ (Адмін)'
   };
 
   // -------- helpers --------
