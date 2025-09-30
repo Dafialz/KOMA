@@ -33,7 +33,6 @@
     .badge.ok{background:#e8f8ef;color:#0f7a48}
     .badge.danger{background:#fde8e8;color:#b91c1c}
 
-    /* Чат: вирівнювання, бульбашки, підписи */
     .chat{margin-top:10px}
     .chatlog{
       display:flex; flex-direction:column; gap:6px;
@@ -57,7 +56,6 @@
 
     button:disabled,.btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
 
-    /* Кнопка для розблокування аудіо на мобільних */
     .unmute {
       position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
       background:#0f5257;color:#fff;border:none;border-radius:999px;padding:10px 14px;
@@ -68,7 +66,6 @@
 </head>
 <body>
 
-  <!-- header через partials -->
   <div data-include="partials/header.html"></div>
 
   <div class="wrap">
@@ -80,23 +77,19 @@
       </div>
 
       <div class="controls">
-        <!-- Головна дія -->
         <button id="btnStart" class="btn green btn-pill">🔌 Під’єднатися</button>
 
-        <!-- Пристрої -->
         <div class="btn-group" role="group" aria-label="Пристрої">
           <button id="btnMic"    class="btn gray"    disabled>🎙️ Мікрофон</button>
           <button id="btnCam"    class="btn gray"    disabled>📷 Камера</button>
           <button id="btnScreen" class="btn outline" disabled>🖥️ Поділитись екраном</button>
         </div>
 
-        <!-- Повноекранно -->
         <div class="btn-group" role="group" aria-label="Екран">
           <button id="btnFullRemote" class="btn ghost">⤢ Співрозмовник</button>
           <button id="btnFullLocal"  class="btn ghost">⤢ Моє відео</button>
         </div>
 
-        <!-- Статуси -->
         <div class="meta">
           <span id="status" class="badge muted">Не під’єднано</span>
           <span id="roomLabel" class="badge"></span>
@@ -120,6 +113,9 @@
       </div>
     </aside>
   </div>
+
+  <!-- WebRTC adapter (поліфіл) -->
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
   <script>
   /* ========= Допоміжне ========= */
@@ -169,7 +165,6 @@
     els.status.className = 'badge ' + (cls||'');
   }
 
-  // Акуратний рендер повідомлень у чаті
   function logChat(text, who='sys'){
     const item = document.createElement('div');
     if (who === 'me')       item.className = 'msg me';
@@ -321,7 +316,6 @@
         } else {
           await pc.setRemoteDescription(offerDesc);
         }
-        // не викликаємо getUserMedia тут — потрібен кліком користувача
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         wsSend({ type:'answer', room, payload: pc.localDescription });
@@ -422,13 +416,12 @@
     }catch{}
   };
 
-  /* ========= Повноекранний режим (iOS фолбеки) ========= */
   function enterFullscreen(el){
     if (!el) return;
     try {
       if (el.requestFullscreen) return el.requestFullscreen();
-      if (el.webkitEnterFullscreen) return el.webkitEnterFullscreen(); // iPhone Safari
-      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen(); // iPad
+      if (el.webkitEnterFullscreen) return el.webkitEnterFullscreen();
+      if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
       if (el.msRequestFullscreen) return el.msRequestFullscreen();
     } catch {}
   }
@@ -446,14 +439,12 @@
   els.fullLocal .addEventListener('click', ()=> toggleFS(els.local));
   [els.remote, els.local].forEach(v => v.addEventListener('dblclick', ()=> toggleFS(v)));
 
-  // На мобільних — тап по відео також відкриває fullscreen
   function isMobile(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
   if (isMobile()){
     els.remote.addEventListener('click', ()=> enterFullscreen(els.remote), { passive:true });
     els.local .addEventListener('click', ()=> enterFullscreen(els.local),  { passive:true });
   }
 
-  /* ========= Аудіо-анлок на мобільних ========= */
   function maybeShowUnmute(){
     if (!isMobile()) return;
     els.vwrap.classList.add('has-unmute');
@@ -463,12 +454,10 @@
     els.vwrap.classList.remove('has-unmute');
   });
 
-  /* ========= Автостарт (опційно ?autostart=1) ========= */
   if (qs.get('autostart') === '1') {
     wsReady.then(()=> els.start.click()).catch(()=>{});
   }
 
-  /* ========= Cleanup ========= */
   window.addEventListener('beforeunload', () => {
     isUnloading = true;
     try { wsSend({ type:'bye', room }); } catch {}
@@ -478,6 +467,25 @@
     ws && ws.close();
   });
   </script>
+
+  <!-- Підключаємо Eruda (мобільна консоль) автоматично на мобільних або з ?debug=1 -->
+  <script>
+    (function(){
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const wantDebug = isMobile || /(?:\\?|&)debug(?:=1)?/i.test(location.search) || /on/i.test(localStorage.getItem('eruda'));
+      if (!wantDebug) return;
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/eruda@3/eruda.min.js';
+      s.onload = function(){
+        eruda.init();
+        try { eruda.position({ x: 12, y: 12 }); } catch {}
+        console.log('[eruda] ready');
+        localStorage.setItem('eruda', 'on'); // запам’ятати
+      };
+      document.body.appendChild(s);
+    })();
+  </script>
+
   <script src="js/partials.js"></script>
 </body>
 </html>
