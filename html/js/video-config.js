@@ -49,11 +49,11 @@
   }
 
   // ===== TURN / ICE servers =====
-  // Підтримка швидкого налаштування через URL:
-  // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass
-  // або детально: ?turnHost=...&turnPort=3478&turnUser=...&turnPass=...
+  // Підтримка налаштування через URL:
+  // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass або
+  // ?turnHost=...&turnPort=3478&turnUser=...&turnPass=...
   function parseIceFromQS() {
-    const short = (qs.get('turn') || '').trim();   // напр. "91.218.235.75:3478"
+    const short = (qs.get('turn') || '').trim();
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
     const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '3478');
     const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
@@ -62,17 +62,16 @@
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
     return [
+      // ЛИШЕ UDP TURN
       Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
-      Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}),
     ];
   }
 
-  // ► Твій публічний Coturn (тільки TURN, без STUN)
+  // ► Твій публічний Coturn (ЛИШЕ UDP)
   const PUB_TURN_HOST = '91.218.235.75';
   const PUB_TURN_PORT = '3478';
   const SELF_ICE = [
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
-    { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
   ];
 
   let ICE_SERVERS = [];
@@ -112,7 +111,6 @@
     inviteNote: document.getElementById('inviteNote'),
   };
 
-  // Підписи
   if (els.roomLabel) els.roomLabel.textContent = `Кімната: ${room}`;
   if (els.roleLabel) els.roleLabel.textContent = `Роль: ${role === 'consultant' ? 'консультант' : 'учасник'}`;
 
@@ -147,7 +145,6 @@
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
-  // ── Діагностика
   try {
     const info = `[init] room="${room}", role="${role}", relay=${FORCE_RELAY ? 'on' : 'off'}, signal=${SIGNAL_URL}`;
     console.log(info);
@@ -157,16 +154,11 @@
     logChat(info, 'sys');
   } catch {}
 
-  // Експорт у глобал (video-webrtc.js має читати FORCE_RELAY та ICE_SERVERS)
   global.videoApp = {
-    // конфіг
     qs, UA_MOBILE, FORCE_RELAY, room, polite, SIGNAL_URL, role,
     ICE_SERVERS,
-    // DOM
     els,
-    // утиліти
     setBadge, logChat,
-    // плейсхолдери для модулів
     pc: null, txAudio: null, txVideo: null, dc: null,
     startLocal: null, restartIce: null, bindDataChannel: null,
     wsSend: null, wsReady: null
