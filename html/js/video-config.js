@@ -61,8 +61,8 @@
     if (!host) return null;
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
+    // ЛИШЕ TURN/UDP (без STUN і без TCP)
     return [
-      // ЛИШЕ UDP TURN
       Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
     ];
   }
