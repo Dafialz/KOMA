@@ -1,12 +1,9 @@
 // server.js
 // ─────────────────────────────────────────────────────────────────────────────
-// 1) WebSocket-сигналінг (join / offer / answer / ice / bye)
-// 2) REST API бронювань з файлами (multer) і збереженням у bookings.json:
-//    POST   /api/bookings
-//    GET    /api/bookings?consultantEmail=...      -> { ok, list: [...] }
-//    DELETE /api/bookings/:id
-// 3) Статика сайту з директорії /html
-// + Keepalive для WS (ping/pong), щоб Render/проксі не рвали з’єднання
+// 1) WebSocket-сигналінг (join / offer / answer / ice / bye) з лімітом 2 peer/room
+// 2) REST API бронювань із файлами (multer) → bookings.json
+// 3) Статика з /html
+// + Keepalive для WS (ping/pong)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require("express");
@@ -19,9 +16,10 @@ const multer = require("multer");
 
 // ── Конфіг ───────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*"; // напр.: "https://koma-hcmz.netlify.app"
-const DATA_DIR   = process.env.DATA_DIR || ".";           // на Render можна "/data"
+const DATA_DIR   = process.env.DATA_DIR || ".";
 const BOOK_FILE  = path.join(DATA_DIR, "bookings.json");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
+const MAX_ROOM_PEERS = 2; // важливо: не більше 2-х у кімнаті
 
 // Гарантуємо наявність директорій
 try { fs.mkdirSync(DATA_DIR,   { recursive: true }); } catch {}
@@ -45,18 +43,18 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Тюн для проксі: довший keep-alive HTTP (деякі платформи обривають за замовчуванням)
-server.keepAliveTimeout = 65_000;  // > 60s
+// Тюн для проксі: довший keep-alive HTTP
+server.keepAliveTimeout = 65_000;
 server.headersTimeout   = 70_000;
 
 // ── CORS + префлайт ──────────────────────────────────────────────────────────
 const corsOptions = (ALLOWED_ORIGIN === "*")
-  ? {} : { origin: ALLOWED_ORIGIN, credentials: false };
+  ? {}
+  : { origin: ALLOWED_ORIGIN.split(",").map(s => s.trim()), credentials: false };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // відповіді на preflight для всіх маршрутів
+app.options("*", cors(corsOptions));
 
-// Дублюємо заголовок (деякі платформи кешують відповіді CORS)
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN === "*" ? "*" : ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
@@ -65,13 +63,14 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-app.use("/uploads", express.static(UPLOAD_DIR)); // віддаємо завантажені файли
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 // ── Сигналінг (кімнати) ──────────────────────────────────────────────────────
 const rooms = new Map(); // Map<roomId, Set<ws>>
 
 function broadcast(room, message, exceptWs) {
-  const set = rooms.get(room) || new Set();
+  const set = rooms.get(room);
+  if (!set) return;
   const data = JSON.stringify(message);
   for (const client of set) {
     if (client !== exceptWs && client.readyState === WebSocket.OPEN) {
@@ -80,7 +79,32 @@ function broadcast(room, message, exceptWs) {
   }
 }
 
-// WS keepalive (ping/pong), щоб виявляти "мертві" клієнти за проксі
+function joinRoom(ws, roomId) {
+  if (!rooms.has(roomId)) rooms.set(roomId, new Set());
+  const set = rooms.get(roomId);
+
+  // обмеження 2 peer
+  if (set.size >= MAX_ROOM_PEERS) {
+    try {
+      ws.send(JSON.stringify({ type: "full", room: roomId }));
+    } catch {}
+    return false;
+  }
+
+  set.add(ws);
+  ws.room = roomId;
+  return true;
+}
+
+function leaveRoom(ws) {
+  if (ws.room && rooms.has(ws.room)) {
+    const set = rooms.get(ws.room);
+    set.delete(ws);
+    if (set.size === 0) rooms.delete(ws.room);
+  }
+}
+
+// WS keepalive (ping/pong)
 const PING_INTERVAL_MS = 30_000;
 const wsPingInterval = setInterval(() => {
   wss.clients.forEach((ws) => {
@@ -102,30 +126,43 @@ wss.on("connection", (ws) => {
     try { msg = JSON.parse(raw); } catch { return; }
 
     if (msg.type === "join") {
-      ws.room = String(msg.room || "").trim();
-      if (!ws.room) return;
-      if (!rooms.has(ws.room)) rooms.set(ws.room, new Set());
-      rooms.get(ws.room).add(ws);
+      const roomId = String(msg.room || "").trim();
+      if (!roomId) return;
+
+      // якщо кімната переповнена — відповідаємо full і НЕ додаємо клієнта
+      if (!joinRoom(ws, roomId)) return;
+
+      // опціонально: можна повідомити, що в кімнаті тепер N учасників
+      // broadcast(roomId, { type: "peers", room: roomId, count: rooms.get(roomId).size }, null);
       return;
     }
 
-    if (
-      ws.room &&
-      (msg.type === "offer" || msg.type === "answer" || msg.type === "ice" || msg.type === "bye")
-    ) {
+    // транзит сигналінгу в межах кімнати
+    if (ws.room && (msg.type === "offer" || msg.type === "answer" || msg.type === "ice")) {
+      // пробросимо "room" для зручності на боці клієнта
+      msg.room = ws.room;
       broadcast(ws.room, msg, ws);
+      return;
+    }
+
+    if (msg.type === "bye") {
+      // клієнт свідомо йде — повідомимо пару
+      if (ws.room) {
+        broadcast(ws.room, { type: "bye", room: ws.room }, ws);
+      }
+      return;
     }
   });
 
   ws.on("close", () => {
-    if (ws.room && rooms.has(ws.room)) {
-      rooms.get(ws.room).delete(ws);
-      if (rooms.get(ws.room).size === 0) rooms.delete(ws.room);
+    // при закритті сесії — повідомимо пару й приберемо із кімнати
+    if (ws.room) {
+      broadcast(ws.room, { type: "bye", room: ws.room }, ws);
     }
+    leaveRoom(ws);
   });
 
   ws.on("error", () => {
-    // тихо закриваємо; reconnection зробить клієнт
     try { ws.close(); } catch {}
   });
 });
@@ -148,11 +185,11 @@ function saveBookings() {
   }
 }
 
-// Healthcheck (зручно для Render)
+// Healthcheck
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
-    rooms: rooms.size,
+    rooms: Array.from(rooms).map(([roomId, set]) => ({ roomId, peers: set.size })),
     bookings: bookings.length,
     uptime: process.uptime(),
   });
@@ -162,12 +199,12 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/rooms", (_req, res) => {
   const summary = [];
   for (const [roomId, set] of rooms.entries()) {
-    summary.push({ roomId, peers: Array.from(set).length });
+    summary.push({ roomId, peers: set.size });
   }
   res.json({ ok: true, rooms: summary });
 });
 
-// Створити бронювання (JSON або multipart з полем "file")
+// Створити бронювання (JSON або multipart із полем "file")
 app.post("/api/bookings", upload.single("file"), (req, res) => {
   let {
     consultantEmail,
@@ -176,11 +213,10 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     email,
     date,
     time,
-    notes, // із фронта може приходити як notes
-    note,  // або як note
+    notes,
+    note,
   } = req.body || {};
 
-  // нормалізуємо поля
   consultantEmail = String(consultantEmail || "").trim().toLowerCase();
   consultantName  = String(consultantName  || "").trim();
   fullName        = String(fullName        || "").trim();
@@ -198,14 +234,12 @@ app.post("/api/bookings", upload.single("file"), (req, res) => {
     return res.status(400).json({ error: "Bad email" });
   }
 
-  // Простий таймштамп початку (Київ). За потреби передавайте готовий startTS із клієнта.
   const startTS = Date.parse(`${date}T${time}:00+03:00`);
   if (Number.isNaN(startTS)) {
     if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
     return res.status(400).json({ error: "Bad date/time" });
   }
 
-  // Інформація про файл
   let fileName = "";
   let fileUrl  = "";
   if (req.file) {
@@ -251,7 +285,6 @@ app.delete("/api/bookings/:id", (req, res) => {
   const id = String(req.params.id || "");
   const found = bookings.find((b) => b.id === id);
 
-  // видаляємо файл, якщо був
   if (found && found.fileUrl) {
     const p = path.join(UPLOAD_DIR, path.basename(found.fileUrl));
     try { fs.unlinkSync(p); } catch {}
@@ -274,12 +307,10 @@ server.listen(PORT, () => {
   console.log(`CORS ALLOWED_ORIGIN = ${ALLOWED_ORIGIN}`);
 });
 
-// Коректне завершення (прибираємо інтервал ping)
-process.on('SIGTERM', () => {
+// Коректне завершення
+function shutdown() {
   clearInterval(wsPingInterval);
   server.close(() => process.exit(0));
-});
-process.on('SIGINT', () => {
-  clearInterval(wsPingInterval);
-  server.close(() => process.exit(0));
-});
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT",  shutdown);
