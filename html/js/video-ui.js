@@ -16,6 +16,7 @@
     u.searchParams.set('autostart','1');
     return u.toString();
   }
+  function toast(msg, cls='muted'){ app.logChat(msg, 'sys'); setBadge(msg, cls); }
 
   // ── Старт з’єднання (рефактор у функцію) ─────────────────────────────────
   let starting = false;
@@ -88,20 +89,51 @@
     els.cam.classList.toggle('active', !track.enabled);
   });
 
-  // ── Шерінг екрану ─────────────────────────────────────────────────────────
+  // ── Шерінг екрану (з розгорнутим хендлінгом) ──────────────────────────────
   safe(els.screen, () => els.screen.onclick = async () => {
+    // перевірка підтримки
+    const gdm = navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia;
+    if (!gdm) {
+      toast('Ваш браузер не підтримує захоплення екрана. На Android використайте Chrome; на iPhone — Safari iOS 16.4+.', 'danger');
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = stream.getVideoTracks()[0];
+      toast('Запит на захоплення екрана…');
+      const stream = await gdm.call(navigator.mediaDevices, { video: true });
+      const screenTrack = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (!screenTrack) { toast('Не вдалося отримати трек екрана.', 'danger'); return; }
+
+      // якщо ще не стартували локальні, підстрахуємось
+      if (!app.txVideo || !app.txVideo.sender) {
+        await app.startLocal().catch(()=>{});
+      }
+      if (!app.txVideo || !app.txVideo.sender) {
+        toast('Відеосендер недоступний (txVideo.sender). Спробуйте натиснути «Під’єднатися» ще раз.', 'danger');
+        try { screenTrack.stop(); } catch {}
+        return;
+      }
+
       await app.txVideo.sender.replaceTrack(screenTrack);
       els.screen.classList.add('active');
+      toast('Екран транслюється. Щоб зупинити — завершіть трансляцію у вікні браузера.', 'ok');
 
       screenTrack.onended = async () => {
         const cam = els.local && els.local.srcObject && els.local.srcObject.getVideoTracks()[0];
-        await app.txVideo.sender.replaceTrack(cam || null);
+        try { await app.txVideo.sender.replaceTrack(cam || null); } catch {}
         els.screen.classList.remove('active');
+        toast('Трансляцію екрана завершено.');
       };
-    } catch {}
+    } catch (err) {
+      const msg = (err && (err.message || err.name)) || 'Unknown';
+      if (/NotAllowedError|SecurityError/i.test(msg)) {
+        toast('Доступ заблоковано (скасовано користувачем або блокувальником). На Android — спробуйте Chrome / вимкніть Shields.', 'danger');
+      } else if (/AbortError/i.test(msg)) {
+        toast('Трансляцію перервано (AbortError). Спробуйте ще раз.', 'danger');
+      } else {
+        toast('Помилка захоплення екрана: ' + msg, 'danger');
+      }
+    }
   });
 
   // ── Повноекранний режим ───────────────────────────────────────────────────
