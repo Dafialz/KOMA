@@ -7,19 +7,24 @@
   // Унікальний ідентифікатор цього табу (щоб не ловити власні WS-повідомлення)
   const myId = Math.random().toString(36).slice(2);
 
-  // ---------- ICE servers / policy (з можливістю підмінити власними) ----------
+  // ---------- ICE servers / policy (можна підмінити власними через app.ICE_SERVERS) ----------
   const FALLBACK_ICE = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
-    // ВІДКРИТІ TURN — працюють нестабільно; краще підстав свій список через app.ICE_SERVERS
+    // Публічний TURN на випадок тестів. Для продакшену постав свій.
     { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ];
   const ICE_SERVERS = Array.isArray(app.ICE_SERVERS) && app.ICE_SERVERS.length ? app.ICE_SERVERS : FALLBACK_ICE;
 
-  // Пріоритет: ?relay= → FORCE_RELAY → 'all'
+  // Політика relay: ?relay=1 (тільки TURN) | ?relay=0 (усе) | інакше FORCE_RELAY | 'all'
   const qsRelay = app.qs && app.qs.get('relay');
-  const ICE_POLICY = (qsRelay === '1') || (qsRelay === null && FORCE_RELAY) ? 'relay' : 'all';
+  const ICE_POLICY =
+    qsRelay === '1' ? 'relay' :
+    qsRelay === '0' ? 'all'   :
+    (FORCE_RELAY ? 'relay' : 'all');
+
+  logChat(`ICE policy=${ICE_POLICY}; servers=${(ICE_SERVERS||[]).length}`, 'sys');
 
   // ---------- RTCPeerConnection ----------
   const pc = new RTCPeerConnection({
@@ -27,7 +32,6 @@
     iceTransportPolicy: ICE_POLICY,
     bundlePolicy: 'max-bundle',
     rtcpMuxPolicy: 'require',
-    // pool трохи прискорює початкову ICE-фазу на деяких браузерах
     iceCandidatePoolSize: 2,
   });
 
@@ -143,7 +147,7 @@
       offerRetries = 0;
       clearTimeout(answerTimer);
 
-      // Показуємо вибрану пару кандидатів (чи реально пішли через TURN)
+      // Показати обрану ICE-пару (чи реально через TURN)
       try {
         const stats = await pc.getStats();
         stats.forEach(r => {
@@ -418,6 +422,8 @@
   app.bindDataChannel = bindDataChannel;
   app.wsSend = wsSend;
   app.createAndSendOffer = createAndSendOffer;
+  app.ICE_POLICY = ICE_POLICY;
+  app.ICE_SERVERS = ICE_SERVERS;
 
   // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
