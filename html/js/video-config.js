@@ -54,9 +54,9 @@
   // 2) Параметри URL:
   //    ?turnHost=IP_OR_HOST&turnPort=3478&turnUser=test&turnPass=test123
   //    або компактно: ?turn=IP_OR_HOST:3478&tu=test&tp=test123
-  // 3) Дефолт: локальний TURN на 192.168.0.4:3478 (udp/tcp) + резервний openrelay
+  // 3) Дефолт: твій публічний TURN (udp/tcp) + резервний openrelay
   function parseIceFromQS() {
-    const short = (qs.get('turn') || '').trim();       // напр. "192.168.0.4:3478"
+    const short = (qs.get('turn') || '').trim();       // напр. "91.218.235.75:3478"
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
     const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '3478');
     const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
@@ -72,19 +72,19 @@
     return arr;
   }
 
-  // Твій локальний TURN за замовчуванням (udp/tcp)
-  const LAN_TURN_HOST = '192.168.0.4';
-  const LAN_TURN_PORT = '3478';
-  const DEFAULT_LOCAL_TURN = [
-    { urls: `turn:${LAN_TURN_HOST}:${LAN_TURN_PORT}?transport=udp`, username: 'test',   credential: 'test123' },
-    { urls: `turn:${LAN_TURN_HOST}:${LAN_TURN_PORT}?transport=tcp`, username: 'test',   credential: 'test123' },
+  // ► ДЕФОЛТНИЙ ПУБЛІЧНИЙ TURN (твій Coturn на білому IP)
+  const PUB_TURN_HOST = '91.218.235.75';
+  const PUB_TURN_PORT = '3478';
+  const DEFAULT_PUBLIC_SELF = [
+    { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
+    { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
   ];
 
-  // Резервний публічний (може працювати нестабільно, але хай буде як fallback)
-  const DEFAULT_PUBLIC_TURN = [
-    { urls: 'turn:global.relay.metered.ca:80',               username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:global.relay.metered.ca:443',              username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:global.relay.metered.ca:443?transport=tcp',username: 'openrelayproject', credential: 'openrelayproject' },
+  // Резервний публічний (може бути нестабільним; використовується лише як фолбек)
+  const DEFAULT_OPEN_RELAY = [
+    { urls: 'turn:global.relay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:global.relay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ];
 
   let ICE_SERVERS = [];
@@ -95,7 +95,7 @@
     if (fromQS && fromQS.length) {
       ICE_SERVERS = fromQS;
     } else {
-      ICE_SERVERS = [...DEFAULT_LOCAL_TURN, ...DEFAULT_PUBLIC_TURN];
+      ICE_SERVERS = [...DEFAULT_PUBLIC_SELF, ...DEFAULT_OPEN_RELAY];
     }
   }
 
