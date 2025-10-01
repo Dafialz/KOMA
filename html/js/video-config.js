@@ -49,14 +49,8 @@
   }
 
   // ===== TURN / ICE servers =====
-  // Пріоритет джерел:
-  // 1) window.KOMA_ICE_SERVERS  (масив як у RTCPeerConnection)
-  // 2) Параметри URL:
-  //    ?turnHost=IP_OR_HOST&turnPort=3478&turnUser=test&turnPass=test123
-  //    або компактно: ?turn=IP_OR_HOST:3478&tu=test&tp=test123
-  // 3) Дефолт: твій публічний TURN (udp/tcp). Резервний openrelay підключається тільки, якщо ?fallback=1
   function parseIceFromQS() {
-    const short = (qs.get('turn') || '').trim(); // напр. "91.218.235.75:3478"
+    const short = (qs.get('turn') || '').trim();   // напр. "91.218.235.75:3478"
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
     const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '3478');
     const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
@@ -64,49 +58,36 @@
     if (!host) return null;
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
-    const arr = [];
-    arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {})); // UDP
-    arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {})); // TCP
-    return arr;
+    return [
+      Object.assign({ urls: `stun:${host}:${port}` }, {}),                       // STUN із твого Coturn
+      Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
+      Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}),
+    ];
   }
 
-  // ► ДЕФОЛТНИЙ ПУБЛІЧНИЙ TURN (твій Coturn на білому IP)
+  // ► Твій публічний Coturn
   const PUB_TURN_HOST = '91.218.235.75';
   const PUB_TURN_PORT = '3478';
-  const DEFAULT_PUBLIC_SELF = [
+  const SELF_ICE = [
+    { urls: `stun:${PUB_TURN_HOST}:${PUB_TURN_PORT}` },
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
   ];
-
-  // Резервний публічний (нестабільний; увімкнеться лише з ?fallback=1)
-  const DEFAULT_OPEN_RELAY = [
-    { urls: 'turn:global.relay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:global.relay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  ];
-
-  const USE_FALLBACK = qs.get('fallback') === '1'; // за замовчуванням без openrelay
 
   let ICE_SERVERS = [];
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
     ICE_SERVERS = global.KOMA_ICE_SERVERS.slice();
   } else {
     const fromQS = parseIceFromQS();
-    if (fromQS && fromQS.length) {
-      ICE_SERVERS = fromQS;
-    } else {
-      ICE_SERVERS = USE_FALLBACK ? [...DEFAULT_PUBLIC_SELF, ...DEFAULT_OPEN_RELAY]
-                                 : [...DEFAULT_PUBLIC_SELF];
-    }
+    ICE_SERVERS = (fromQS && fromQS.length) ? fromQS : SELF_ICE;
   }
 
   // ===== Relay policy =====
-  // Вмикаємо relay (TURN) за замовчуванням — це стабільніше через CGNAT/мобільні мережі.
-  // Можна вимкнути через ?relay=0
-  const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
+  // За замовчуванням НЕ форсуємо TURN (щоб локальні перевірки працювали без нього).
+  // Примусово увімкнути можна через ?relay=1
+  const FORCE_RELAY = qs.get('relay') === '1';
 
   // ===== Perfect Negotiation =====
-  // Ініціатор — консультант: polite=false; клієнт — polite=true.
   const polite = (role !== 'consultant');
 
   // ===== Елементи
@@ -131,7 +112,6 @@
     inviteNote: document.getElementById('inviteNote'),
   };
 
-  // Підписи кімнати і ролі
   if (els.roomLabel) els.roomLabel.textContent = `Кімната: ${room}`;
   if (els.roleLabel) els.roleLabel.textContent = `Роль: ${role === 'consultant' ? 'консультант' : 'учасник'}`;
 
@@ -166,7 +146,6 @@
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
-  // ── Діагностика в консоль / чат
   try {
     const info = `[init] room="${room}", role="${role}", relay=${FORCE_RELAY ? 'on' : 'off'}, signal=${SIGNAL_URL}`;
     console.log(info);
@@ -176,16 +155,11 @@
     logChat(info, 'sys');
   } catch {}
 
-  // Експорт у глобал (використовує video-webrtc.js)
   global.videoApp = {
-    // конфіг
     qs, UA_MOBILE, FORCE_RELAY, room, polite, SIGNAL_URL, role,
     ICE_SERVERS,
-    // DOM
     els,
-    // утиліти
     setBadge, logChat,
-    // “місця” для інш. модулів
     pc: null, txAudio: null, txVideo: null, dc: null,
     startLocal: null, restartIce: null, bindDataChannel: null,
     wsSend: null, wsReady: null
