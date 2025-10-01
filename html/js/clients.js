@@ -93,6 +93,11 @@ async function render(items) {
       </div>
     ` : '';
 
+    // ЄДИНЕ КАНОНІЧНЕ ПОСИЛАННЯ ДЛЯ КОНСУЛЬТАНТА:
+    // room = ім'я консультанта, role=consultant, автозапуск
+    const room = encodeURIComponent(myName.trim());
+    const videoHref = `video.html?room=${room}&role=consultant&autostart=1`;
+
     const div = document.createElement('div');
     div.className = 'item';
     div.innerHTML = `
@@ -103,7 +108,7 @@ async function render(items) {
         ${fileBlock}
       </div>
       <div class="row" style="gap:10px;align-items:center">
-        <a class="btn ghost" href="video.html?room=${encodeURIComponent(myName)}" target="_blank" rel="noopener">Приєднатися до відеочату</a>
+        <a class="btn ghost" href="${videoHref}" target="_blank" rel="noopener">Приєднатися до відеочату</a>
         <button class="btn gray" data-id="${escapeHtml(b.id)}">Завершити</button>
       </div>
     `;

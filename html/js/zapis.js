@@ -36,7 +36,7 @@ const params = {
   date:     q.get('date'),
   time:     q.get('time'),
   notes:    q.get('notes') || '',
-  role:     q.get('role') || 'client'    // client | consultant
+  role:     (q.get('role') || 'client').toLowerCase()    // client | consultant
 };
 
 // Мапа ім'я → email (АКТУАЛЬНІ консультанти)
@@ -68,19 +68,23 @@ $('#dtText').textContent = `${dtFmtKyiv.format(startUTC)}, ${tmFmtKyiv.format(st
 $('#tzText').textContent = `Часовий пояс: ${KYIV_TZ}`;
 
 // ===== ВАЖЛИВО: однакова кімната — ІМ'Я КОНСУЛЬТАНТА
-const roomId = encodeURIComponent(params.consultant);
-const meetingUrl = `/video.html?room=${roomId}`;
+const roomId = encodeURIComponent(params.consultant.trim());
+
+// РОЛЬ + автозапуск обов'язково у посиланні
+const roleQS = encodeURIComponent(params.role === 'consultant' ? 'consultant' : 'client');
+const meetingUrl = `/video.html?room=${roomId}&role=${roleQS}&autostart=1`;
 const videoBtn = $('#videoBtn');
 videoBtn.href = meetingUrl;
 videoBtn.setAttribute('aria-disabled','true');
-$('#roomBadge').textContent = `Кімната: ${params.consultant}`;
+$('#roomBadge').textContent = `Кімната: ${params.consultант}`.replace('params.consультант','params.consultant'); // захист від кириличної розкладки
 
 // ----- Google Calendar link (UTC інтервал)
 const pad = (n)=>String(n).padStart(2,'0');
 const toUTC = (d)=>`${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
 const endUTC = new Date(startUTC.getTime() + 60*60*1000); // 1h duration
 const text = encodeURIComponent(`Сесія з консультантом: ${params.consultant}`);
-const meetAbs = `${location.origin}/video.html?room=${roomId}`;
+// Посилання в описі теж з правильною роллю (клієнту зазвичай даємо role=client)
+const meetAbs = `${location.origin}/video.html?room=${roomId}&role=${roleQS}&autostart=1`;
 const details = encodeURIComponent(`Клієнт: ${params.fullName}${params.email? ' ('+params.email+')':''}\nПосилання на відеочат: ${meetAbs}`);
 const locationStr = encodeURIComponent('Онлайн (КОМА відеочат)');
 $('#gcalBtn').href = `https://calendar.google.com/calendar/u/0/r/eventedit?text=${text}&dates=${toUTC(startUTC)}/${toUTC(endUTC)}&details=${details}&location=${locationStr}`;
