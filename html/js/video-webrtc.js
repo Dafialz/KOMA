@@ -19,12 +19,43 @@
   const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
 
-  let localStream, screenTrack, dc;
+  let localStream, dc;
   let makingOffer = false;                   // Perfect Negotiation
   let isSettingRemoteAnswerPending = false;  // Perfect Negotiation
   let ignoreOffer = false;                   // Perfect Negotiation
   let isUnloading = false;
   let iceProbe = null;
+
+  // Анти-зависання: повторні offer/iceRestart
+  let answerTimer = null;
+  let offerRetries = 0;
+  const MAX_RETRIES = 3;
+  const ANSWER_TIMEOUT_MS = 6500;
+
+  function scheduleAnswerWaitProbe() {
+    clearTimeout(answerTimer);
+    answerTimer = setTimeout(async () => {
+      if (pc.signalingState === 'have-local-offer') {
+        offerRetries++;
+        logChat(`Очікую answer… спроба ${offerRetries}/${MAX_RETRIES}`, 'sys');
+        if (offerRetries <= MAX_RETRIES) {
+          try {
+            // Примусовий повтор з iceRestart — найнадійніше через мобільних/CGNAT
+            const offer = await pc.createOffer({ iceRestart: true });
+            await pc.setLocalDescription(offer);
+            wsSend({ type: 'offer', room, payload: pc.localDescription });
+            logChat('Надсилаю повторний offer (iceRestart)', 'sys');
+            scheduleAnswerWaitProbe();
+          } catch (e) {
+            logChat('Повторний offer не вдався: ' + (e.message || e.name), 'sys');
+          }
+        } else {
+          logChat('Не отримав answer після кількох спроб. Перевірте, що друга сторона відкрила правильне посилання.', 'sys');
+          setBadge('Немає відповіді', 'danger');
+        }
+      }
+    }, ANSWER_TIMEOUT_MS);
+  }
 
   // ---------- ICE ----------
   pc.onicecandidate = ({ candidate }) => {
@@ -49,7 +80,7 @@
     const stream = streams && streams[0];
     if (!stream) return;
 
-    if (els.remote.srcObject !== stream) {
+    if (els.remote && els.remote.srcObject !== stream) {
       els.remote.muted = true; // для автоплею на мобільних
       els.remote.srcObject = stream;
       const tryPlay = () => {
@@ -81,6 +112,8 @@
       els.start.textContent = 'З’єднано';
       els.start.disabled = true;
       els.start.classList.add('active');
+      offerRetries = 0;
+      clearTimeout(answerTimer);
     }
     if (st === 'failed') {
       logChat('З’єднання втрачено. Пробуємо відновити…', 'sys');
@@ -153,7 +186,7 @@
     return localStream;
   }
 
-  // ---------- Offer / Answer (Perfect Negotiation) ----------
+  // ---------- Offer / Answer (Perfect Negotiation + анти-зависання) ----------
   async function createAndSendOffer() {
     if (pc.signalingState !== 'stable') return;
     try {
@@ -162,6 +195,9 @@
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
       wsSend({ type: 'offer', room, payload: pc.localDescription });
+      // чекаємо answer і за потреби перезаново пропонуємо
+      offerRetries = 0;
+      scheduleAnswerWaitProbe();
     } catch (err) {
       logChat('Помилка createOffer/setLocalDescription: ' + (err.message || err.name), 'sys');
     } finally {
@@ -200,6 +236,7 @@
     }
     try {
       await pc.setRemoteDescription(answerDesc);
+      clearTimeout(answerTimer);
       logChat('Прийняв answer', 'sys');
     } catch (err) {
       logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
@@ -215,6 +252,7 @@
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       wsSend({ type: 'offer', room, payload: pc.localDescription });
+      scheduleAnswerWaitProbe();
     } catch (e) {
       console.warn('ICE restart failed', e);
     } finally {
