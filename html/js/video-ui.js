@@ -3,15 +3,30 @@
   'use strict';
   const app = global.videoApp;
   const { els, setBadge, UA_MOBILE } = app;
+  const role = app.role;           // 'consultant' | 'client'
+  const room = app.room;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function safe(el, fn){ if (el) try { fn(); } catch {} }
+  function oppositeRole(r){ return r === 'consultant' ? 'client' : 'consultant'; }
+  function makeLink(r){
+    const u = new URL(location.href);
+    u.searchParams.set('room', room);
+    u.searchParams.set('role', r);
+    u.searchParams.set('autostart','1');
+    return u.toString();
+  }
 
-  // ── Старт з’єднання ───────────────────────────────────────────────────────
-  safe(els.start, () => els.start.onclick = async () => {
+  // ── Старт з’єднання (рефактор у функцію) ─────────────────────────────────
+  let starting = false;
+  let waitTipTimer = null;
+
+  async function startOnce(){
+    if (starting) return;
+    starting = true;
+    safe(els.start, () => { els.start.disabled = true; els.start.classList.add('active'); });
+
     try {
-      els.start.disabled = true;
-
       // чекаємо сигналінг і локальні пристрої
       await app.wsReady;
       await app.startLocal();
@@ -30,13 +45,28 @@
         setBadge('Очікуємо пропозицію від співрозмовника…', 'muted');
       }
 
-      els.start.classList.add('active');
+      // «вартовий очікування»: якщо друга сторона не приєдналась
+      clearTimeout(waitTipTimer);
+      waitTipTimer = setTimeout(()=>{
+        if (!els || !els.hint) return;
+        if (app.pc && app.pc.connectionState !== 'connected') {
+          const otherURL = makeLink(oppositeRole(role));
+          els.hint.innerHTML =
+            `Немає другої сторони. Відкрийте це посилання для ${
+              oppositeRole(role)==='consultant'?'консультанта':'клієнта'
+            }: <a href="${otherURL}" target="_blank" rel="noopener">${otherURL}</a>`;
+        }
+      }, 9000);
+
     } catch (err) {
       setBadge('Помилка: ' + (err.message || err.name), 'danger');
-      els.start.disabled = false;
-      els.start.classList.remove('active');
+      starting = false;
+      safe(els.start, () => { els.start.disabled = false; els.start.classList.remove('active'); });
     }
-  });
+  }
+
+  // Кнопка «Під’єднатися»
+  safe(els.start, () => els.start.onclick = startOnce);
 
   // ── Мікрофон ──────────────────────────────────────────────────────────────
   safe(els.mic, () => els.mic.onclick = () => {
@@ -129,8 +159,21 @@
     }
   }));
 
-  // ── Автостарт (?autostart=1) ─────────────────────────────────────────────
-  if (app.qs.get('autostart') === '1' && els.start) {
-    app.wsReady.then(() => { if (!els.start.disabled) els.start.click(); }).catch(() => {});
+  // ── Автостарт ─────────────────────────────────────────────────────────────
+  // 1) Якщо ?autostart=1 — як і було.
+  // 2) Додатково: для ролі client автозапуск завжди (щоб клієнт не забув натиснути).
+  if (els.start) {
+    const mustAuto = app.qs.get('autostart') === '1' || role === 'client';
+    app.wsReady.then(() => {
+      if (mustAuto && !els.start.disabled) startOnce();
+    }).catch(()=>{});
+  }
+
+  // Підказка у статусі, куди кликнути другій стороні (видно одразу)
+  if (els.hint) {
+    const otherURL = makeLink(oppositeRole(role));
+    els.hint.innerHTML =
+      `Якщо друга сторона ще не в мережі — відкрийте для неї посилання: `
+      + `<a href="${otherURL}" target="_blank" rel="noopener">${otherURL}</a>`;
   }
 })(window);
