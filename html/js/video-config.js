@@ -54,9 +54,9 @@
   // 2) Параметри URL:
   //    ?turnHost=IP_OR_HOST&turnPort=3478&turnUser=test&turnPass=test123
   //    або компактно: ?turn=IP_OR_HOST:3478&tu=test&tp=test123
-  // 3) Дефолт: твій публічний TURN (udp/tcp) + резервний openrelay
+  // 3) Дефолт: твій публічний TURN (udp/tcp). Резервний openrelay підключається тільки, якщо ?fallback=1
   function parseIceFromQS() {
-    const short = (qs.get('turn') || '').trim();       // напр. "91.218.235.75:3478"
+    const short = (qs.get('turn') || '').trim(); // напр. "91.218.235.75:3478"
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
     const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '3478');
     const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
@@ -65,10 +65,8 @@
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
     const arr = [];
-    // UDP
-    arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}));
-    // TCP
-    arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}));
+    arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {})); // UDP
+    arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {})); // TCP
     return arr;
   }
 
@@ -80,12 +78,14 @@
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
   ];
 
-  // Резервний публічний (може бути нестабільним; використовується лише як фолбек)
+  // Резервний публічний (нестабільний; увімкнеться лише з ?fallback=1)
   const DEFAULT_OPEN_RELAY = [
     { urls: 'turn:global.relay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:global.relay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ];
+
+  const USE_FALLBACK = qs.get('fallback') === '1'; // за замовчуванням без openrelay
 
   let ICE_SERVERS = [];
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
@@ -95,16 +95,18 @@
     if (fromQS && fromQS.length) {
       ICE_SERVERS = fromQS;
     } else {
-      ICE_SERVERS = [...DEFAULT_PUBLIC_SELF, ...DEFAULT_OPEN_RELAY];
+      ICE_SERVERS = USE_FALLBACK ? [...DEFAULT_PUBLIC_SELF, ...DEFAULT_OPEN_RELAY]
+                                 : [...DEFAULT_PUBLIC_SELF];
     }
   }
 
   // ===== Relay policy =====
-  // За замовчуванням ВМИКАЄМО relay (TURN) — для мобільних/CGNAT. Можна вимкнути через ?relay=0
+  // Вмикаємо relay (TURN) за замовчуванням — це стабільніше через CGNAT/мобільні мережі.
+  // Можна вимкнути через ?relay=0
   const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
 
   // ===== Perfect Negotiation =====
-  // Ініціатором робимо консультанта: polite = false (ініціатор), client = true (слухає).
+  // Ініціатор — консультант: polite=false; клієнт — polite=true.
   const polite = (role !== 'consultant');
 
   // ===== Елементи
@@ -170,6 +172,7 @@
     console.log(info);
     console.log('window.videoApp = window.videoApp || {};');
     console.log('videoApp.ICE_SERVERS = ', ICE_SERVERS);
+    console.log(`ICE policy=${FORCE_RELAY ? 'relay' : 'all'}; servers=${ICE_SERVERS.length}`);
     logChat(info, 'sys');
   } catch {}
 
