@@ -49,6 +49,9 @@
   }
 
   // ===== TURN / ICE servers =====
+  // Підтримка швидкого налаштування через URL:
+  // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass
+  // або детально: ?turnHost=...&turnPort=3478&turnUser=...&turnPass=...
   function parseIceFromQS() {
     const short = (qs.get('turn') || '').trim();   // напр. "91.218.235.75:3478"
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
@@ -59,17 +62,15 @@
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
     return [
-      Object.assign({ urls: `stun:${host}:${port}` }, {}),                       // STUN із твого Coturn
       Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
       Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}),
     ];
   }
 
-  // ► Твій публічний Coturn
+  // ► Твій публічний Coturn (тільки TURN, без STUN)
   const PUB_TURN_HOST = '91.218.235.75';
   const PUB_TURN_PORT = '3478';
   const SELF_ICE = [
-    { urls: `stun:${PUB_TURN_HOST}:${PUB_TURN_PORT}` },
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
   ];
@@ -83,9 +84,8 @@
   }
 
   // ===== Relay policy =====
-  // За замовчуванням НЕ форсуємо TURN (щоб локальні перевірки працювали без нього).
-  // Примусово увімкнути можна через ?relay=1
-  const FORCE_RELAY = qs.get('relay') === '1';
+  // За замовчуванням форсимо relay (TURN). Можна вимкнути через ?relay=0
+  const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
 
   // ===== Perfect Negotiation =====
   const polite = (role !== 'consultant');
@@ -112,6 +112,7 @@
     inviteNote: document.getElementById('inviteNote'),
   };
 
+  // Підписи
   if (els.roomLabel) els.roomLabel.textContent = `Кімната: ${room}`;
   if (els.roleLabel) els.roleLabel.textContent = `Роль: ${role === 'consultant' ? 'консультант' : 'учасник'}`;
 
@@ -146,6 +147,7 @@
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
+  // ── Діагностика
   try {
     const info = `[init] room="${room}", role="${role}", relay=${FORCE_RELAY ? 'on' : 'off'}, signal=${SIGNAL_URL}`;
     console.log(info);
@@ -155,11 +157,16 @@
     logChat(info, 'sys');
   } catch {}
 
+  // Експорт у глобал (video-webrtc.js має читати FORCE_RELAY та ICE_SERVERS)
   global.videoApp = {
+    // конфіг
     qs, UA_MOBILE, FORCE_RELAY, room, polite, SIGNAL_URL, role,
     ICE_SERVERS,
+    // DOM
     els,
+    // утиліти
     setBadge, logChat,
+    // плейсхолдери для модулів
     pc: null, txAudio: null, txVideo: null, dc: null,
     startLocal: null, restartIce: null, bindDataChannel: null,
     wsSend: null, wsReady: null
