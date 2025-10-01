@@ -40,7 +40,6 @@
         logChat(`Очікую answer… спроба ${offerRetries}/${MAX_RETRIES}`, 'sys');
         if (offerRetries <= MAX_RETRIES) {
           try {
-            // Примусовий повтор з iceRestart — найнадійніше через мобільних/CGNAT
             const offer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(offer);
             wsSend({ type: 'offer', room, payload: pc.localDescription });
@@ -50,7 +49,7 @@
             logChat('Повторний offer не вдався: ' + (e.message || e.name), 'sys');
           }
         } else {
-          logChat('Не отримав answer після кількох спроб. Перевірте, що друга сторона відкрила правильне посилання.', 'sys');
+          logChat('Не отримав answer після кількох спроб. Перевірте посилання другої сторони.', 'sys');
           setBadge('Немає відповіді', 'danger');
         }
       }
@@ -75,13 +74,13 @@
     }
   };
 
-  // ---------- Remote media attach (анти AbortError) ----------
+  // ---------- Remote media attach ----------
   pc.ontrack = ({ streams }) => {
     const stream = streams && streams[0];
     if (!stream) return;
 
     if (els.remote && els.remote.srcObject !== stream) {
-      els.remote.muted = true; // для автоплею на мобільних
+      els.remote.muted = true;
       els.remote.srcObject = stream;
       const tryPlay = () => {
         if (els.remote.paused) {
@@ -98,7 +97,12 @@
 
   // ---------- negotiationneeded ----------
   pc.onnegotiationneeded = async () => {
+    // Важливо: offer робить лише ініціатор (consultant). Polite-сторона чекає.
     if (makingOffer || pc.signalingState !== 'stable') return;
+    if (app.polite) {
+      logChat('Пропускаю negotiation: я polite (чекаю offer від співрозмовника)', 'sys');
+      return;
+    }
     await createAndSendOffer();
   };
 
@@ -186,8 +190,13 @@
     return localStream;
   }
 
-  // ---------- Offer / Answer (Perfect Negotiation + анти-зависання) ----------
+  // ---------- Offer / Answer ----------
   async function createAndSendOffer() {
+    // Додатковий гард: тільки ініціатор створює перший offer
+    if (app.polite) {
+      logChat('Не створюю offer: я polite', 'sys');
+      return;
+    }
     if (pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
@@ -195,7 +204,6 @@
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
       wsSend({ type: 'offer', room, payload: pc.localDescription });
-      // чекаємо answer і за потреби перезаново пропонуємо
       offerRetries = 0;
       scheduleAnswerWaitProbe();
     } catch (err) {
