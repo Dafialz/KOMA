@@ -105,6 +105,9 @@
         <span class="badge muted" id="hint">Очікування підключення…</span>
       </div>
 
+      <!-- Підказка-інвайт для другої сторони -->
+      <div id="inviteNote" class="sys" style="margin:10px 0 6px 0;"></div>
+
       <div class="chat">
         <div id="chatlog" class="chatlog" role="log" aria-live="polite"></div>
         <div class="row">
@@ -118,10 +121,45 @@
   <!-- WebRTC adapter -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js" defer></script>
 
-  <!-- Розбиті модулі (з кеш-бастингом) -->
-  <script src="js/video-config.js?v=8" defer></script>
-  <script src="js/video-webrtc.js?v=8" defer></script>
-  <script src="js/video-ui.js?v=8" defer></script>
+  <!-- Розбиті модулі (з кеш-бастингом). data-signal фіксує адресу WS сигналінгу -->
+  <script src="js/video-config.js?v=9" data-signal="wss://koma-uaue.onrender.com" defer></script>
+  <script src="js/video-webrtc.js?v=9" defer></script>
+  <script src="js/video-ui.js?v=9" defer></script>
+
+  <!-- Підказка-посилання для другої сторони (рендериться після ініціалізації videoApp) -->
+  <script>
+    (function(){
+      function renderInvite(){
+        var app = window.videoApp;
+        if (!app || !app.els || !app.els.inviteNote) return;
+        var role = app.role;
+        var room = app.room;
+        // Лінк на другу роль, дублюємо ?relay щоб можна було вимкнути при тесті
+        var params = new URLSearchParams(location.search);
+        params.set('room', room);
+        params.set('autostart','1');
+        params.set('role', role === 'consultant' ? 'client' : 'consultant');
+        // зберігаємо relay як є
+        var link = location.origin + location.pathname + '?' + params.toString();
+
+        if (role === 'consultant') {
+          app.els.inviteNote.innerHTML =
+            'Немає другої сторони. Відкрийте це посилання для клієнта: <br>' +
+            '<a href="'+link+'" target="_blank" rel="noopener">'+link+'</a>';
+        } else {
+          app.els.inviteNote.textContent = '';
+        }
+      }
+      // дочекаємось дефер-скриптів
+      document.addEventListener('DOMContentLoaded', function(){
+        var tries = 0;
+        (function waitApp(){
+          if (window.videoApp || tries > 50) { renderInvite(); return; }
+          tries++; setTimeout(waitApp, 60);
+        })();
+      });
+    })();
+  </script>
 
   <!-- Eruda (мобільна консоль): мобільні або ?debug=1 -->
   <script>
@@ -132,8 +170,7 @@
       const s = document.createElement('script');
       s.src = 'https://cdn.jsdelivr.net/npm/eruda@3/eruda.min.js';
       s.onload = function(){
-        eruda.init();
-        try { eruda.position({ x: 12, y: 12 }); } catch {}
+        try { eruda.init(); eruda.position({ x: 12, y: 12 }); } catch {}
         console.log('[eruda] ready');
         localStorage.setItem('eruda', 'on');
       };
@@ -141,6 +178,6 @@
     })();
   </script>
 
-  <script src="js/partials.js?v=8" defer></script>
+  <script src="js/partials.js?v=9" defer></script>
 </body>
 </html>

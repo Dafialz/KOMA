@@ -84,6 +84,7 @@
     vwrap: document.getElementById('videoWrap'),
     roomLabel: document.getElementById('roomLabel'),
     roleLabel: document.getElementById('roleLabel'),
+    inviteNote: document.getElementById('inviteNote'),
   };
 
   // Підписи кімнати і ролі
@@ -120,6 +121,13 @@
     els.chatlog.appendChild(item);
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
+
+  // — невеличка діагностика в консоль / чат
+  try {
+    const info = `[init] room="${room}", role="${role}", relay=${FORCE_RELAY ? 'on' : 'off'}, signal=${SIGNAL_URL}`;
+    console.log(info);
+    logChat(info, 'sys');
+  } catch {}
 
   // Експорт у глобал
   global.videoApp = {
