@@ -41,8 +41,25 @@
   const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
 
   // ===== SIGNAL URL =====
+  // Порядок пріоритетів:
+  // 1) window.KOMA_SIGNAL_URL (можна задати до підключення скрипта)
+  // 2) <script data-signal="wss://...">
+  // 3) localhost → ws://localhost:3000
+  // 4) дефолтний Render wss
+  const scriptTag = document.currentScript;
+  const DATA_SIGNAL = scriptTag && scriptTag.dataset ? scriptTag.dataset.signal : '';
   const RENDER_WSS = 'wss://koma-uaue.onrender.com';
-  const SIGNAL_URL = (location.hostname === 'localhost') ? 'ws://localhost:3000' : RENDER_WSS;
+
+  let SIGNAL_URL = '';
+  if (typeof window.KOMA_SIGNAL_URL === 'string' && window.KOMA_SIGNAL_URL.trim()) {
+    SIGNAL_URL = window.KOMA_SIGNAL_URL.trim();
+  } else if (DATA_SIGNAL) {
+    SIGNAL_URL = DATA_SIGNAL.trim();
+  } else if (location.hostname === 'localhost') {
+    SIGNAL_URL = 'ws://localhost:3000';
+  } else {
+    SIGNAL_URL = RENDER_WSS;
+  }
 
   // ===== Perfect Negotiation =====
   // Ініціатором робимо консультанта: polite = false (ініціатор), client = true (слухає).
@@ -80,6 +97,7 @@
   }
 
   function logChat(text, who = 'sys') {
+    if (!els.chatlog) return;
     const item = document.createElement('div');
     if (who === 'me') item.className = 'msg me';
     else if (who === 'peer') item.className = 'msg peer';

@@ -6,6 +6,7 @@
 //    GET    /api/bookings?consultantEmail=...      -> { ok, list: [...] }
 //    DELETE /api/bookings/:id
 // 3) Статика сайту з директорії /html
+// + Keepalive для WS (ping/pong), щоб Render/проксі не рвали з’єднання
 // ─────────────────────────────────────────────────────────────────────────────
 
 const express = require("express");
@@ -44,6 +45,10 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+// Тюн для проксі: довший keep-alive HTTP (деякі платформи обривають за замовчуванням)
+server.keepAliveTimeout = 65_000;  // > 60s
+server.headersTimeout   = 70_000;
+
 // ── CORS + префлайт ──────────────────────────────────────────────────────────
 const corsOptions = (ALLOWED_ORIGIN === "*")
   ? {} : { origin: ALLOWED_ORIGIN, credentials: false };
@@ -65,7 +70,33 @@ app.use("/uploads", express.static(UPLOAD_DIR)); // віддаємо заван�
 // ── Сигналінг (кімнати) ──────────────────────────────────────────────────────
 const rooms = new Map(); // Map<roomId, Set<ws>>
 
+function broadcast(room, message, exceptWs) {
+  const set = rooms.get(room) || new Set();
+  const data = JSON.stringify(message);
+  for (const client of set) {
+    if (client !== exceptWs && client.readyState === WebSocket.OPEN) {
+      try { client.send(data); } catch {}
+    }
+  }
+}
+
+// WS keepalive (ping/pong), щоб виявляти "мертві" клієнти за проксі
+const PING_INTERVAL_MS = 30_000;
+const wsPingInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      try { ws.terminate(); } catch {}
+      return;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch {}
+  });
+}, PING_INTERVAL_MS);
+
 wss.on("connection", (ws) => {
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
+
   ws.on("message", (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
@@ -92,17 +123,12 @@ wss.on("connection", (ws) => {
       if (rooms.get(ws.room).size === 0) rooms.delete(ws.room);
     }
   });
-});
 
-function broadcast(room, message, exceptWs) {
-  const set = rooms.get(room) || [];
-  const data = JSON.stringify(message);
-  for (const client of set) {
-    if (client !== exceptWs && client.readyState === WebSocket.OPEN) {
-      client.send(data);
-    }
-  }
-}
+  ws.on("error", () => {
+    // тихо закриваємо; reconnection зробить клієнт
+    try { ws.close(); } catch {}
+  });
+});
 
 // ── Збереження бронювань ─────────────────────────────────────────────────────
 let bookings = [];
@@ -124,7 +150,21 @@ function saveBookings() {
 
 // Healthcheck (зручно для Render)
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, rooms: rooms.size, bookings: bookings.length });
+  res.json({
+    ok: true,
+    rooms: rooms.size,
+    bookings: bookings.length,
+    uptime: process.uptime(),
+  });
+});
+
+// Список кімнат (діагностика)
+app.get("/api/rooms", (_req, res) => {
+  const summary = [];
+  for (const [roomId, set] of rooms.entries()) {
+    summary.push({ roomId, peers: Array.from(set).length });
+  }
+  res.json({ ok: true, rooms: summary });
 });
 
 // Створити бронювання (JSON або multipart з полем "file")
@@ -232,4 +272,14 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`CORS ALLOWED_ORIGIN = ${ALLOWED_ORIGIN}`);
+});
+
+// Коректне завершення (прибираємо інтервал ping)
+process.on('SIGTERM', () => {
+  clearInterval(wsPingInterval);
+  server.close(() => process.exit(0));
+});
+process.on('SIGINT', () => {
+  clearInterval(wsPingInterval);
+  server.close(() => process.exit(0));
 });

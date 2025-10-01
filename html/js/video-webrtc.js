@@ -25,7 +25,6 @@
   let ignoreOffer = false;                   // Perfect Negotiation
   let isUnloading = false;
   let iceProbe = null;
-  let lastRemoteStream = null;
 
   // ---------- ICE ----------
   pc.onicecandidate = ({ candidate }) => {
@@ -50,18 +49,12 @@
     const stream = streams && streams[0];
     if (!stream) return;
 
-    if (lastRemoteStream !== stream) {
-      lastRemoteStream = stream;
-
-      if (els.remote.srcObject !== stream) {
-        // для автоплею на мобільних спочатку глушимо
-        els.remote.muted = true;
-        els.remote.srcObject = stream;
-      }
-
+    if (els.remote.srcObject !== stream) {
+      els.remote.muted = true; // для автоплею на мобільних
+      els.remote.srcObject = stream;
       const tryPlay = () => {
         if (els.remote.paused) {
-          els.remote.play().catch(() => { /* мобільні можуть блокувати – це ок */ });
+          els.remote.play().catch(() => {});
         }
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
@@ -74,7 +67,6 @@
 
   // ---------- negotiationneeded ----------
   pc.onnegotiationneeded = async () => {
-    // ВАЖЛИВО: не створюємо offer, поки стан не stable
     if (makingOffer || pc.signalingState !== 'stable') return;
     await createAndSendOffer();
   };
@@ -85,7 +77,7 @@
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
-    if (st === 'connected') {
+    if (st === 'connected' && els.start) {
       els.start.textContent = 'З’єднано';
       els.start.disabled = true;
       els.start.classList.add('active');
@@ -97,7 +89,6 @@
   };
 
   // ---------- DataChannel / чат ----------
-  // Створюємо локально, щоб зменшити glare і швидше активувати чат
   try {
     dc = pc.createDataChannel('chat');
     app.dc = dc;
@@ -110,20 +101,19 @@
   };
 
   function bindDataChannel() {
-    if (!dc) return;
-    if (dc._bound) return;
+    if (!dc || dc._bound) return;
     dc._bound = true;
 
     dc.onmessage = (e) => logChat(e.data, 'peer');
     dc.onopen = () => {
       if (els.hint) els.hint.textContent = 'Чат підключено';
-      els.msg.disabled = false;
-      els.send.disabled = false;
+      if (els.msg)  els.msg.disabled = false;
+      if (els.send) els.send.disabled = false;
       logChat('Чат підключено', 'sys');
     };
     dc.onclose = () => {
-      els.msg.disabled = true;
-      els.send.disabled = true;
+      if (els.msg)  els.msg.disabled = true;
+      if (els.send) els.send.disabled = true;
       logChat('Чат закрито', 'sys');
     };
   }
@@ -153,17 +143,18 @@
     if (a) await txAudio.sender.replaceTrack(a);
     if (v) await txVideo.sender.replaceTrack(v);
 
-    els.local.srcObject = localStream;
-    try { if (els.local.paused) await els.local.play(); } catch {}
-    els.mic.disabled = !a;
-    els.cam.disabled = !v;
-    els.screen.disabled = false;
+    if (els.local) {
+      els.local.srcObject = localStream;
+      try { if (els.local.paused) await els.local.play(); } catch {}
+    }
+    if (els.mic) els.mic.disabled = !a;
+    if (els.cam) els.cam.disabled = !v;
+    if (els.screen) els.screen.disabled = false;
     return localStream;
   }
 
   // ---------- Offer / Answer (Perfect Negotiation) ----------
   async function createAndSendOffer() {
-    // дубль-ґард: offer тільки у stable
     if (pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
@@ -203,7 +194,6 @@
   }
 
   async function acceptAnswer(answerDesc) {
-    // Критично: приймати answer тільки коли ми у стані have-local-offer
     if (pc.signalingState !== 'have-local-offer') {
       logChat('Отримав answer у стані ' + pc.signalingState + ' — ігнорую', 'sys');
       return;
@@ -216,25 +206,35 @@
     }
   }
 
+  let iceRestartInFlight = false;
   async function restartIce() {
+    if (iceRestartInFlight) return;
+    iceRestartInFlight = true;
     try {
+      if (pc.signalingState === 'closed') return;
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       wsSend({ type: 'offer', room, payload: pc.localDescription });
     } catch (e) {
       console.warn('ICE restart failed', e);
+    } finally {
+      iceRestartInFlight = false;
     }
   }
 
   // ---------- WebSocket (signaling) + reconnection ----------
-  let ws, wsReadyResolve;
-  const wsReady = new Promise(r => (wsReadyResolve = r));
-  let reconnectTimer = null;
+  let ws;
+  let wsReadyResolve;
+  function resetWsReady() {
+    app.wsReady = new Promise((r) => (wsReadyResolve = r));
+  }
+  resetWsReady();
 
   function wsSend(obj) {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
   }
 
+  let reconnectTimer = null;
   function connectWS() {
     clearTimeout(reconnectTimer);
     ws = new WebSocket(SIGNAL_URL);
@@ -263,13 +263,13 @@
       }
 
       if (msg.type === 'ice') {
+        if (!msg.payload) return;
         try { await pc.addIceCandidate(msg.payload); } catch {}
         return;
       }
 
       if (msg.type === 'bye') {
-        els.remote.srcObject = null;
-        lastRemoteStream = null;
+        if (els.remote) els.remote.srcObject = null;
         logChat('Співрозмовник покинув кімнату', 'sys');
         return;
       }
@@ -277,14 +277,23 @@
 
     ws.addEventListener('close', () => {
       logChat('Сигналінг відключено', 'sys');
-      if (!isUnloading) reconnectTimer = setTimeout(connectWS, 1500);
+      if (!isUnloading) {
+        reconnectTimer = setTimeout(() => {
+          resetWsReady();
+          connectWS();
+        }, 1500);
+      }
+    });
+
+    ws.addEventListener('error', () => {
+      try { ws.close(); } catch {}
     });
   }
   connectWS();
 
   // ---------- Допоміжне ----------
   function maybeShowUnmute() {
-    if (!app.UA_MOBILE) return;
+    if (!app.UA_MOBILE || !els.vwrap) return;
     els.vwrap.classList.add('has-unmute');
     if (els.unmute) {
       els.unmute.addEventListener('click', () => {
@@ -299,12 +308,11 @@
   app.pc = pc;
   app.txAudio = txAudio;
   app.txVideo = txVideo;
-  app.dc = dc; // оновлюється при появі каналу
+  app.dc = dc;
   app.startLocal = startLocal;
   app.restartIce = restartIce;
   app.bindDataChannel = bindDataChannel;
   app.wsSend = wsSend;
-  app.wsReady = wsReady;
   app.createAndSendOffer = createAndSendOffer;
 
   // ---------- При закритті вкладки ----------
