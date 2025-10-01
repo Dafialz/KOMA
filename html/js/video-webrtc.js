@@ -237,19 +237,35 @@
     }
   }
 
+  // >>> Patched: м’яка ресинхронізація, якщо answer прийшов не у have-local-offer
   async function acceptAnswer(answerDesc) {
-    if (pc.signalingState !== 'have-local-offer') {
-      logChat('Отримав answer у стані ' + pc.signalingState + ' — ігнорую', 'sys');
+    // Нормальний шлях
+    if (pc.signalingState === 'have-local-offer') {
+      try {
+        await pc.setRemoteDescription(answerDesc);
+        clearTimeout(answerTimer);
+        logChat('Прийняв answer', 'sys');
+      } catch (err) {
+        logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
+      }
       return;
     }
+
+    // Фолбек: отримали answer у "stable" чи іншому стані → ре-синхронізація
+    logChat('Отримав answer у стані ' + pc.signalingState + ' — ігнорую та прошу повторне узгодження', 'sys');
     try {
-      await pc.setRemoteDescription(answerDesc);
-      clearTimeout(answerTimer);
-      logChat('Прийняв answer', 'sys');
-    } catch (err) {
-      logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
+      if (pc.signalingState !== 'closed') {
+        const offer = await pc.createOffer({ iceRestart: false });
+        await pc.setLocalDescription(offer);
+        wsSend({ type: 'offer', room, payload: pc.localDescription });
+        logChat('Надіслав повторний offer для ресинхронізації', 'sys');
+        scheduleAnswerWaitProbe();
+      }
+    } catch (e) {
+      logChat('Resync offer error: ' + (e?.message || e?.name), 'sys');
     }
   }
+  // <<< End patch
 
   let iceRestartInFlight = false;
   async function restartIce() {
