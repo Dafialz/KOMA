@@ -4,6 +4,9 @@
   const app = global.videoApp;
   const { els, room, SIGNAL_URL, FORCE_RELAY, setBadge, logChat } = app;
 
+  // Унікальний ідентифікатор цього табу (щоб не ловити власні WS-повідомлення)
+  const myId = Math.random().toString(36).slice(2);
+
   // ---------- RTCPeerConnection ----------
   const pc = new RTCPeerConnection({
     iceServers: [
@@ -13,6 +16,8 @@
       { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     ],
     iceTransportPolicy: FORCE_RELAY ? 'relay' : 'all',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
   });
 
   // Фіксуємо порядок m-lines: спочатку audio, потім video
@@ -42,7 +47,7 @@
           try {
             const offer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(offer);
-            wsSend({ type: 'offer', room, payload: pc.localDescription });
+            wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
             logChat('Надсилаю повторний offer (iceRestart)', 'sys');
             scheduleAnswerWaitProbe();
           } catch (e) {
@@ -58,7 +63,15 @@
 
   // ---------- ICE ----------
   pc.onicecandidate = ({ candidate }) => {
-    if (candidate) wsSend({ type: 'ice', room, payload: candidate });
+    if (candidate) wsSend({ type: 'ice', room, payload: candidate, from: myId });
+  };
+
+  pc.onicecandidateerror = (e) => {
+    logChat(`ICE error: ${e.errorCode || ''} ${e.errorText || ''} @ ${e.url || ''}`, 'sys');
+  };
+
+  pc.onicegatheringstatechange = () => {
+    logChat('ICE gathering: ' + pc.iceGatheringState, 'sys');
   };
 
   pc.oniceconnectionstatechange = () => {
@@ -109,7 +122,7 @@
   // ---------- States ----------
   pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
 
-  pc.onconnectionstatechange = () => {
+  pc.onconnectionstatechange = async () => {
     const st = pc.connectionState;
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
     if (st === 'connected' && els.start) {
@@ -118,6 +131,18 @@
       els.start.classList.add('active');
       offerRetries = 0;
       clearTimeout(answerTimer);
+
+      // Показуємо вибрану пару кандидатів (чи реально пішли через TURN)
+      try {
+        const stats = await pc.getStats();
+        stats.forEach(r => {
+          if (r.type === 'candidate-pair' && r.selected) {
+            const lp = stats.get(r.localCandidateId);
+            const rp = stats.get(r.remoteCandidateId);
+            logChat(`Selected pair: ${lp?.candidateType}(${lp?.protocol}) ⇄ ${rp?.candidateType} @ ${rp?.ip || rp?.address || ''}`, 'sys');
+          }
+        });
+      } catch {}
     }
     if (st === 'failed') {
       logChat('З’єднання втрачено. Пробуємо відновити…', 'sys');
@@ -203,7 +228,7 @@
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
-      wsSend({ type: 'offer', room, payload: pc.localDescription });
+      wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
       offerRetries = 0;
       scheduleAnswerWaitProbe();
     } catch (err) {
@@ -229,7 +254,7 @@
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       logChat('Надіслав answer', 'sys');
-      wsSend({ type: 'answer', room, payload: pc.localDescription });
+      wsSend({ type: 'answer', room, payload: pc.localDescription, from: myId });
     } catch (err) {
       logChat('acceptOffer error: ' + (err.message || err.name), 'sys');
     } finally {
@@ -237,7 +262,7 @@
     }
   }
 
-  // >>> Patched: м’яка ресинхронізація, якщо answer прийшов не у have-local-offer
+  // М’яка ресинхронізація, якщо answer прийшов не у have-local-offer
   async function acceptAnswer(answerDesc) {
     // Нормальний шлях
     if (pc.signalingState === 'have-local-offer') {
@@ -257,7 +282,7 @@
       if (pc.signalingState !== 'closed') {
         const offer = await pc.createOffer({ iceRestart: false });
         await pc.setLocalDescription(offer);
-        wsSend({ type: 'offer', room, payload: pc.localDescription });
+        wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
         logChat('Надіслав повторний offer для ресинхронізації', 'sys');
         scheduleAnswerWaitProbe();
       }
@@ -265,7 +290,6 @@
       logChat('Resync offer error: ' + (e?.message || e?.name), 'sys');
     }
   }
-  // <<< End patch
 
   let iceRestartInFlight = false;
   async function restartIce() {
@@ -275,7 +299,7 @@
       if (pc.signalingState === 'closed') return;
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
-      wsSend({ type: 'offer', room, payload: pc.localDescription });
+      wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
       scheduleAnswerWaitProbe();
     } catch (e) {
       console.warn('ICE restart failed', e);
@@ -303,7 +327,7 @@
 
     ws.addEventListener('open', () => {
       wsReadyResolve?.();
-      wsSend({ type: 'join', room });
+      wsSend({ type: 'join', room, from: myId });
       if (els.hint) els.hint.textContent = 'Під’єднуйтесь і чекайте на співрозмовника.';
       logChat('Під’єднано до сигналінгу', 'sys');
     });
@@ -312,6 +336,7 @@
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
       if (!msg || (msg.room && msg.room !== room)) return;
+      if (msg.from && msg.from === myId) return; // анти-ехо
 
       if (msg.type === 'offer') {
         logChat('Отримав offer', 'sys');
@@ -333,6 +358,12 @@
       if (msg.type === 'bye') {
         if (els.remote) els.remote.srcObject = null;
         logChat('Співрозмовник покинув кімнату', 'sys');
+        return;
+      }
+
+      if (msg.type === 'full') {
+        logChat('Кімната заповнена (2/2). Закрийте зайві вкладки.', 'sys');
+        setBadge('Кімната заповнена', 'danger');
         return;
       }
     });
@@ -380,7 +411,7 @@
   // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
     isUnloading = true;
-    try { wsSend({ type: 'bye', room }); } catch {}
+    try { wsSend({ type: 'bye', room, from: myId }); } catch {}
     try { app.dc && app.dc.close(); } catch {}
     try { app.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
     try { app.pc.close(); } catch {}
