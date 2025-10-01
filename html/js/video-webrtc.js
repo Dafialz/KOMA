@@ -7,17 +7,28 @@
   // Унікальний ідентифікатор цього табу (щоб не ловити власні WS-повідомлення)
   const myId = Math.random().toString(36).slice(2);
 
+  // ---------- ICE servers / policy (з можливістю підмінити власними) ----------
+  const FALLBACK_ICE = [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+    // ВІДКРИТІ TURN — працюють нестабільно; краще підстав свій список через app.ICE_SERVERS
+    { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  ];
+  const ICE_SERVERS = Array.isArray(app.ICE_SERVERS) && app.ICE_SERVERS.length ? app.ICE_SERVERS : FALLBACK_ICE;
+
+  // Пріоритет: ?relay= → FORCE_RELAY → 'all'
+  const qsRelay = app.qs && app.qs.get('relay');
+  const ICE_POLICY = (qsRelay === '1') || (qsRelay === null && FORCE_RELAY) ? 'relay' : 'all';
+
   // ---------- RTCPeerConnection ----------
   const pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
-      { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    ],
-    iceTransportPolicy: FORCE_RELAY ? 'relay' : 'all',
+    iceServers: ICE_SERVERS,
+    iceTransportPolicy: ICE_POLICY,
     bundlePolicy: 'max-bundle',
     rtcpMuxPolicy: 'require',
+    // pool трохи прискорює початкову ICE-фазу на деяких браузерах
+    iceCandidatePoolSize: 2,
   });
 
   // Фіксуємо порядок m-lines: спочатку audio, потім video
