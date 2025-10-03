@@ -8,28 +8,31 @@ TURN_PASS = "test123"
 LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
-PUBLIC_IP4 = "66.241.124.113"   # використовуємо власну IPv4, а не FLY_PUBLIC_IP
+PUBLIC_IP4 = "66.241.124.113"   # фіксована IPv4 для relay/external
 
-# Явна команда запуску coturn (щоб не підмінявся FLY_PUBLIC_IP на IPv6)
+# Явна команда запуску coturn під процесом "app"
 [processes]
 app = "turnserver -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --relay-ip ${PUBLIC_IP4} --external-ip ${PUBLIC_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT}"
 
-# UDP 3478
+# === UDP 3478 ===
 [[services]]
+processes = ["app"]
 protocol = "udp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# TCP 3478 (опційно — залишив увімкненим)
+# === TCP 3478 (опційно, лишаємо) ===
 [[services]]
+processes = ["app"]
 protocol = "tcp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# UDP-діапазон 49160–49180 (коректно оголошений одним записом)
+# === UDP діапазон 49160–49180 (одним правилом) ===
 [[services]]
+processes = ["app"]
 protocol = "udp"
 internal_port = 49160
   [[services.ports]]
