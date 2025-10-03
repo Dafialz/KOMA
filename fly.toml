@@ -1,5 +1,5 @@
-app = "koma-turn"            # змінити на свою назву app у Fly
-primary_region = "waw"       # або найближчий до тебе регіон
+app = "koma-turn"
+primary_region = "waw"
 
 [env]
 REALM = "koma.local"
@@ -9,21 +9,18 @@ LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
 
-# UDP 3478
 [[services]]
 protocol = "udp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# TCP 3478 (на випадок дуже жорстких мереж)
 [[services]]
 protocol = "tcp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# UDP-діапазон для медіа (49160–49180)
 [[services]]
 protocol = "udp"
 internal_port = 49160
