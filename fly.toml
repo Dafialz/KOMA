@@ -1,5 +1,5 @@
-app = "koma-turn"
-primary_region = "waw"
+app = "koma-m32o4g"
+primary_region = "fra"
 
 [env]
 REALM = "koma.local"
@@ -8,21 +8,145 @@ TURN_PASS = "test123"
 LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
+FLY_PUBLIC_IP = "66.241.124.113"
 
+# UDP 3478
 [[services]]
 protocol = "udp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
 
+# TCP 3478
 [[services]]
 protocol = "tcp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
 
+# === UDP 49160–49180: КОЖЕН ПОРТ ОКРЕМО ===
 [[services]]
 protocol = "udp"
 internal_port = 49160
   [[services.ports]]
-  port_range = { start = 49160, end = 49180 }
+  port = 49160
+
+[[services]]
+protocol = "udp"
+internal_port = 49161
+  [[services.ports]]
+  port = 49161
+
+[[services]]
+protocol = "udp"
+internal_port = 49162
+  [[services.ports]]
+  port = 49162
+
+[[services]]
+protocol = "udp"
+internal_port = 49163
+  [[services.ports]]
+  port = 49163
+
+[[services]]
+protocol = "udp"
+internal_port = 49164
+  [[services.ports]]
+  port = 49164
+
+[[services]]
+protocol = "udp"
+internal_port = 49165
+  [[services.ports]]
+  port = 49165
+
+[[services]]
+protocol = "udp"
+internal_port = 49166
+  [[services.ports]]
+  port = 49166
+
+[[services]]
+protocol = "udp"
+internal_port = 49167
+  [[services.ports]]
+  port = 49167
+
+[[services]]
+protocol = "udp"
+internal_port = 49168
+  [[services.ports]]
+  port = 49168
+
+[[services]]
+protocol = "udp"
+internal_port = 49169
+  [[services.ports]]
+  port = 49169
+
+[[services]]
+protocol = "udp"
+internal_port = 49170
+  [[services.ports]]
+  port = 49170
+
+[[services]]
+protocol = "udp"
+internal_port = 49171
+  [[services.ports]]
+  port = 49171
+
+[[services]]
+protocol = "udp"
+internal_port = 49172
+  [[services.ports]]
+  port = 49172
+
+[[services]]
+protocol = "udp"
+internal_port = 49173
+  [[services.ports]]
+  port = 49173
+
+[[services]]
+protocol = "udp"
+internal_port = 49174
+  [[services.ports]]
+  port = 49174
+
+[[services]]
+protocol = "udp"
+internal_port = 49175
+  [[services.ports]]
+  port = 49175
+
+[[services]]
+protocol = "udp"
+internal_port = 49176
+  [[services.ports]]
+  port = 49176
+
+[[services]]
+protocol = "udp"
+internal_port = 49177
+  [[services.ports]]
+  port = 49177
+
+[[services]]
+protocol = "udp"
+internal_port = 49178
+  [[services.ports]]
+  port = 49178
+
+[[services]]
+protocol = "udp"
+internal_port = 49179
+  [[services.ports]]
+  port = 49179
+
+[[services]]
+protocol = "udp"
+internal_port = 49180
+  [[services.ports]]
+  port = 49180
