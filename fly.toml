@@ -22,7 +22,7 @@ internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# === TCP 3478 (опційно, лишаємо) ===
+# === TCP 3478 (опційно) ===
 [[services]]
 processes = ["app"]
 protocol = "tcp"
@@ -30,7 +30,7 @@ internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# === UDP діапазон 49160–49180 (одним правилом) ===
+# === UDP діапазон 49160–49180 ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
