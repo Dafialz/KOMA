@@ -8,11 +8,20 @@ TURN_PASS = "test123"
 LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
-PUBLIC_IP4 = "66.241.124.113"   # фіксована IPv4 для relay/external
+PUBLIC_IP4 = "66.241.124.113"   # публічна IPv4 для external-ip
 
 # Явна команда запуску coturn під процесом "app"
 [processes]
-app = "turnserver -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --relay-ip ${PUBLIC_IP4} --external-ip ${PUBLIC_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT}"
+app = "turnserver -n -v --log-file=stdout --simple-log \
+  --realm ${REALM} \
+  --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} \
+  --cli-password disabled-cli \
+  --fingerprint \
+  --listening-ip 0.0.0.0 \
+  --external-ip ${PUBLIC_IP4} \
+  --listening-port ${LISTEN_PORT} \
+  --no-tls --no-dtls \
+  --min-port ${MIN_PORT} --max-port ${MAX_PORT}"
 
 # === UDP 3478 ===
 [[services]]
@@ -30,7 +39,7 @@ internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# === UDP діапазон 49160–49180 ===
+# === UDP діапазон 49160–49180 (для relay-портів) ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
