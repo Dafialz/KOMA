@@ -68,42 +68,18 @@
   }
 
   // ► Твій публічний Coturn (ЛИШЕ UDP)
-  const PUB_TURN_HOST = '91.218.235.75';
+  const PUB_TURN_HOST = 'koma-m32o4g.fly.dev';
   const PUB_TURN_PORT = '3478';
   const SELF_ICE = [
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
   ];
 
-  // ► Безкоштовний публічний TURN (Metered) — тільки для тестів/фолбеку
-  // Перевага: працює “просто зараз”.
-  // Недолік: обмеження швидкості/стабільності — не для продакшену.
-  const METERED_ICE = [
-    { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  ];
-
-  // Перемикач джерела ICE через URL:
-  // ?use=self     → тільки твій Coturn
-  // ?use=public   → тільки Metered
-  // (за замовчуванням: спочатку Metered, потім твій Coturn)
-  const use = (qs.get('use') || '').toLowerCase();
-
   let ICE_SERVERS = [];
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
     ICE_SERVERS = global.KOMA_ICE_SERVERS.slice();
   } else {
-    const fromQS = parseIceFromQS(); // явне вказання через URL має найвищий пріоритет
-    if (fromQS && fromQS.length) {
-      ICE_SERVERS = fromQS;
-    } else if (use === 'self') {
-      ICE_SERVERS = SELF_ICE.slice();
-    } else if (use === 'public') {
-      ICE_SERVERS = METERED_ICE.slice();
-    } else {
-      // За замовчуванням: метчимо "щоб працювало зараз" → публічний TURN першим, потім свій
-      ICE_SERVERS = METERED_ICE.concat(SELF_ICE);
-    }
+    const fromQS = parseIceFromQS();
+    ICE_SERVERS = (fromQS && fromQS.length) ? fromQS : SELF_ICE;
   }
 
   // ===== Relay policy =====
