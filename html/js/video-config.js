@@ -49,37 +49,54 @@
   }
 
   // ===== TURN / ICE servers =====
-  // Підтримка налаштування через URL:
+  // Параметри з URL:
   // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass або
   // ?turnHost=...&turnPort=3478&turnUser=...&turnPass=...
+  // Додатково: ?proto=tcp (щоб ВИКЛЮЧНО TCP)
   function parseIceFromQS() {
     const short = (qs.get('turn') || '').trim();
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
     const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '3478');
     const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
     const pass = (qs.get('turnPass') || qs.get('tp') || '').trim();
+    const forceTCP = (qs.get('proto') || '').toLowerCase() === 'tcp';
+
     if (!host) return null;
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
-    // ЛИШЕ TURN/UDP (без STUN і без TCP)
-    return [
-      Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
-    ];
+    return forceTCP
+      ? [ Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}) ]
+      : [
+          Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
+          Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}),
+        ];
   }
 
-  // ► Твій публічний Coturn (ЛИШЕ UDP) — ПРЯМО IPv4, щоб збігалось з --external-ip
-  const PUB_TURN_HOST = '66.241.124.113';
-  const PUB_TURN_PORT = '3478';
-  const SELF_ICE = [
-    { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
-  ];
+  // ► Наш публічний Coturn
+  const TURN_HOST = '66.241.124.113';
+  const TURN_PORT = '3478';
+  const QS_ICE = parseIceFromQS();
+
+  // За замовчуванням: UDP + TCP; якщо ?proto=tcp — тільки TCP
+  let SELF_ICE = [];
+  if (QS_ICE) {
+    SELF_ICE = QS_ICE;
+  } else if ((qs.get('proto') || '').toLowerCase() === 'tcp') {
+    SELF_ICE = [
+      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
+    ];
+  } else {
+    SELF_ICE = [
+      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
+      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
+    ];
+  }
 
   let ICE_SERVERS = [];
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
     ICE_SERVERS = global.KOMA_ICE_SERVERS.slice();
   } else {
-    const fromQS = parseIceFromQS();
-    ICE_SERVERS = (fromQS && fromQS.length) ? fromQS : SELF_ICE;
+    ICE_SERVERS = SELF_ICE;
   }
 
   // ===== Relay policy =====
