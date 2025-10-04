@@ -67,8 +67,8 @@
     ];
   }
 
-  // ► Твій публічний Coturn (ЛИШЕ UDP)
-  const PUB_TURN_HOST = 'koma-m32o4g.fly.dev';
+  // ► Твій публічний Coturn (ЛИШЕ UDP) — ПРЯМО IPv4, щоб збігалось з --external-ip
+  const PUB_TURN_HOST = '66.241.124.113';
   const PUB_TURN_PORT = '3478';
   const SELF_ICE = [
     { urls: `turn:${PUB_TURN_HOST}:${PUB_TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
