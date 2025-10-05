@@ -49,8 +49,8 @@
   }
 
   // ===== TURN / ICE servers =====
-  // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass
-  // або розгорнуте: ?turnHost=&turnPort=&turnUser=&turnPass=
+  // Коротка форма: ?turn=IP_OR_HOST:PORT&tu=user&tp=pass
+  // або розгорнута: ?turnHost=&turnPort=&turnUser=&turnPass=
   // Додатково: ?proto=tcp — зібрати лише TCP-сервер із наданого host:port
   function parseIceFromQS() {
     const short = (qs.get('turn') || '').trim();
@@ -98,10 +98,10 @@
   }
 
   // ===== Політика relay =====
-  // За замовчуванням увімкнено (можна вимкнути через ?relay=0)
+  // За замовчуванням УВІМКНЕНО (можна вимкнути через ?relay=0)
   const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
 
-  // Perfect Negotiation: консалтант — impolite, клієнт — polite
+  // Perfect Negotiation: консультант — impolite, клієнт — polite
   const polite = (role !== 'consultant');
 
   // ===== Елементи UI

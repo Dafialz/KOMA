@@ -15,8 +15,8 @@ PUBLIC_IP4 = "66.241.124.113"
 PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
-# Більше деталей у логах (-v -v). Мапінг public/private у --external-ip.
-app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-multicast-peers"
+# Детальні логи (-v -v). Критично: мапінг public/private у --external-ip.
+app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
 
 # === 3478/udp (STUN/TURN) ===
 [[services]]
@@ -36,17 +36,19 @@ internal_port = 3478
   # raw TCP; без TLS-обробників
   handlers = []
 
-# === 443/tcp (додатковий TURN-TCP для провайдерів, що фільтрують інші порти) ===
+# === 443/tcp (TURN-TCP через 443 для мобільних/провайдерів з фільтрацією) ===
+# Маршрутизуємо порт 443 назовні на внутрішній 3478 (той самий процес coturn),
+# щоб браузер міг встановити TURN поверх TCP:443 без TLS-термінування.
 [[services]]
 processes = ["app"]
 protocol = "tcp"
 internal_port = 3478
   [[services.ports]]
   port = 443
-  # дуже важливо: НІЯКОГО TLS-терамінування — звичайний TCP
+  # дуже важливо: НІЯКОГО TLS-термінування — звичайний TCP
   handlers = []
 
-# === Діапазон relay-портів 49160–49180/udp ===
+# === Діапазон relay-портів 49160–49180/udp (має збігатися з --min/--max) ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
