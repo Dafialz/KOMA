@@ -49,10 +49,9 @@
   }
 
   // ===== TURN / ICE servers =====
-  // Параметри з URL:
-  // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass або
-  // ?turnHost=...&turnPort=3478&turnUser=...&turnPass=...
-  // Додатково: ?proto=tcp (щоб ВИКЛЮЧНО TCP)
+  // ?turn=IP_OR_HOST:PORT&tu=user&tp=pass
+  // або розгорнуте: ?turnHost=&turnPort=&turnUser=&turnPass=
+  // Додатково: ?proto=tcp — зібрати лише TCP-сервер із наданого host:port
   function parseIceFromQS() {
     const short = (qs.get('turn') || '').trim();
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
@@ -75,38 +74,37 @@
   // ► Наш публічний Coturn
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
+  const TURN_TCP_443 = '443';
+
+  // ICE зі строки запиту (якщо задано)
   const QS_ICE = parseIceFromQS();
 
-  // За замовчуванням: UDP + TCP; якщо ?proto=tcp — тільки TCP
-  let SELF_ICE = [];
+  // За замовчуванням: STUN + TURN/UDP :3478 + TURN/TCP :443
+  // (браузер обере робочий; окремо можна форсити relay через ?relay=1|0)
+  let ICE_SERVERS = [];
   if (QS_ICE) {
-    SELF_ICE = QS_ICE;
-  } else if ((qs.get('proto') || '').toLowerCase() === 'tcp') {
-    SELF_ICE = [
-      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
-    ];
+    ICE_SERVERS = QS_ICE;
   } else {
-    SELF_ICE = [
+    ICE_SERVERS = [
+      { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
       { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
-      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: 'test', credential: 'test123' },
+      { urls: `turn:${TURN_HOST}:${TURN_TCP_443}?transport=tcp`, username: 'test', credential: 'test123' },
     ];
   }
 
-  let ICE_SERVERS = [];
+  // Дозволити перевизначення зовнішнім скриптом (якщо треба)
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
     ICE_SERVERS = global.KOMA_ICE_SERVERS.slice();
-  } else {
-    ICE_SERVERS = SELF_ICE;
   }
 
-  // ===== Relay policy =====
-  // За замовчуванням форсимо relay (TURN). Можна вимкнути через ?relay=0
+  // ===== Політика relay =====
+  // За замовчуванням увімкнено (можна вимкнути через ?relay=0)
   const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
 
-  // ===== Perfect Negotiation =====
+  // Perfect Negotiation: консалтант — impolite, клієнт — polite
   const polite = (role !== 'consultant');
 
-  // ===== Елементи
+  // ===== Елементи UI
   const els = {
     local: document.getElementById('local'),
     remote: document.getElementById('remote'),

@@ -15,7 +15,8 @@ PUBLIC_IP4 = "66.241.124.113"
 PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
-app = "turnserver -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-multicast-peers"
+# ► УВІМКНЕНО ДОКЛАДНІ ЛОГИ (-v -v)
+app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-multicast-peers"
 
 # === 3478/udp (STUN/TURN) ===
 [[services]]
