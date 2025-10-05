@@ -8,16 +8,22 @@ TURN_PASS = "test123"
 LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
-
-# Публічна IPv4 (див. `flyctl ips list`)
 PUBLIC_IP4 = "66.241.124.113"
-# Поточна приватна IPv4 ВМ (онови після старту машини; див. інструкції нижче)
-PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
-# ОДИН РЯДОК без переносів!
-# Повернув стабільну команду, яка у тебе запускалась:
-app = "turnserver -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
+# Автоматичне визначення приватної IP перед запуском turnserver
+app = "/bin/sh -lc 'PRIVATE_IP4=$(/sbin/ip -4 -o addr show dev eth0 | awk \"{print \\$4}\" | cut -d/ -f1 | head -n1); \
+exec turnserver -n --log-file=stdout --simple-log \
+  --realm ${REALM} \
+  --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} \
+  --cli-password disabled-cli \
+  --fingerprint \
+  --listening-ip 0.0.0.0 \
+  --external-ip ${PUBLIC_IP4}/$PRIVATE_IP4 \
+  --listening-port ${LISTEN_PORT} \
+  --no-tls --no-dtls \
+  --min-port ${MIN_PORT} --max-port ${MAX_PORT} \
+  --no-loopback-peers --no-multicast-peers'"
 
 # === 3478/udp (STUN/TURN) ===
 [[services]]
