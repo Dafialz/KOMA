@@ -8,27 +8,11 @@ TURN_PASS = "very-strong-pass"
 LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
-# Публічна IPv4 (flyctl ips list)
 PUBLIC_IP4 = "66.241.124.113"
 
 [processes]
-# Автоматичне визначення PRIVATE_IP4 на ВМ і запуск Coturn з коректним external-ip
-app = """
-/bin/sh -lc '
-  PRIVATE_IP4=$(/sbin/ip -4 -o addr show dev eth0 | awk "{print $4}" | cut -d/ -f1 | head -n1);
-  exec turnserver -n --log-file=stdout --simple-log \
-    --realm ${REALM} \
-    --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} \
-    --cli-password disabled-cli \
-    --fingerprint \
-    --listening-ip 0.0.0.0 \
-    --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} \
-    --listening-port ${LISTEN_PORT} \
-    --no-tls --no-dtls \
-    --min-port ${MIN_PORT} --max-port ${MAX_PORT} \
-    --no-multicast-peers --no-loopback-peers
-'
-"""
+# Один рядок без перенесень, автоматично визначає PRIVATE_IP4 і запускає coturn
+app = "/bin/sh -lc 'PRIVATE_IP4=$(/sbin/ip -4 -o addr show dev eth0 | awk \"{print \\$4}\" | cut -d/ -f1 | head -n1); exec turnserver -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-multicast-peers --no-loopback-peers'"
 
 # 3478/udp (STUN/TURN)
 [[services]]
