@@ -81,6 +81,9 @@
   // ► Наш публічний Coturn
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
+  // дефолтні креденшли (можна перевизначити через query або global.KOMA_ICE_SERVERS)
+  const TURN_USER = 'myuser';
+  const TURN_PASS = 'very-strong-pass';
 
   // ICE зі строки запиту (якщо задано)
   const QS_ICE = parseIceFromQS();
@@ -92,13 +95,13 @@
     ICE_SERVERS = QS_ICE;
   } else {
     ICE_SERVERS = [
-      { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: 'test', credential: 'test123' },
+      { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
     ];
     if ((qs.get('proto') || '').toLowerCase() === 'udp') {
       ICE_SERVERS = [
         { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
-        { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
-        { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: 'test', credential: 'test123' },
+        { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
+        { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
       ];
     }
   }
