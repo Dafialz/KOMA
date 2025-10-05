@@ -49,10 +49,8 @@
   }
 
   // ===== TURN / ICE servers =====
-  // Параметри: 
-  //   ?turn=host:port&tu=user&tp=pass
-  //   або розгорнута форма ?turnHost=&turnPort=&turnUser=&turnPass=
-  //   ?proto=udp — додати UDP/STUN (за замовчуванням тільки TCP:443)
+  // ?turn=host:port&tu=user&tp=pass або розгорнута форма
+  // ?proto=udp — додати UDP/STUN (за замовчуванням тільки TCP:443)
   function parseIceFromQS() {
     const short = (qs.get('turn') || '').trim();
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
@@ -68,7 +66,7 @@
       Object.assign({ urls: `turn:${host}:443?transport=tcp` }, creds || {})
     ];
     if (wantUDP) {
-      arr.unshift(Object.assign({ urls: `stun:${host}:${port}` }, {}));
+      arr.unshift({ urls: `stun:${host}:${port}` });
       arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}));
     }
     return arr;
@@ -81,8 +79,8 @@
   // ICE зі строки запиту (якщо задано)
   const QS_ICE = parseIceFromQS();
 
-  // За замовчуванням: тільки TURN/TCP:443 (стабільно через брандмауери).
-  // Хто хоче — додає UDP/STUN через ?proto=udp
+  // За замовчуванням: тільки TURN/TCP:443.
+  // Якщо ?proto=udp — додаємо STUN і TURN/UDP.
   let ICE_SERVERS = [];
   if (QS_ICE) {
     ICE_SERVERS = QS_ICE;
@@ -90,7 +88,6 @@
     ICE_SERVERS = [
       { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: 'test', credential: 'test123' },
     ];
-    // якщо явно попросили ?proto=udp — додамо UDP/STUN
     if ((qs.get('proto') || '').toLowerCase() === 'udp') {
       ICE_SERVERS = [
         { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
@@ -100,13 +97,11 @@
     }
   }
 
-  // Дозволити перевизначення зовнішнім скриптом
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
     ICE_SERVERS = global.KOMA_ICE_SERVERS.slice();
   }
 
   // ===== Політика relay =====
-  // За замовчуванням УВІМКНЕНО (можна вимкнути через ?relay=0)
   const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
 
   // Perfect Negotiation: консультант — impolite, клієнт — polite

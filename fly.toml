@@ -9,16 +9,16 @@ LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
 
-# Публічна IPv4 (із `flyctl ips list`)
+# Публічна IPv4 (див. `flyctl ips list`)
 PUBLIC_IP4 = "66.241.124.113"
-# Приватна IPv4 усередині ВМ (із `ip -4 addr`)
+# Поточна приватна IPv4 ВМ (див. інструкції нижче!)
 PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
 # УВАГА: один рядок без переносів!
-# Слухаємо на всіх інтерфейсах, але клієнтам рекламуємо PUBLIC_IP4,
-# маплячи її на приватну адресу ВМ через --external-ip.
-app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
+# Прив’язуємо coturn до внутрішнього інтерфейсу ВМ і явно задаємо relay-ip.
+# Зовнішній IP рекламуємо через --external-ip <публічна>/<приватна>.
+app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip ${PRIVATE_IP4} --relay-ip ${PRIVATE_IP4} --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
 
 # === 3478/udp (STUN/TURN) ===
 [[services]]
@@ -35,19 +35,18 @@ protocol = "tcp"
 internal_port = 3478
   [[services.ports]]
   port = 3478
-  handlers = []  # raw TCP, без TLS-термінації
+  handlers = []
 
 # === 443/tcp (TURN-TCP через 443 для мобільних/заблокованого UDP) ===
-# Публічний 443 → внутрішній 3478 того ж процесу coturn.
 [[services]]
 processes = ["app"]
 protocol = "tcp"
 internal_port = 3478
   [[services.ports]]
   port = 443
-  handlers = []  # обов'язково без TLS-термінації
+  handlers = []
 
-# === Діапазон relay-портів 49160–49180/udp (збігається з --min/--max) ===
+# === Діапазон relay-портів 49160–49180/udp (має збігатися з --min/--max) ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
