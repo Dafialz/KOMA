@@ -9,15 +9,16 @@ LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
 
-# Публічна IPv4 (як у `flyctl ips list`)
+# Публічна IPv4 (із `flyctl ips list`)
 PUBLIC_IP4 = "66.241.124.113"
-# Приватна IPv4 всередині VM (див. `ip -4 addr`)
+# Приватна IPv4 усередині ВМ (із `ip -4 addr`)
 PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
 # УВАГА: один рядок без переносів!
-# слухаємо на PRIVATE_IP4, релей-видача з PUBLIC_IP4, explicit external-ip мапінг
-app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip ${PRIVATE_IP4} --relay-ip ${PUBLIC_IP4} --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
+# Слухаємо на PRIVATE_IP4, релей працює через приватну адресу,
+# а клієнтам віддаємо PUBLIC_IP4 завдяки --external-ip (public/private).
+app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip ${PRIVATE_IP4} --relay-ip ${PRIVATE_IP4} --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
 
 # === 3478/udp (STUN/TURN) ===
 [[services]]
@@ -46,7 +47,7 @@ internal_port = 3478
   port = 443
   handlers = []  # обов'язково без TLS-термінації
 
-# === Діапазон relay-портів 49160–49180/udp (має збігатися з --min/--max) ===
+# === Діапазон relay-портів 49160–49180/udp (збігається з --min/--max) ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
