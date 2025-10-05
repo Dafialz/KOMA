@@ -49,50 +49,58 @@
   }
 
   // ===== TURN / ICE servers =====
-  // Коротка форма: ?turn=IP_OR_HOST:PORT&tu=user&tp=pass
-  // або розгорнута: ?turnHost=&turnPort=&turnUser=&turnPass=
-  // Додатково: ?proto=tcp — зібрати лише TCP-сервер із наданого host:port
+  // Параметри: 
+  //   ?turn=host:port&tu=user&tp=pass
+  //   або розгорнута форма ?turnHost=&turnPort=&turnUser=&turnPass=
+  //   ?proto=udp — додати UDP/STUN (за замовчуванням тільки TCP:443)
   function parseIceFromQS() {
     const short = (qs.get('turn') || '').trim();
     const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
     const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '3478');
     const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
     const pass = (qs.get('turnPass') || qs.get('tp') || '').trim();
-    const forceTCP = (qs.get('proto') || '').toLowerCase() === 'tcp';
+    const wantUDP = (qs.get('proto') || '').toLowerCase() === 'udp';
 
     if (!host) return null;
 
     const creds = (user && pass) ? { username: user, credential: pass } : null;
-    return forceTCP
-      ? [ Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}) ]
-      : [
-          Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}),
-          Object.assign({ urls: `turn:${host}:${port}?transport=tcp` }, creds || {}),
-        ];
+    const arr = [
+      Object.assign({ urls: `turn:${host}:443?transport=tcp` }, creds || {})
+    ];
+    if (wantUDP) {
+      arr.unshift(Object.assign({ urls: `stun:${host}:${port}` }, {}));
+      arr.push(Object.assign({ urls: `turn:${host}:${port}?transport=udp` }, creds || {}));
+    }
+    return arr;
   }
 
   // ► Наш публічний Coturn
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
-  const TURN_TCP_443 = '443';
 
   // ICE зі строки запиту (якщо задано)
   const QS_ICE = parseIceFromQS();
 
-  // За замовчуванням: STUN + TURN/UDP :3478 + TURN/TCP :443
-  // (браузер обере робочий; окремо можна форсити relay через ?relay=1|0)
+  // За замовчуванням: тільки TURN/TCP:443 (стабільно через брандмауери).
+  // Хто хоче — додає UDP/STUN через ?proto=udp
   let ICE_SERVERS = [];
   if (QS_ICE) {
     ICE_SERVERS = QS_ICE;
   } else {
     ICE_SERVERS = [
-      { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
-      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
-      { urls: `turn:${TURN_HOST}:${TURN_TCP_443}?transport=tcp`, username: 'test', credential: 'test123' },
+      { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: 'test', credential: 'test123' },
     ];
+    // якщо явно попросили ?proto=udp — додамо UDP/STUN
+    if ((qs.get('proto') || '').toLowerCase() === 'udp') {
+      ICE_SERVERS = [
+        { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
+        { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: 'test', credential: 'test123' },
+        { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: 'test', credential: 'test123' },
+      ];
+    }
   }
 
-  // Дозволити перевизначення зовнішнім скриптом (якщо треба)
+  // Дозволити перевизначення зовнішнім скриптом
   if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
     ICE_SERVERS = global.KOMA_ICE_SERVERS.slice();
   }

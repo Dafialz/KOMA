@@ -16,9 +16,9 @@ PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
 # УВАГА: один рядок без переносів!
-# Слухаємо на PRIVATE_IP4, релей працює через приватну адресу,
-# а клієнтам віддаємо PUBLIC_IP4 завдяки --external-ip (public/private).
-app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip ${PRIVATE_IP4} --relay-ip ${PRIVATE_IP4} --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
+# Слухаємо на всіх інтерфейсах, але клієнтам рекламуємо PUBLIC_IP4,
+# маплячи її на приватну адресу ВМ через --external-ip.
+app = "turnserver -v -v -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-loopback-peers --no-multicast-peers"
 
 # === 3478/udp (STUN/TURN) ===
 [[services]]
@@ -28,7 +28,7 @@ internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# === 3478/tcp (TURN-TCP діагностика/фолбек) ===
+# === 3478/tcp (діагностика/фолбек) ===
 [[services]]
 processes = ["app"]
 protocol = "tcp"
