@@ -9,17 +9,15 @@ LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
 
-# ПУБЛІЧНА IPv4 (перевір у 'flyctl ips list')
+# Публічна IPv4 (як у flyctl ips list)
 PUBLIC_IP4 = "66.241.124.113"
-
-# ПРИВАТНА IPv4 усередині VM (з 'ip -4 addr'); беремо основну: 172.19.12.178
+# Приватна IPv4 всередині VM (ip -4 addr)
 PRIVATE_IP4 = "172.19.12.178"
 
 [processes]
-# Основна команда запуску coturn без проблемних прапорів
 app = "turnserver -n --log-file=stdout --simple-log --realm ${REALM} --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} --cli-password disabled-cli --fingerprint --listening-ip 0.0.0.0 --external-ip ${PUBLIC_IP4}/${PRIVATE_IP4} --listening-port ${LISTEN_PORT} --no-tls --no-dtls --min-port ${MIN_PORT} --max-port ${MAX_PORT} --no-multicast-peers"
 
-# === UDP 3478 ===
+# === 3478/udp (STUN/TURN) ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
@@ -27,7 +25,7 @@ internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# === TCP 3478 (для фолбеку і діагностики) ===
+# === 3478/tcp (TURN-TCP) ===
 [[services]]
 processes = ["app"]
 protocol = "tcp"
@@ -35,7 +33,15 @@ internal_port = 3478
   [[services.ports]]
   port = 3478
 
-# === UDP діапазон 49160–49180 (relay-порти) ===
+# === 443/tcp (додатковий TURN-TCP, обхід фільтрів провайдерів) ===
+[[services]]
+processes = ["app"]
+protocol = "tcp"
+internal_port = 3478
+  [[services.ports]]
+  port = 443
+
+# === Діапазон relay-портів 49160–49180/udp ===
 [[services]]
 processes = ["app"]
 protocol = "udp"
