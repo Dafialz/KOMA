@@ -33,7 +33,13 @@
   const room = makeRoomIdFromQS(qs);
 
   // ===== SIGNAL URL =====
-  const scriptTag = document.currentScript;
+  // на випадок, якщо currentScript недоступний
+  const scriptTag =
+    document.currentScript ||
+    Array.from(document.getElementsByTagName('script')).find(s =>
+      (s.src || '').includes('video-config.js')
+    );
+
   const DATA_SIGNAL = scriptTag && scriptTag.dataset ? scriptTag.dataset.signal : '';
   const RENDER_WSS = 'wss://koma-uaue.onrender.com';
 
@@ -102,7 +108,10 @@
   }
 
   // ===== Політика relay =====
-  const FORCE_RELAY = qs.get('relay') === '0' ? false : true;
+  // true/1/'' -> relay; false/0 -> all
+  const relayParam = (qs.get('relay') || '').toLowerCase();
+  const FORCE_RELAY = relayParam === '' ? true : !(relayParam === '0' || relayParam === 'false');
+  const ICE_POLICY = FORCE_RELAY ? 'relay' : 'all';
 
   // Perfect Negotiation: консультант — impolite, клієнт — polite
   const polite = (role !== 'consultant');
@@ -168,12 +177,12 @@
     console.log(info);
     console.log('window.videoApp = window.videoApp || {};');
     console.log('videoApp.ICE_SERVERS = ', ICE_SERVERS);
-    console.log(`ICE policy=${FORCE_RELAY ? 'relay' : 'all'}; servers=${ICE_SERVERS.length}`);
+    console.log(`ICE policy=${ICE_POLICY}; servers=${ICE_SERVERS.length}`);
     logChat(info, 'sys');
   } catch {}
 
   global.videoApp = {
-    qs, UA_MOBILE, FORCE_RELAY, room, polite, SIGNAL_URL, role,
+    qs, UA_MOBILE, FORCE_RELAY, ICE_POLICY, room, polite, SIGNAL_URL, role,
     ICE_SERVERS,
     els,
     setBadge, logChat,
