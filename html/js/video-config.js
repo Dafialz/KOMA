@@ -53,33 +53,42 @@
     SIGNAL_URL = RENDER_WSS;
   }
 
-  // ===== TURN / ICE servers (жорстко зашито) =====
+  // ===== TURN / ICE servers =====
+  // Налаштовано під твій coturn на Fly.io:
+  //  - відкрито 3478/udp і 3478/tcp
+  //  - НЕ використовуємо 443/tcp, бо він не проброшений у fly.toml
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
+  function firstUrl(u) {
+    return Array.isArray(u) ? u[0] : u;
+  }
   function sanitizeIce(list) {
     return (list || []).filter(s => {
       try {
-        const u = (s && s.urls) || '';
+        const u = firstUrl((s && s.urls) || '');
         const isTurn = /^turns?:/i.test(u);
-        if (!isTurn) return true; // STUN OK
+        if (!isTurn) return true; // STUN без логіна — ок
         return !!(s.username && s.credential);
       } catch { return false; }
     });
   }
 
-  // Єдиний список серверів, без підміни через query/global.
   const ICE_SERVERS = sanitizeIce([
+    // STUN можна лишити — та з FORCE_RELAY нижче браузер все одно піде через TURN
     { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
     { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
-    { urls: `turn:${TURN_HOST}:443?transport=tcp`,        username: TURN_USER, credential: TURN_PASS },
+    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
+    // ⚠️ Не вмикаємо 443/tcp — порт не відкритий у fly.toml
+    // { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
   ]);
 
-  // ===== Політика relay (форсуємо relay як у Trickle-ICE) =====
-  const FORCE_RELAY = true;
-  const ICE_POLICY = 'relay';
+  // ===== Політика relay =====
+  // За замовчуванням форсуємо relay; можна вимкнути query-параметром ?relay=0
+  const FORCE_RELAY = (qs.get('relay') ?? '1') !== '0';
+  const ICE_POLICY = FORCE_RELAY ? 'relay' : 'all';
 
   // Perfect Negotiation: консультант — impolite, клієнт — polite
   const polite = (role !== 'consultant');
@@ -141,7 +150,7 @@
   }
 
   try {
-    const info = `[init] room="${room}", role="${role}", relay=on, signal=${SIGNAL_URL}`;
+    const info = `[init] room="${room}", role="${role}", relay=${ICE_POLICY}, signal=${SIGNAL_URL}`;
     console.log(info);
     console.log('window.videoApp = window.videoApp || {};');
     console.log('videoApp.ICE_SERVERS = ', ICE_SERVERS);
