@@ -1,9 +1,9 @@
 FROM instrumentisto/coturn:latest
 
-# Потрібно для команди `ip` (визначаємо приватну IPv4 на eth0)
+# Додаємо iproute2 для отримання локальної IP-адреси
 RUN apk add --no-cache iproute2
 
-# Значення за замовчуванням (на Fly.io їх можна перекрити у fly.toml або secrets)
+# Значення за замовчуванням (їх можна перевизначити у fly.toml або через secrets)
 ENV REALM=koma.local \
     TURN_USER=myuser \
     TURN_PASS=very-strong-pass \
@@ -11,11 +11,11 @@ ENV REALM=koma.local \
     MIN_PORT=49160 \
     MAX_PORT=49180
 
-# ВАЖЛИВО: PUBLIC_IP4 задаємо у fly.toml [env] (або як secret/var середовища)
-# На старті контейнера дістаємо PRIVATE_IP4 з інтерфейсу eth0 і запускаємо coturn
-CMD ["/bin/sh","-lc", "\
-  PRIVATE_IP4=$(/sbin/ip -4 -o addr show dev eth0 | awk '{print $4}' | cut -d/ -f1 | head -n1); \
-  echo \"Detected PRIVATE_IP4=${PRIVATE_IP4}\"; \
+# PUBLIC_IP4 задається у fly.toml (через [env])
+# На старті контейнера дізнаємося приватну IP eth0 і запускаємо Coturn
+CMD /bin/sh -lc '\
+  PRIVATE_IP4=$(/sbin/ip -4 -o addr show dev eth0 | awk "{print \$4}" | cut -d/ -f1 | head -n1); \
+  echo "Detected PRIVATE_IP4=${PRIVATE_IP4}"; \
   exec turnserver -n --log-file=stdout --simple-log \
     --realm ${REALM} \
     --lt-cred-mech --user ${TURN_USER}:${TURN_PASS} \
@@ -27,4 +27,4 @@ CMD ["/bin/sh","-lc", "\
     --no-tls --no-dtls \
     --min-port ${MIN_PORT} --max-port ${MAX_PORT} \
     --no-multicast-peers --no-loopback-peers \
-"]
+'
