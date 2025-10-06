@@ -1,11 +1,10 @@
-# fly.toml
 app = "koma-m32o4g"
 primary_region = "fra"
 
 [build]
   # Використовується Dockerfile з репозиторію
 
-# TURN UDP:3478
+# TURN UDP:3478 -> контейнер 3478
 [[services]]
   protocol = "udp"
   internal_port = 3478
@@ -15,7 +14,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# TURN TCP:3478
+# TURN TCP:3478 -> контейнер 3478
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -25,9 +24,8 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# --- ДОДАНО: проброс 443 → 3478 для обходу фільтрів/фаєрволів ---
-
-# TURN TCP:443 → контейнер 3478
+# ДОДАНО: проброс 443 -> контейнер 3478 (обхід корпоративних фаєрволів)
+# TCP:443 -> 3478
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -37,7 +35,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 443
 
-# TURN UDP:443 → контейнер 3478
+# UDP:443 -> 3478 (деякі мережі пропускають UDP/443)
 [[services]]
   protocol = "udp"
   internal_port = 3478
@@ -48,7 +46,7 @@ primary_region = "fra"
     port = 443
 
 # === UDP relay-порти 49160–49180 (one-to-one) ===
-# Якщо хочеш менше — звузь MIN/MAX у Dockerfile і видали зайві блоки нижче.
+# Якщо треба менше — змінюй MIN/MAX у Dockerfile/секретах і видаляй зайві блоки нижче.
 
 [[services]]  # 49160/udp
   protocol = "udp"

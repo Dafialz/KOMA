@@ -3,9 +3,9 @@ FROM debian:12-slim
 # coturn + iproute2 (щоб визначити локальну IP) + сертифікати
 RUN apt-get update && \
     apt-get install -y --no-install-recommends coturn iproute2 ca-certificates && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
 
-# Значення можна перекривати секретами/ENV у fly.toml
+# Значення можна перекривати секретами/ENV у Fly (flyctl secrets set ...)
 ENV REALM="koma.local" \
     TURN_USER="myuser" \
     TURN_PASS="very-strong-pass" \
@@ -14,9 +14,9 @@ ENV REALM="koma.local" \
     MIN_PORT="49160" \
     MAX_PORT="49180"
 
-# Стартовий скрипт: надійно бере одну локальну IPv4 і запускає turnserver
+# Стартовий скрипт: визначає локальну IPv4 та стартує coturn
 RUN set -eux; \
-  cat > /usr/local/bin/start-turn.sh << 'EOSH'
+  cat > /usr/local/bin/start-turn.sh << 'EOSH' && chmod +x /usr/local/bin/start-turn.sh
 #!/bin/sh
 set -eu
 
@@ -27,12 +27,12 @@ if [ -z "${LOCAL_IP:-}" ]; then
   LOCAL_IP="$(ip -4 -o addr show dev eth0 | awk 'NR==1{split($4,a,"/");print a[1]}')"
 fi
 
-echo "Starting coturn:"
-echo "  REALM=$REALM"
-echo "  USER=$TURN_USER"
-echo "  LISTEN=$LISTEN_PORT (tcp/udp)"
-echo "  EXTERNAL=$PUBLIC_IP4 / LOCAL=$LOCAL_IP"
-echo "  MEDIA RANGE=$MIN_PORT-$MAX_PORT/udp"
+echo "Starting coturn..."
+echo "  realm     : $REALM"
+echo "  user      : $TURN_USER"
+echo "  listen    : $LISTEN_PORT (udp/tcp)"
+echo "  external  : $PUBLIC_IP4 (local $LOCAL_IP)"
+echo "  udp range : $MIN_PORT-$MAX_PORT"
 
 exec turnserver -n \
   --log-file=stdout --simple-log --fingerprint --lt-cred-mech \
@@ -42,7 +42,6 @@ exec turnserver -n \
   --min-port "$MIN_PORT" --max-port "$MAX_PORT" \
   --no-multicast-peers --no-cli
 EOSH
-RUN chmod +x /usr/local/bin/start-turn.sh
 
 # Документація портів у контейнері
 EXPOSE 3478/udp 3478/tcp

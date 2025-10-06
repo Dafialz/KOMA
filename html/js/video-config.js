@@ -53,40 +53,44 @@
     SIGNAL_URL = RENDER_WSS;
   }
 
-  // ===== TURN / ICE servers =====
-  // Налаштовано під твій coturn на Fly.io:
-  //  - відкрито 3478/udp і 3478/tcp
-  //  - НЕ використовуємо 443/tcp, бо він не проброшений у fly.toml
+  // ===== TURN / ICE servers (налаштовано під Fly.io) =====
+  // У Fly відкриті 3478/udp і 3478/tcp. 443/tcp не проброшений — не додаємо.
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
-  function firstUrl(u) {
-    return Array.isArray(u) ? u[0] : u;
-  }
+  const ICE_SERVERS_RAW = [
+    // STUN лишаємо для діагностики; при relay=on браузер все одно піде через TURN
+    { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
+
+    // TURN (udp/tcp) на 3478 — саме це у нас відкрито на Fly
+    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
+    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
+
+    // ⚠️ НЕ додаємо 443/tcp, бо він не відкритий у fly.toml і в Trickle-ICE дає 701.
+    // { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
+  ];
+
+  // helper: якщо urls — масив, беремо перший, щоб не впасти в sanitize
+  const firstUrl = u => (Array.isArray(u) ? u[0] : u);
+
   function sanitizeIce(list) {
     return (list || []).filter(s => {
       try {
-        const u = firstUrl((s && s.urls) || '');
+        const u = firstUrl(s?.urls || '');
         const isTurn = /^turns?:/i.test(u);
-        if (!isTurn) return true; // STUN без логіна — ок
-        return !!(s.username && s.credential);
+        // STUN без логіна — ок. TURN — тільки з username/credential.
+        return !isTurn || (!!s.username && !!s.credential);
       } catch { return false; }
     });
   }
 
-  const ICE_SERVERS = sanitizeIce([
-    // STUN можна лишити — та з FORCE_RELAY нижче браузер все одно піде через TURN
-    { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
-    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
-    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
-    // ⚠️ Не вмикаємо 443/tcp — порт не відкритий у fly.toml
-    // { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
-  ]);
+  const ICE_SERVERS = sanitizeIce(ICE_SERVERS_RAW);
 
   // ===== Політика relay =====
-  // За замовчуванням форсуємо relay; можна вимкнути query-параметром ?relay=0
+  // За замовчуванням форсуємо relay (аналог Trickle-ICE "relay only").
+  // Можна вимкнути тестово параметром ?relay=0
   const FORCE_RELAY = (qs.get('relay') ?? '1') !== '0';
   const ICE_POLICY = FORCE_RELAY ? 'relay' : 'all';
 
@@ -152,7 +156,6 @@
   try {
     const info = `[init] room="${room}", role="${role}", relay=${ICE_POLICY}, signal=${SIGNAL_URL}`;
     console.log(info);
-    console.log('window.videoApp = window.videoApp || {};');
     console.log('videoApp.ICE_SERVERS = ', ICE_SERVERS);
     console.log(`ICE policy=${ICE_POLICY}; servers=${ICE_SERVERS.length}`);
     if (!ICE_SERVERS.length) {
