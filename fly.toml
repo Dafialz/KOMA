@@ -1,42 +1,45 @@
 app = "koma-m32o4g"
 primary_region = "fra"
 
+# Використовуємо Dockerfile в корені
+[build]
+
 [env]
+# Значення можна перекривати через secrets, ці змінні лише як дефолт
 REALM = "koma.local"
 LISTEN_PORT = "3478"
 MIN_PORT = "49160"
 MAX_PORT = "49180"
-PUBLIC_IP4 = "66.241.124.113"
 
-# UDP 3478
+# ---------- TCP (3478 і 443) -> внутрішній 3478 ----------
 [[services]]
-  processes = ["app"]
-  protocol = "udp"
+  protocol = "tcp"
   internal_port = 3478
+  processes = ["app"]
+
+  # зовнішній TCP 3478
   [[services.ports]]
     port = 3478
 
-# TCP 3478 (звичайний TURN over TCP)
-[[services]]
-  processes = ["app"]
-  protocol = "tcp"
-  internal_port = 3478
-  [[services.ports]]
-    port = 3478
-
-# TCP 443 → всередині на 3478 (для випадків коли 3478 заблоковано)
-[[services]]
-  processes = ["app"]
-  protocol = "tcp"
-  internal_port = 3478
+  # зовнішній TCP 443 (TURN over TCP через 443)
   [[services.ports]]
     port = 443
 
-# Діапазон UDP-портів для медіа-релею
+# ---------- UDP 3478 (STUN/TURN) ----------
 [[services]]
+  protocol = "udp"
+  internal_port = 3478
   processes = ["app"]
+
+  [[services.ports]]
+    port = 3478
+
+# ---------- UDP Relay range 49160–49180 ----------
+[[services]]
   protocol = "udp"
   internal_port = 49160
+  processes = ["app"]
+
   [[services.ports]]
     start_port = 49160
     end_port   = 49180
