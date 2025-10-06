@@ -33,7 +33,6 @@
   const room = makeRoomIdFromQS(qs);
 
   // ===== SIGNAL URL =====
-  // на випадок, якщо currentScript недоступний
   const scriptTag =
     document.currentScript ||
     Array.from(document.getElementsByTagName('script')).find(s =>
@@ -54,85 +53,33 @@
     SIGNAL_URL = RENDER_WSS;
   }
 
-  // ===== TURN / ICE servers =====
-  // Параметри: ?turn=host[:port]&tu=user&tp=pass&proto=udp|tcp
-  // Якщо proto=udp -> додаються STUN і TURN/UDP; інакше лише TURN/TCP:443
+  // ===== TURN / ICE servers (жорстко зашито) =====
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
-  // дефолтні креденшли (можна перевизначити через query або global.KOMA_ICE_SERVERS)
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
   function sanitizeIce(list) {
-    // видаляємо TURN без username/credential, щоб не ловити InvalidAccessError
     return (list || []).filter(s => {
       try {
         const u = (s && s.urls) || '';
         const isTurn = /^turns?:/i.test(u);
-        if (!isTurn) return true;
+        if (!isTurn) return true; // STUN OK
         return !!(s.username && s.credential);
       } catch { return false; }
     });
   }
 
-  function parseIceFromQS() {
-    const short = (qs.get('turn') || '').trim();               // host[:port]
-    const host = (qs.get('turnHost') || '').trim() || (short.split(':')[0] || '');
-    const port = (qs.get('turnPort') || '').trim() || (short.includes(':') ? short.split(':')[1] : '');
-    const user = (qs.get('turnUser') || qs.get('tu') || '').trim();
-    const pass = (qs.get('turnPass') || qs.get('tp') || '').trim();
-    const wantUDP = (qs.get('proto') || '').toLowerCase() === 'udp';
+  // Єдиний список серверів, без підміни через query/global.
+  const ICE_SERVERS = sanitizeIce([
+    { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
+    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
+    { urls: `turn:${TURN_HOST}:443?transport=tcp`,        username: TURN_USER, credential: TURN_PASS },
+  ]);
 
-    if (!host) return null;
-
-    const thePort = port || (wantUDP ? TURN_PORT : '443');
-    const creds = (user && pass) ? { username: user, credential: pass } : null;
-
-    const arr = [];
-    if (wantUDP) {
-      arr.push({ urls: `stun:${host}:${thePort}` });
-      arr.push(Object.assign({ urls: `turn:${host}:${thePort}?transport=udp` }, creds || {}));
-      // дублюємо TCP 443 як fall-back
-      arr.push(Object.assign({ urls: `turn:${host}:443?transport=tcp` }, creds || {}));
-    } else {
-      arr.push(Object.assign({ urls: `turn:${host}:443?transport=tcp` }, creds || {}));
-    }
-    return sanitizeIce(arr);
-  }
-
-  function defaultIce() {
-    const wantUDP = (qs.get('proto') || '').toLowerCase() === 'udp';
-    if (wantUDP) {
-      return sanitizeIce([
-        { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
-        { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
-        { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
-      ]);
-    }
-    return sanitizeIce([
-      { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
-    ]);
-  }
-
-  // Побудова ICE
-  let ICE_SERVERS = [];
-  const QS_ICE = parseIceFromQS();
-  if (QS_ICE && QS_ICE.length) {
-    ICE_SERVERS = QS_ICE;
-  } else {
-    ICE_SERVERS = defaultIce();
-  }
-
-  // Перевизначення через глобальну змінну (якщо задано вручну)
-  if (Array.isArray(global.KOMA_ICE_SERVERS) && global.KOMA_ICE_SERVERS.length) {
-    ICE_SERVERS = sanitizeIce(global.KOMA_ICE_SERVERS.slice());
-  }
-
-  // ===== Політика relay =====
-  // true/1/'' -> relay; false/0/false -> all
-  const relayParam = (qs.get('relay') || '').toLowerCase();
-  const FORCE_RELAY = relayParam === '' ? true : !(relayParam === '0' || relayParam === 'false');
-  const ICE_POLICY = FORCE_RELAY ? 'relay' : 'all';
+  // ===== Політика relay (форсуємо relay як у Trickle-ICE) =====
+  const FORCE_RELAY = true;
+  const ICE_POLICY = 'relay';
 
   // Perfect Negotiation: консультант — impolite, клієнт — polite
   const polite = (role !== 'consultant');
@@ -194,7 +141,7 @@
   }
 
   try {
-    const info = `[init] room="${room}", role="${role}", relay=${FORCE_RELAY ? 'on' : 'off'}, signal=${SIGNAL_URL}`;
+    const info = `[init] room="${room}", role="${role}", relay=on, signal=${SIGNAL_URL}`;
     console.log(info);
     console.log('window.videoApp = window.videoApp || {};');
     console.log('videoApp.ICE_SERVERS = ', ICE_SERVERS);
