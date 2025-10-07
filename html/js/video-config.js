@@ -54,25 +54,22 @@
   }
 
   // ===== TURN / ICE servers (налаштовано під Fly.io) =====
-  // У Fly відкриті 3478/udp і 3478/tcp. 443/tcp не проброшений — не додаємо.
   const TURN_HOST = '66.241.124.113';
   const TURN_PORT = '3478';
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
   const ICE_SERVERS_RAW = [
-    // STUN лишаємо для діагностики; при relay=on браузер все одно піде через TURN
+    // STUN залишаю лише для режиму all (нижче при relay воно відсікається)
     { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
 
-    // TURN (udp/tcp) на 3478 — саме це у нас відкрито на Fly
+    // TURN 3478 udp/tcp — саме це проброшено на Fly
     { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
     { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
 
-    // ⚠️ НЕ додаємо 443/tcp, бо він не відкритий у fly.toml і в Trickle-ICE дає 701.
-    // { urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
+    // НЕ додаємо 443/tcp — на Fly не відкрито і дає 701
   ];
 
-  // helper: якщо urls — масив, беремо перший, щоб не впасти в sanitize
   const firstUrl = u => (Array.isArray(u) ? u[0] : u);
 
   function sanitizeIce(list) {
@@ -80,19 +77,34 @@
       try {
         const u = firstUrl(s?.urls || '');
         const isTurn = /^turns?:/i.test(u);
-        // STUN без логіна — ок. TURN — тільки з username/credential.
         return !isTurn || (!!s.username && !!s.credential);
       } catch { return false; }
     });
   }
 
-  const ICE_SERVERS = sanitizeIce(ICE_SERVERS_RAW);
-
-  // ===== Політика relay =====
-  // За замовчуванням форсуємо relay (аналог Trickle-ICE "relay only").
-  // Можна вимкнути тестово параметром ?relay=0
+  // ===== Політика relay (за замовчуванням увімкнено) =====
+  // ?relay=0 щоб дозволити всі типи кандидатів
   const FORCE_RELAY = (qs.get('relay') ?? '1') !== '0';
   const ICE_POLICY = FORCE_RELAY ? 'relay' : 'all';
+
+  // Фільтр транспорту: ?proto=tcp або ?proto=udp
+  const PROTO = (qs.get('proto') || '').toLowerCase(); // '' | 'tcp' | 'udp'
+
+  let ICE_SERVERS = sanitizeIce(ICE_SERVERS_RAW);
+
+  // Якщо relay-only — STUN не потрібен
+  if (ICE_POLICY === 'relay') {
+    ICE_SERVERS = ICE_SERVERS.filter(s => !/^stuns?:/i.test(firstUrl(s.urls || '')));
+  }
+
+  // Якщо задано ?proto= — відфільтруємо тільки потрібні TURN-рядки
+  if (PROTO === 'tcp' || PROTO === 'udp') {
+    const needle = `transport=${PROTO}`;
+    ICE_SERVERS = ICE_SERVERS.filter(s => {
+      const u = firstUrl(s.urls || '');
+      return /^turns?:/i.test(u) ? u.includes(needle) : true; // STUN пропускаємо тільки в режимі all (вище його вже прибрано для relay)
+    });
+  }
 
   // Perfect Negotiation: консультант — impolite, клієнт — polite
   const polite = (role !== 'consultant');
@@ -154,12 +166,12 @@
   }
 
   try {
-    const info = `[init] room="${room}", role="${role}", relay=${ICE_POLICY}, signal=${SIGNAL_URL}`;
+    const info = `[init] room="${room}", role="${role}", relay=${ICE_POLICY}, proto=${PROTO || 'any'}, signal=${SIGNAL_URL}`;
     console.log(info);
-    console.log('videoApp.ICE_SERVERS = ', ICE_SERVERS);
-    console.log(`ICE policy=${ICE_POLICY}; servers=${ICE_SERVERS.length}`);
+    console.log('videoApp.ICE_SERVERS (final) = ', ICE_SERVERS);
+    console.log(`servers=${ICE_SERVERS.length}`);
     if (!ICE_SERVERS.length) {
-      console.warn('WARNING: ICE_SERVERS is empty — перевірте налаштування TURN/STUN.');
+      console.warn('WARNING: ICE_SERVERS is empty — перевірте TURN/STUN і параметри relay/proto.');
     }
     logChat(info, 'sys');
   } catch {}
