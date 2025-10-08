@@ -54,7 +54,7 @@
   }
 
   // ===== TURN / ICE servers (налаштовано під Fly.io) =====
-  const TURN_HOST = '66.241.124.113';
+  const TURN_HOST = '37.16.30.199';
   const TURN_PORT = '3478';
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
