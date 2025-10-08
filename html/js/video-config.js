@@ -123,6 +123,7 @@
   app.FORCE_RELAY = FORCE_RELAY;             // true => iceTransportPolicy:'relay'
   app.UA_MOBILE   = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   app.PROTO       = proto;                   // зручно бачити у логах/в UI
+  app.polite      = (role === 'client');     // клієнт приймає чужий offer; консультант ініціює
 
   // Фінальний список ICE-серверів
   app.ICE_SERVERS = ICE_SERVERS_RAW.slice();
