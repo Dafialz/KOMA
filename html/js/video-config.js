@@ -28,7 +28,7 @@
   }
 
   // ---------- Наш TURN на Fly.io ----------
-  // Публічний IPv4, який ти виділив на Fly
+  // Публічний IPv4 твого інстанса на Fly
   const TURN_HOST = '37.16.30.199';
   const TURN_PORT = 3478;
   const TURN_USER = 'myuser';
@@ -36,10 +36,9 @@
 
   const ICE_SERVERS_RAW = [];
 
-  // Пріоритет 443/tcp -> 3478/tcp -> 3478/udp
+  // ТІЛЬКИ 3478 (без 443). Порядок: tcp -> udp
   if (WANT_TCP) {
     ICE_SERVERS_RAW.push(
-      { urls: `turn:${TURN_HOST}:443?transport=tcp`,   username: TURN_USER, credential: TURN_PASS },
       { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
     );
   }
@@ -49,7 +48,7 @@
     );
   }
 
-  // Додатковий публічний fallback (увімкнути параметром ?fallback=1) — НЕ для продакшена
+  // Додатковий публічний fallback (увімкнути параметром ?fallback=1) — тільки для дебага
   if (qs.get('fallback') === '1') {
     ICE_SERVERS_RAW.push(
       { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -58,9 +57,9 @@
     );
   }
 
-  // Якщо раптом все відфільтрували і масив пустий — даємо хоча б 443/tcp
+  // Якщо все відфільтрували і масив пустий — підстрахуємось tcp:3478
   if (ICE_SERVERS_RAW.length === 0) {
-    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
+    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
   }
 
   // ---------- Елементи інтерфейсу ----------
