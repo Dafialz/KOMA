@@ -4,7 +4,7 @@ primary_region = "fra"
 [build]
   # Використовується Dockerfile з репозиторію
 
-# TURN UDP:3478 -> контейнер 3478
+# --- TURN 3478/UDP ---
 [[services]]
   protocol = "udp"
   internal_port = 3478
@@ -14,7 +14,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# TURN TCP:3478 -> контейнер 3478
+# --- TURN 3478/TCP (fallback, коли UDP блокується) ---
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -24,8 +24,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# ДОДАНО: проброс 443 -> контейнер 3478 (обхід корпоративних фаєрволів)
-# TCP:443 -> 3478
+# --- ДОДАТКОВО: TCP 443 -> 3478 (для суворих мереж) ---
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -35,28 +34,17 @@ primary_region = "fra"
   [[services.ports]]
     port = 443
 
-# UDP:443 -> 3478 (деякі мережі пропускають UDP/443)
-[[services]]
-  protocol = "udp"
-  internal_port = 3478
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 443
+# --- UDP relay-порти coturn (49160–49180) ---
+# Потрібні, щоб публічний трафік на ці порти доходив до машини.
+# Якщо змінюватимеш MIN/MAX у coturn, віддзеркаль — додай/забери блоки нижче.
 
-# === UDP + TCP relay-порти 49160–49180 (one-to-one) ===
-# Якщо треба менше — змінюй MIN/MAX у секретах і видаляй зайві блоки.
-
-# ---------- UDP ----------
 [[services]]  # 49160/udp
   protocol = "udp"
   internal_port = 49160
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49160
+  [[services.ports]] { port = 49160 }
 
 [[services]]  # 49161/udp
   protocol = "udp"
@@ -64,8 +52,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49161
+  [[services.ports]] { port = 49161 }
 
 [[services]]  # 49162/udp
   protocol = "udp"
@@ -73,8 +60,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49162
+  [[services.ports]] { port = 49162 }
 
 [[services]]  # 49163/udp
   protocol = "udp"
@@ -82,8 +68,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49163
+  [[services.ports]] { port = 49163 }
 
 [[services]]  # 49164/udp
   protocol = "udp"
@@ -91,8 +76,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49164
+  [[services.ports]] { port = 49164 }
 
 [[services]]  # 49165/udp
   protocol = "udp"
@@ -100,8 +84,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49165
+  [[services.ports]] { port = 49165 }
 
 [[services]]  # 49166/udp
   protocol = "udp"
@@ -109,8 +92,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49166
+  [[services.ports]] { port = 49166 }
 
 [[services]]  # 49167/udp
   protocol = "udp"
@@ -118,8 +100,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49167
+  [[services.ports]] { port = 49167 }
 
 [[services]]  # 49168/udp
   protocol = "udp"
@@ -127,8 +108,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49168
+  [[services.ports]] { port = 49168 }
 
 [[services]]  # 49169/udp
   protocol = "udp"
@@ -136,8 +116,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49169
+  [[services.ports]] { port = 49169 }
 
 [[services]]  # 49170/udp
   protocol = "udp"
@@ -145,8 +124,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49170
+  [[services.ports]] { port = 49170 }
 
 [[services]]  # 49171/udp
   protocol = "udp"
@@ -154,8 +132,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49171
+  [[services.ports]] { port = 49171 }
 
 [[services]]  # 49172/udp
   protocol = "udp"
@@ -163,8 +140,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49172
+  [[services.ports]] { port = 49172 }
 
 [[services]]  # 49173/udp
   protocol = "udp"
@@ -172,8 +148,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49173
+  [[services.ports]] { port = 49173 }
 
 [[services]]  # 49174/udp
   protocol = "udp"
@@ -181,8 +156,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49174
+  [[services.ports]] { port = 49174 }
 
 [[services]]  # 49175/udp
   protocol = "udp"
@@ -190,8 +164,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49175
+  [[services.ports]] { port = 49175 }
 
 [[services]]  # 49176/udp
   protocol = "udp"
@@ -199,8 +172,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49176
+  [[services.ports]] { port = 49176 }
 
 [[services]]  # 49177/udp
   protocol = "udp"
@@ -208,8 +180,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49177
+  [[services.ports]] { port = 49177 }
 
 [[services]]  # 49178/udp
   protocol = "udp"
@@ -217,8 +188,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49178
+  [[services.ports]] { port = 49178 }
 
 [[services]]  # 49179/udp
   protocol = "udp"
@@ -226,8 +196,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49179
+  [[services.ports]] { port = 49179 }
 
 [[services]]  # 49180/udp
   protocol = "udp"
@@ -235,195 +204,4 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49180
-
-# ---------- TCP ----------
-[[services]]  # 49160/tcp
-  protocol = "tcp"
-  internal_port = 49160
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49160
-
-[[services]]  # 49161/tcp
-  protocol = "tcp"
-  internal_port = 49161
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49161
-
-[[services]]  # 49162/tcp
-  protocol = "tcp"
-  internal_port = 49162
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49162
-
-[[services]]  # 49163/tcp
-  protocol = "tcp"
-  internal_port = 49163
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49163
-
-[[services]]  # 49164/tcp
-  protocol = "tcp"
-  internal_port = 49164
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49164
-
-[[services]]  # 49165/tcp
-  protocol = "tcp"
-  internal_port = 49165
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49165
-
-[[services]]  # 49166/tcp
-  protocol = "tcp"
-  internal_port = 49166
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49166
-
-[[services]]  # 49167/tcp
-  protocol = "tcp"
-  internal_port = 49167
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49167
-
-[[services]]  # 49168/tcp
-  protocol = "tcp"
-  internal_port = 49168
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49168
-
-[[services]]  # 49169/tcp
-  protocol = "tcp"
-  internal_port = 49169
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49169
-
-[[services]]  # 49170/tcp
-  protocol = "tcp"
-  internal_port = 49170
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49170
-
-[[services]]  # 49171/tcp
-  protocol = "tcp"
-  internal_port = 49171
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49171
-
-[[services]]  # 49172/tcp
-  protocol = "tcp"
-  internal_port = 49172
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49172
-
-[[services]]  # 49173/tcp
-  protocol = "tcp"
-  internal_port = 49173
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49173
-
-[[services]]  # 49174/tcp
-  protocol = "tcp"
-  internal_port = 49174
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49174
-
-[[services]]  # 49175/tcp
-  protocol = "tcp"
-  internal_port = 49175
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49175
-
-[[services]]  # 49176/tcp
-  protocol = "tcp"
-  internal_port = 49176
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49176
-
-[[services]]  # 49177/tcp
-  protocol = "tcp"
-  internal_port = 49177
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49177
-
-[[services]]  # 49178/tcp
-  protocol = "tcp"
-  internal_port = 49178
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49178
-
-[[services]]  # 49179/tcp
-  protocol = "tcp"
-  internal_port = 49179
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49179
-
-[[services]]  # 49180/tcp
-  protocol = "tcp"
-  internal_port = 49180
-  auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  [[services.ports]]
-    port = 49180
+  [[services.ports]] { port = 49180 }
