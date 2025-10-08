@@ -4,10 +4,9 @@
   const app = global.videoApp;
   const { els, room, SIGNAL_URL, FORCE_RELAY, setBadge, logChat } = app;
 
-  // Унікальний id цього табу (щоб не ловити власні WS-повідомлення)
   const myId = Math.random().toString(36).slice(2);
 
-  // ---------- ICE servers / policy ----------
+  // ---------- ICE servers ----------
   const FALLBACK_ICE = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
     { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -33,137 +32,77 @@
     iceCandidatePoolSize: 2,
   });
 
-  // Фіксуємо порядок m-lines: спочатку audio, потім video
-  const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
-  const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
-
-  let localStream, dc;
+  let localStream = null;
+  let dc;
   let makingOffer = false;
   let isSettingRemoteAnswerPending = false;
   let ignoreOffer = false;
   let isUnloading = false;
   let iceProbe = null;
 
-  // Анти-зависання: повторні offer/iceRestart
-  let answerTimer = null;
-  let offerRetries = 0;
-  const MAX_RETRIES = 3;
-  const ANSWER_TIMEOUT_MS = 6500;
+  const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
+  const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
 
-  function scheduleAnswerWaitProbe() {
-    clearTimeout(answerTimer);
-    answerTimer = setTimeout(async () => {
-      if (pc.signalingState === 'have-local-offer') {
-        offerRetries++;
-        logChat(`Очікую answer… спроба ${offerRetries}/${MAX_RETRIES}`, 'sys');
-        if (offerRetries <= MAX_RETRIES) {
-          try {
-            const offer = await pc.createOffer({ iceRestart: true });
-            await pc.setLocalDescription(offer);
-            await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
-            logChat('Надсилаю повторний offer (iceRestart)', 'sys');
-            scheduleAnswerWaitProbe();
-          } catch (e) {
-            logChat('Повторний offer не вдався: ' + (e.message || e.name), 'sys');
-          }
-        } else {
-          logChat('Не отримав answer після кількох спроб. Перевірте посилання другої сторони.', 'sys');
-          setBadge('Немає відповіді', 'danger');
-        }
+  // ---------- Local media ----------
+  async function startLocal(constraints) {
+    if (localStream) return localStream;
+    const base = constraints || {
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
+    };
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(base);
+    } catch (err) {
+      logChat('Помилка доступу до камери/мікрофона: ' + (err.message || err.name), 'sys');
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch {
+        localStream = new MediaStream(); // створюємо пустий потік щоб SDP був валідним
       }
-    }, ANSWER_TIMEOUT_MS);
+    }
+
+    const a = localStream.getAudioTracks()[0] || null;
+    const v = localStream.getVideoTracks()[0] || null;
+    if (a) await txAudio.sender.replaceTrack(a);
+    if (v) await txVideo.sender.replaceTrack(v);
+
+    if (els.local) {
+      els.local.srcObject = localStream;
+      els.local.muted = true;
+      els.local.playsInline = true;
+      try { await els.local.play(); } catch {}
+    }
+    if (els.mic) els.mic.disabled = !a;
+    if (els.cam) els.cam.disabled = !v;
+    return localStream;
   }
+
+  // ---------- Remote media ----------
+  pc.ontrack = ({ streams }) => {
+    const stream = streams && streams[0];
+    if (!stream) return;
+    if (els.remote && els.remote.srcObject !== stream) {
+      els.remote.srcObject = stream;
+      els.remote.playsInline = true;
+      els.remote.muted = false;
+      els.remote.addEventListener('loadedmetadata', () => {
+        els.remote.play().catch(()=>{});
+      });
+    }
+    maybeShowUnmute();
+    setBadge('З’єднано', 'ok');
+  };
 
   // ---------- ICE ----------
   pc.onicecandidate = ({ candidate }) => {
     if (candidate) wsSend({ type: 'ice', room, payload: candidate, from: myId });
   };
-
-  pc.onicecandidateerror = (e) => {
-    logChat(`ICE error: ${e.errorCode || ''} ${e.errorText || ''} @ ${e.url || ''}`, 'sys');
-  };
-
-  pc.onicegatheringstatechange = () => {
-    logChat('ICE gathering: ' + pc.iceGatheringState, 'sys');
-  };
-
   pc.oniceconnectionstatechange = () => {
     logChat('ICE: ' + pc.iceConnectionState, 'sys');
-    clearTimeout(iceProbe);
-    if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
-      iceProbe = setTimeout(() => {
-        if (['checking', 'new', 'disconnected'].includes(pc.iceConnectionState)) {
-          logChat('ICE завис — виконуємо iceRestart…', 'sys');
-          restartIce();
-        }
-      }, 8000);
-    }
+    if (['failed', 'disconnected'].includes(pc.iceConnectionState)) restartIce();
   };
 
-  // ---------- Remote media attach ----------
-  pc.ontrack = ({ streams }) => {
-    const stream = streams && streams[0];
-    if (!stream) return;
-
-    if (els.remote && els.remote.srcObject !== stream) {
-      // глушимо звук для автозапуску, а кнопкою "Розблокувати звук" дозволяємо
-      els.remote.muted = true;
-      els.remote.srcObject = stream;
-      const tryPlay = () => {
-        if (els.remote.paused) {
-          els.remote.play().catch(() => {}); // блокує браузер — нехай спрацює кнопка Unmute
-        }
-        els.remote.removeEventListener('loadedmetadata', tryPlay);
-      };
-      els.remote.addEventListener('loadedmetadata', tryPlay);
-    }
-
-    maybeShowUnmute();
-    setBadge('З’єднано', 'ok');
-  };
-
-  // ---------- negotiationneeded ----------
-  pc.onnegotiationneeded = async () => {
-    if (makingOffer || pc.signalingState !== 'stable') return;
-    if (app.polite) {
-      logChat('Пропускаю negotiation: я polite (чекаю offer від співрозмовника)', 'sys');
-      return;
-    }
-    await createAndSendOffer();
-  };
-
-  // ---------- States ----------
-  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
-
-  pc.onconnectionstatechange = async () => {
-    const st = pc.connectionState;
-    setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
-    if (st === 'connected' && els.start) {
-      els.start.textContent = 'З’єднано';
-      els.start.disabled = true;
-      els.start.classList.add('active');
-      offerRetries = 0;
-      clearTimeout(answerTimer);
-
-      // Показати обрану ICE-пару
-      try {
-        const stats = await pc.getStats();
-        stats.forEach(r => {
-          if (r.type === 'candidate-pair' && r.selected) {
-            const lp = stats.get(r.localCandidateId);
-            const rp = stats.get(r.remoteCandidateId);
-            logChat(`Selected pair: ${lp?.candidateType}(${lp?.protocol}) ⇄ ${rp?.candidateType} @ ${rp?.ip || rp?.address || ''}`, 'sys');
-          }
-        });
-      } catch {}
-    }
-    if (st === 'failed') {
-      logChat('З’єднання втрачено. Пробуємо відновити…', 'sys');
-      restartIce();
-    }
-  };
-
-  // ---------- DataChannel / чат ----------
+  // ---------- DataChannel ----------
   try {
     dc = pc.createDataChannel('chat');
     app.dc = dc;
@@ -178,59 +117,15 @@
   function bindDataChannel() {
     if (!dc || dc._bound) return;
     dc._bound = true;
-
     dc.onmessage = (e) => logChat(e.data, 'peer');
-    dc.onopen = () => {
-      if (els.hint) els.hint.textContent = 'Чат підключено';
-      if (els.msg)  els.msg.disabled = false;
-      if (els.send) els.send.disabled = false;
-      logChat('Чат підключено', 'sys');
-    };
-    dc.onclose = () => {
-      if (els.msg)  els.msg.disabled = true;
-      if (els.send) els.send.disabled = true;
-      logChat('Чат закрито', 'sys');
-    };
-  }
-
-  // ---------- Local media ----------
-  async function startLocal(constraints) {
-    if (localStream) return localStream;
-    const base = constraints || {
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
-    };
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia(base);
-    } catch (err) {
-      if (err && (err.name === 'NotReadableError' || err.name === 'NotAllowedError' || err.name === 'NotFoundError')) {
-        logChat('Камера/мікрофон недоступні. Спроба лише з мікрофоном…', 'sys');
-        if (els.hint) els.hint.textContent = 'Камера зайнята або заборонена. Використаємо лише мікрофон.';
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } else {
-        logChat('Помилка доступу до пристроїв: ' + (err.message || err.name), 'sys');
-        throw err;
-      }
-    }
-
-    const a = localStream.getAudioTracks()[0] || null;
-    const v = localStream.getVideoTracks()[0] || null;
-    if (a) await txAudio.sender.replaceTrack(a);
-    if (v) await txVideo.sender.replaceTrack(v);
-
-    if (els.local) {
-      els.local.srcObject = localStream;
-      try { if (els.local.paused) await els.local.play(); } catch {}
-    }
-    if (els.mic) els.mic.disabled = !a;
-    if (els.cam) els.cam.disabled = !v;
-    if (els.screen) els.screen.disabled = false;
-    return localStream;
+    dc.onopen = () => logChat('Чат підключено', 'sys');
+    dc.onclose = () => logChat('Чат закрито', 'sys');
   }
 
   // ---------- Offer / Answer ----------
   async function createAndSendOffer() {
-    if (app.polite) { logChat('Не створюю offer: я polite', 'sys'); return; }
+    if (app.polite) return;
+    await startLocal(); // 🔸 тепер завжди беремо локальний потік ДО offer
     if (pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
@@ -238,27 +133,24 @@
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
-      offerRetries = 0;
-      scheduleAnswerWaitProbe();
     } catch (err) {
-      logChat('Помилка createOffer/setLocalDescription: ' + (err.message || err.name), 'sys');
+      logChat('createOffer error: ' + (err.message || err.name), 'sys');
     } finally {
       makingOffer = false;
     }
   }
 
   async function acceptOffer(offerDesc) {
+    await startLocal(); // 🔸 також беремо локальний потік перед відповіддю
     const offerCollision =
       makingOffer || pc.signalingState !== 'stable' || isSettingRemoteAnswerPending;
-
     ignoreOffer = !app.polite && offerCollision;
     if (ignoreOffer) {
-      logChat('Уникли колізії offer/offer (я — ініціатор)', 'sys');
+      logChat('Колізія offer/offer (ігнорую)', 'sys');
       return;
     }
-
     try {
-      isSettingRemoteAnswerPending = (pc.signalingState !== 'stable');
+      isSettingRemoteAnswerPending = true;
       await pc.setRemoteDescription(offerDesc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -275,136 +167,54 @@
     if (pc.signalingState === 'have-local-offer') {
       try {
         await pc.setRemoteDescription(answerDesc);
-        clearTimeout(answerTimer);
         logChat('Прийняв answer', 'sys');
       } catch (err) {
         logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
       }
-      return;
-    }
-    logChat('Отримав answer у стані ' + pc.signalingState + ' — ігнорую та прошу повторне узгодження', 'sys');
-    try {
-      if (pc.signalingState !== 'closed') {
-        const offer = await pc.createOffer({ iceRestart: false });
-        await pc.setLocalDescription(offer);
-        await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
-        logChat('Надіслав повторний offer для ресинхронізації', 'sys');
-        scheduleAnswerWaitProbe();
-      }
-    } catch (e) {
-      logChat('Resync offer error: ' + (e?.message || e?.name), 'sys');
     }
   }
 
-  let iceRestartInFlight = false;
   async function restartIce() {
-    if (iceRestartInFlight) return;
-    iceRestartInFlight = true;
     try {
-      if (pc.signalingState === 'closed') return;
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
-      scheduleAnswerWaitProbe();
     } catch (e) {
-      console.warn('ICE restart failed', e);
-    } finally {
-      iceRestartInFlight = false;
+      logChat('ICE restart failed', 'sys');
     }
   }
 
-  // ---------- WebSocket (signaling) + reconnection ----------
+  // ---------- Signaling ----------
   let ws;
-  let wsReadyResolve;
-  function resetWsReady() {
-    app.wsReady = new Promise((r) => (wsReadyResolve = r));
-  }
-  resetWsReady();
-
-  // Черга на випадок, коли WS ще не відкрився / перепід’єднується
-  const outbox = [];
-  async function wsSend(obj) {
-    // чекаємо на відкрите з’єднання
-    if (!ws || ws.readyState !== 1) {
-      outbox.push(obj);
-      await app.wsReady.catch(() => {}); // якщо раптом відхилиться — просто мовчки
-    }
-    if (ws && ws.readyState === 1) {
-      try { ws.send(JSON.stringify(obj)); } catch { /* ignore */ }
-    }
-  }
-  function wsFlush() {
-    if (!outbox.length || !ws || ws.readyState !== 1) return;
-    while (outbox.length) {
-      const obj = outbox.shift();
-      try { ws.send(JSON.stringify(obj)); } catch { break; }
-    }
-  }
-
-  let reconnectTimer = null;
   function connectWS() {
-    clearTimeout(reconnectTimer);
     ws = new WebSocket(SIGNAL_URL);
-
     ws.addEventListener('open', () => {
-      wsReadyResolve?.();
       wsSend({ type: 'join', room, from: myId });
-      wsFlush();
-      if (els.hint) els.hint.textContent = 'Під’єднуйтесь і чекайте на співрозмовника.';
       logChat('Під’єднано до сигналінгу', 'sys');
     });
-
     ws.addEventListener('message', async (e) => {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
-      if (!msg || (msg.room && msg.room !== room)) return;
-      if (msg.from && msg.from === myId) return; // анти-ехо
+      if (msg.from === myId) return;
 
       if (msg.type === 'offer') {
         logChat('Отримав offer', 'sys');
         await acceptOffer(new RTCSessionDescription(msg.payload));
-        return;
-      }
-
-      if (msg.type === 'answer') {
+      } else if (msg.type === 'answer') {
         await acceptAnswer(new RTCSessionDescription(msg.payload));
-        return;
-      }
-
-      if (msg.type === 'ice') {
-        if (!msg.payload) return;
+      } else if (msg.type === 'ice') {
         try { await pc.addIceCandidate(msg.payload); } catch {}
-        return;
       }
-
-      if (msg.type === 'bye') {
-        if (els.remote) els.remote.srcObject = null;
-        logChat('Співрозмовник покинув кімнату', 'sys');
-        return;
-      }
-
-      if (msg.type === 'full') {
-        logChat('Кімната заповнена (2/2). Закрийте зайві вкладки.', 'sys');
-        setBadge('Кімната заповнена', 'danger');
-        return;
-      }
-    });
-
-    ws.addEventListener('close', () => {
-      logChat('Сигналінг відключено', 'sys');
-      if (!isUnloading) {
-        resetWsReady();
-        reconnectTimer = setTimeout(() => connectWS(), 1500);
-      }
-    });
-
-    ws.addEventListener('error', () => {
-      try { ws.close(); } catch {}
     });
   }
   connectWS();
 
-  // ---------- Допоміжне ----------
+  async function wsSend(obj) {
+    try {
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+    } catch {}
+  }
+
   function maybeShowUnmute() {
     if (!els.vwrap) return;
     els.vwrap.classList.add('has-unmute');
@@ -416,25 +226,17 @@
     }
   }
 
-  // ---------- Експорт у app ----------
+  // ---------- Export ----------
   app.pc = pc;
-  app.txAudio = txAudio;
-  app.txVideo = txVideo;
-  app.dc = dc;
   app.startLocal = startLocal;
-  app.restartIce = restartIce;
-  app.bindDataChannel = bindDataChannel;
-  app.wsSend = wsSend;
   app.createAndSendOffer = createAndSendOffer;
-  app.ICE_POLICY = ICE_POLICY;
-  app.ICE_SERVERS = ICE_SERVERS;
+  app.restartIce = restartIce;
+  app.wsSend = wsSend;
+  app.bindDataChannel = bindDataChannel;
 
-  // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
-    isUnloading = true;
     try { wsSend({ type: 'bye', room, from: myId }); } catch {}
     try { app.dc && app.dc.close(); } catch {}
-    try { app.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
     try { app.pc.close(); } catch {}
     try { ws && ws.close(); } catch {}
   });
