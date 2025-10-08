@@ -4,7 +4,7 @@ primary_region = "fra"
 [build]
   # Використовується Dockerfile з репозиторію
 
-# --- TURN 3478/UDP ---
+# --- TURN 3478 / UDP ---
 [[services]]
   protocol = "udp"
   internal_port = 3478
@@ -14,7 +14,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# --- TURN 3478/TCP (коли UDP блокується) ---
+# --- TURN 3478 / TCP ---
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -23,8 +23,12 @@ primary_region = "fra"
   min_machines_running = 1
   [[services.ports]]
     port = 3478
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout  = "2s"
+    grace_period = "10s"
 
-# --- ДОДАТКОВО: TCP 443 -> 3478 (для суворих мереж, БЕЗ TLS-термінації) ---
+# --- Додатково: TCP 443 -> 3478 (без TLS-термінації) ---
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -33,17 +37,19 @@ primary_region = "fra"
   min_machines_running = 1
   [[services.ports]]
     port = 443
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout  = "2s"
+    grace_period = "10s"
 
 # --- UDP relay-порти coturn (49160–49180) ---
-# TURN через TCP теж виділяє UDP-реле адреси, тому тут достатньо лише UDP-діапазону.
 [[services]]
   protocol = "udp"
   internal_port = 49160
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49160
+  [[services.ports]] port = 49160
 
 [[services]]
   protocol = "udp"
@@ -51,8 +57,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49161
+  [[services.ports]] port = 49161
 
 [[services]]
   protocol = "udp"
@@ -60,8 +65,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49162
+  [[services.ports]] port = 49162
 
 [[services]]
   protocol = "udp"
@@ -69,8 +73,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49163
+  [[services.ports]] port = 49163
 
 [[services]]
   protocol = "udp"
@@ -78,8 +81,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49164
+  [[services.ports]] port = 49164
 
 [[services]]
   protocol = "udp"
@@ -87,8 +89,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49165
+  [[services.ports]] port = 49165
 
 [[services]]
   protocol = "udp"
@@ -96,8 +97,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49166
+  [[services.ports]] port = 49166
 
 [[services]]
   protocol = "udp"
@@ -105,8 +105,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49167
+  [[services.ports]] port = 49167
 
 [[services]]
   protocol = "udp"
@@ -114,8 +113,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49168
+  [[services.ports]] port = 49168
 
 [[services]]
   protocol = "udp"
@@ -123,8 +121,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49169
+  [[services.ports]] port = 49169
 
 [[services]]
   protocol = "udp"
@@ -132,8 +129,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49170
+  [[services.ports]] port = 49170
 
 [[services]]
   protocol = "udp"
@@ -141,8 +137,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49171
+  [[services.ports]] port = 49171
 
 [[services]]
   protocol = "udp"
@@ -150,8 +145,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49172
+  [[services.ports]] port = 49172
 
 [[services]]
   protocol = "udp"
@@ -159,8 +153,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49173
+  [[services.ports]] port = 49173
 
 [[services]]
   protocol = "udp"
@@ -168,8 +161,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49174
+  [[services.ports]] port = 49174
 
 [[services]]
   protocol = "udp"
@@ -177,8 +169,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49175
+  [[services.ports]] port = 49175
 
 [[services]]
   protocol = "udp"
@@ -186,8 +177,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49176
+  [[services.ports]] port = 49176
 
 [[services]]
   protocol = "udp"
@@ -195,8 +185,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49177
+  [[services.ports]] port = 49177
 
 [[services]]
   protocol = "udp"
@@ -204,8 +193,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49178
+  [[services.ports]] port = 49178
 
 [[services]]
   protocol = "udp"
@@ -213,8 +201,7 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49179
+  [[services.ports]] port = 49179
 
 [[services]]
   protocol = "udp"
@@ -222,5 +209,4 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]]
-    port = 49180
+  [[services.ports]] port = 49180
