@@ -40,11 +40,12 @@
     iceCandidatePoolSize: 2,
   });
 
-  // Експортуємо у глобал для консолі
+  // Експортуємо для консолі
   global.pc = pc;
   global.app = app;
 
   let localStream = null;
+  let remoteStream = null;
   let dc;
   let makingOffer = false;
   let isSettingRemoteAnswerPending = false;
@@ -54,6 +55,17 @@
   // Трансивери: фіксуємо порядок m-lines (audio -> video)
   const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
+
+  // Спроба пріоритезувати H264 (краще для iOS/Safari/деяких ПК)
+  try {
+    const caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
+    if (caps && caps.codecs && txVideo.setCodecPreferences) {
+      const h264 = caps.codecs.filter(c => /video\/h264/i.test(c.mimeType));
+      const rest = caps.codecs.filter(c => !/video\/h264/i.test(c.mimeType));
+      if (h264.length) txVideo.setCodecPreferences([...h264, ...rest]);
+      logChat(`Codec pref: H264 first (${h264.length})`, 'sys');
+    }
+  } catch {}
 
   // ---------- Local media ----------
   async function startLocal(constraints) {
@@ -80,12 +92,10 @@
 
     if (a) {
       await txAudio.sender.replaceTrack(a);
-      // КРИТИЧНО: вшиваємо MSID потоку
       try { txAudio.sender.setStreams(localStream); } catch {}
     }
     if (v) {
       await txVideo.sender.replaceTrack(v);
-      // КРИТИЧНО: вшиваємо MSID потоку
       try { txVideo.sender.setStreams(localStream); } catch {}
     }
 
@@ -103,14 +113,12 @@
     return localStream;
   }
 
-  // ---------- Remote media ----------
-  let remoteStream = null;
-
+  // ---------- Remote media helpers ----------
   function ensureRemoteVideoElementSetup() {
     if (!els.remote) return;
     els.remote.playsInline = true;
     els.remote.autoplay = true;
-    // Залишаємо muted=true для автоплею, клієнт розм’ютить кнопкою
+    // muted=true дозволяє автоплей, потім юзер тицяє Unmute
     els.remote.muted = true;
   }
   ensureRemoteVideoElementSetup();
@@ -138,6 +146,7 @@
     }
   }
 
+  // ---------- Remote media attach ----------
   pc.ontrack = (ev) => {
     const s = (ev.streams && ev.streams[0]) || null;
     if (s) {
@@ -178,9 +187,10 @@
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
   };
 
-  // Ініціатор робить офер сам, якщо браузер підняв negotiationneeded
+  // negotiationneeded — лише для ініціатора і без дублювань
   pc.onnegotiationneeded = async () => {
-    if (app.polite) return;                 // лише ініціатор
+    if (app.polite) return;
+    if (makingOffer) return;
     if (pc.signalingState !== 'stable') return;
     await createAndSendOffer();
   };
@@ -217,7 +227,7 @@
   // ---------- Offer / Answer ----------
   async function createAndSendOffer() {
     if (app.polite) return;               // ініціатор — тільки non-polite
-    await startLocal();                   // обов’язково мати треки ДО offer
+    await startLocal();                   // мати треки ДО offer
     if (pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
@@ -233,7 +243,7 @@
   }
 
   async function acceptOffer(offerDesc) {
-    await startLocal(); // і на відповідачі мати треки до answer
+    await startLocal(); // у відповідача теж треки ДО answer
     const offerCollision =
       makingOffer || pc.signalingState !== 'stable' || isSettingRemoteAnswerPending;
     ignoreOffer = !app.polite && offerCollision;
@@ -263,6 +273,19 @@
       } catch (err) {
         logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
       }
+      return;
+    }
+    // Якщо answer прийшов у «нестандартному» стані — робимо ресинхронізацію
+    logChat('Отримав answer у стані ' + pc.signalingState + ' — форсую повторну синхронізацію', 'sys');
+    try {
+      if (pc.signalingState !== 'closed') {
+        const offer = await pc.createOffer({ iceRestart: false });
+        await pc.setLocalDescription(offer);
+        await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
+        logChat('Надіслав повторний offer для ресинхронізації', 'sys');
+      }
+    } catch (e) {
+      logChat('Resync offer error: ' + (e?.message || e?.name), 'sys');
     }
   }
 
@@ -369,8 +392,8 @@
         if (r.type === 'outbound-rtp' && r.kind === 'video' && !r.isRemote) outV = r;
         if (r.type === 'inbound-rtp'  && r.kind === 'video' && !r.isRemote) inV = r;
       });
-      const rx = inV ? `↓ video: pkts=${inV.packetsReceived}` : '↓ video: n/a';
-      const tx = outV ? `↑ video: pkts=${outV.packetsSent}` : '↑ video: n/a';
+      const rx = inV ? `↓ video: pkts=${inV.packetsReceived} kbps=${Math.round(((inV.bytesReceived||0)*8/1000)/2)}` : '↓ video: n/a';
+      const tx = outV ? `↑ video: pkts=${outV.packetsSent} kbps=${Math.round(((outV.bytesSent||0)*8/1000)/2)}` : '↑ video: n/a';
 
       const recvStates = pc.getReceivers().map(r=>({
         kind: r.track?.kind, muted: r.track?.muted, enabled: r.track?.enabled,

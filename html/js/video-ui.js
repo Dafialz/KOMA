@@ -5,6 +5,8 @@
   const { els, setBadge, UA_MOBILE } = app;
   const role = app.role;           // 'consultant' | 'client'
   const room = app.room;
+  const isConsultant = role === 'consultant';
+  const isPolite = !!app.polite;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function safe(el, fn){ if (el) try { fn(); } catch {} }
@@ -18,6 +20,24 @@
   }
   function toast(msg, cls='muted'){ app.logChat(msg, 'sys'); setBadge(msg, cls); }
   function logObj(title, o) { try { app.logChat(title + ': ' + JSON.stringify(o), 'sys'); } catch {} }
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+  // Чекаємо поки локальні треки реально з’являться (особливо важливо для консультанта)
+  async function waitForLocal(kind = 'video', timeoutMs = 2500){
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeoutMs) {
+      try {
+        const ls = els.local && els.local.srcObject;
+        const hasByEl = !!(ls && ((kind==='video'?ls.getVideoTracks():ls.getAudioTracks)()?.[0]));
+        const senders = (app.pc && app.pc.getSenders) ? app.pc.getSenders() : [];
+        const s = senders.find(s => s.track && s.track.kind === kind);
+        const hasBySender = !!(s && s.track && s.track.readyState === 'live');
+        if (hasByEl || hasBySender) return true;
+      } catch {}
+      await sleep(100);
+    }
+    return false;
+  }
 
   // ── Старт з’єднання (рефактор у функцію) ─────────────────────────────────
   let starting = false;
@@ -29,9 +49,17 @@
     safe(els.start, () => { els.start.disabled = true; els.start.classList.add('active'); });
 
     try {
-      // чекаємо сигналінг і локальні пристрої
+      // 1) Сигналінг
       await app.wsReady;
+
+      // 2) Локальні пристрої
       await app.startLocal();
+
+      // 2.1) Для консультанта гарантуємо наявність живого відео-треку ДО offer
+      if (!isPolite) {
+        const ok = await waitForLocal('video', 2500);
+        app.logChat(`waitForLocal(video)=${ok}`, 'sys');
+      }
 
       // якщо DC ще нема — створимо і прив’яжемо
       if (!app.dc || app.dc.readyState === 'closed') {
@@ -39,8 +67,8 @@
         app.bindDataChannel();
       }
 
-      // ініціатор (не polite) шле перший offer
-      if (!app.polite) {
+      // ініціатор (не polite) шле перший offer ТІЛЬКИ після локальних треків
+      if (!isPolite) {
         await app.createAndSendOffer();
         setBadge('Очікуємо відповідь…', 'muted');
       } else {
