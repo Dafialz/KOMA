@@ -2,7 +2,7 @@ app = "koma-m32o4g"
 primary_region = "fra"
 
 [build]
-  # Збираємо образ з Dockerfile в корені репо
+  # Образ збирається з Dockerfile у корені репозиторію
 
 # --- 3478/UDP ---
 [[services]]
@@ -34,48 +34,192 @@ primary_region = "fra"
   [[services.ports]]
     port = 443
 
-# --- UDP-діапазон для relay (49160–49180) ---
-# Fly не підтримує “діапазон” одним блоком — оголошуємо кожен порт.
-# Скопіюй весь список як є.
-[[services]]; protocol="udp"; internal_port=49160; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49160
-[[services]]; protocol="udp"; internal_port=49161; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49161
-[[services]]; protocol="udp"; internal_port=49162; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49162
-[[services]]; protocol="udp"; internal_port=49163; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49163
-[[services]]; protocol="udp"; internal_port=49164; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49164
-[[services]]; protocol="udp"; internal_port=49165; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49165
-[[services]]; protocol="udp"; internal_port=49166; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49166
-[[services]]; protocol="udp"; internal_port=49167; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49167
-[[services]]; protocol="udp"; internal_port=49168; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49168
-[[services]]; protocol="udp"; internal_port=49169; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49169
-[[services]]; protocol="udp"; internal_port=49170; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49170
-[[services]]; protocol="udp"; internal_port=49171; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49171
-[[services]]; protocol="udp"; internal_port=49172; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49172
-[[services]]; protocol="udp"; internal_port=49173; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49173
-[[services]]; protocol="udp"; internal_port=49174; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49174
-[[services]]; protocol="udp"; internal_port=49175; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49175
-[[services]]; protocol="udp"; internal_port=49176; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49176
-[[services]]; protocol="udp"; internal_port=49177; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49177
-[[services]]; protocol="udp"; internal_port=49178; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49178
-[[services]]; protocol="udp"; internal_port=49179; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49179
-[[services]]; protocol="udp"; internal_port=49180; auto_start_machines=true; auto_stop_machines=false; min_machines_running=1
-  [[services.ports]]; port=49180
+# --- UDP relay-порти coturn (49160–49180) ---
+[[services]]
+  protocol = "udp"
+  internal_port = 49160
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49160
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49161
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49161
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49162
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49162
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49163
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49163
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49164
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49164
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49165
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49165
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49166
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49166
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49167
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49167
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49168
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49168
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49169
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49169
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49170
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49170
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49171
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49171
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49172
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49172
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49173
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49173
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49174
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49174
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49175
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49175
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49176
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49176
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49177
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49177
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49178
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49178
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49179
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49179
+
+[[services]]
+  protocol = "udp"
+  internal_port = 49180
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
+  [[services.ports]]
+    port = 49180
