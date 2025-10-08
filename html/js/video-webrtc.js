@@ -43,6 +43,7 @@
   // Експортуємо для консолі
   global.pc = pc;
   global.app = app;
+  global.els = els; // <-- додано для дебагу з консолі
 
   let localStream = null;
   let remoteStream = null;
@@ -146,6 +147,21 @@
     }
   }
 
+  // Форс-прикріплення віддалених треків у разі "німого" старту
+  function attachAllRemoteTracks() {
+    try {
+      const tracks = pc.getReceivers().map(r => r.track).filter(Boolean);
+      if (!tracks.length) return;
+      const ms = new MediaStream(tracks);
+      if (els.remote && els.remote.srcObject !== ms) {
+        els.remote.srcObject = ms;
+        ensureRemoteVideoElementSetup();
+        tryAutoplayRemote();
+        maybeShowUnmute();
+      }
+    } catch {}
+  }
+
   // ---------- Remote media attach ----------
   pc.ontrack = (ev) => {
     const s = (ev.streams && ev.streams[0]) || null;
@@ -164,9 +180,23 @@
       tryAutoplayRemote();
     }
 
+    // Якщо трек був «німий», підчепиться, коли піде перший кадр
+    try {
+      const rcv = pc.getReceivers().find(r => r.track && r.track.id === ev.track?.id);
+      if (rcv && rcv.track) {
+        rcv.track.onunmute = attachAllRemoteTracks;
+        // деякі реалізації мають onstarted
+        rcv.track.onstarted = attachAllRemoteTracks;
+      }
+    } catch {}
+
     maybeShowUnmute();
     setBadge('З’єднано', 'ok');
   };
+
+  // резервні спроби підчепити віддалений потік, якщо ontrack пройшов "німим"
+  setTimeout(attachAllRemoteTracks, 500);
+  setTimeout(attachAllRemoteTracks, 1500);
 
   // ---------- ICE / states ----------
   pc.onicecandidate = ({ candidate }) => {
