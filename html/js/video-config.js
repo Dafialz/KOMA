@@ -2,187 +2,128 @@
 (function (global) {
   'use strict';
 
+  // ---------- Базові налаштування / оточення ----------
   const qs = new URLSearchParams(location.search);
-  const UA_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const role = (qs.get('role') || 'consultant').toLowerCase();         // consultant | client
+  const room = (qs.get('room') || 'KOMA_demo').trim() || 'KOMA_demo';
 
-  // ===== РОЛЬ (consultant | client) =====
-  function detectRole() {
-    const fromQS = (qs.get('role') || '').toLowerCase();
-    if (fromQS === 'consultant' || fromQS === 'client') return fromQS;
-    try {
-      const raw = localStorage.getItem('koma_session');
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s && s.email) return 'consultant';
-      }
-    } catch {}
-    return 'client';
-  }
-  const role = detectRole();
+  // relay: 1 = тільки TURN, 0 = дозволити прямі (host/srflx)
+  const relayParam = qs.get('relay');
+  const FORCE_RELAY = relayParam === '1' ? true : (relayParam === '0' ? false : true);
 
-  // ===== КІМНАТА =====
-  function makeRoomIdFromQS(q) {
-    const r = q.get('room');
-    if (r) return decodeURIComponent(r);
-    const consultant = (q.get('consultant') || '').trim();
-    const date = (q.get('date') || '').trim();
-    const time = (q.get('time') || '').trim();
-    const raw = `${consultant}__${date}__${time}`.replace(/\s+/g, '');
-    return raw || 'KOMA_room';
-  }
-  const room = makeRoomIdFromQS(qs);
+  // proto: tcp|udp|both (за замовчуванням TCP, бо в тебе UDP часто блокується)
+  const proto = (qs.get('proto') || 'tcp').toLowerCase();
+  const WANT_TCP = proto === 'tcp' || proto === 'both' || proto === 'all';
+  const WANT_UDP = proto === 'udp' || proto === 'both' || proto === 'all';
 
-  // ===== SIGNAL URL =====
+  // Сигналінг беремо з data-атрибуту підключеного скрипта
   const scriptTag =
     document.currentScript ||
-    Array.from(document.getElementsByTagName('script')).find(s =>
-      (s.src || '').includes('video-config.js')
-    );
-
-  const DATA_SIGNAL = scriptTag && scriptTag.dataset ? scriptTag.dataset.signal : '';
-  const RENDER_WSS = 'wss://koma-uaue.onrender.com';
-
-  let SIGNAL_URL = '';
-  if (typeof window.KOMA_SIGNAL_URL === 'string' && window.KOMA_SIGNAL_URL.trim()) {
-    SIGNAL_URL = window.KOMA_SIGNAL_URL.trim();
-  } else if (DATA_SIGNAL) {
-    SIGNAL_URL = DATA_SIGNAL.trim();
-  } else if (location.hostname === 'localhost') {
-    SIGNAL_URL = 'ws://localhost:3000';
-  } else {
-    SIGNAL_URL = RENDER_WSS;
+    Array.from(document.getElementsByTagName('script')).find(s => /video-config\.js/.test(s.src));
+  let SIGNAL_URL = (scriptTag && scriptTag.dataset && scriptTag.dataset.signal) || '';
+  if (!SIGNAL_URL) {
+    SIGNAL_URL = (location.hostname === 'localhost') ? 'ws://localhost:3000' : 'wss://koma-uaue.onrender.com';
   }
 
-  // ===== TURN / ICE servers (налаштовано під Fly.io) =====
+  // ---------- Наш TURN на Fly.io ----------
   const TURN_HOST = '37.16.30.199';
-  const TURN_PORT = '3478';
+  const TURN_PORT = 3478;
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
-  const ICE_SERVERS_RAW = [
-    // STUN залишаю лише для режиму all (нижче при relay воно відсікається)
-    { urls: `stun:${TURN_HOST}:${TURN_PORT}` },
-
-    // TURN 3478 udp/tcp — саме це проброшено на Fly
-    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
-    { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
-
-    // НЕ додаємо 443/tcp — на Fly не відкрито і дає 701
-  ];
-
-  const firstUrl = u => (Array.isArray(u) ? u[0] : u);
-
-  function sanitizeIce(list) {
-    return (list || []).filter(s => {
-      try {
-        const u = firstUrl(s?.urls || '');
-        const isTurn = /^turns?:/i.test(u);
-        return !isTurn || (!!s.username && !!s.credential);
-      } catch { return false; }
-    });
+  const ICE_SERVERS_RAW = [];
+  // TURN через UDP (може бути заблоковано в мережі — залишаємо опційно)
+  if (WANT_UDP) {
+    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS });
+  }
+  // TURN через TCP (дефолт)
+  if (WANT_TCP) {
+    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
+    // Проброс на 443/tcp -> 3478 (для суворих фаєрволів)
+    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
   }
 
-  // ===== Політика relay (за замовчуванням увімкнено) =====
-  // ?relay=0 щоб дозволити всі типи кандидатів
-  const FORCE_RELAY = (qs.get('relay') ?? '1') !== '0';
-  const ICE_POLICY = FORCE_RELAY ? 'relay' : 'all';
-
-  // Фільтр транспорту: ?proto=tcp або ?proto=udp
-  const PROTO = (qs.get('proto') || '').toLowerCase(); // '' | 'tcp' | 'udp'
-
-  let ICE_SERVERS = sanitizeIce(ICE_SERVERS_RAW);
-
-  // Якщо relay-only — STUN не потрібен
-  if (ICE_POLICY === 'relay') {
-    ICE_SERVERS = ICE_SERVERS.filter(s => !/^stuns?:/i.test(firstUrl(s.urls || '')));
+  // Додатковий публічний fallback (увімкнути параметром ?fallback=1)
+  if (qs.get('fallback') === '1') {
+    ICE_SERVERS_RAW.push(
+      { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    );
   }
 
-  // Якщо задано ?proto= — відфільтруємо тільки потрібні TURN-рядки
-  if (PROTO === 'tcp' || PROTO === 'udp') {
-    const needle = `transport=${PROTO}`;
-    ICE_SERVERS = ICE_SERVERS.filter(s => {
-      const u = firstUrl(s.urls || '');
-      return /^turns?:/i.test(u) ? u.includes(needle) : true; // STUN пропускаємо тільки в режимі all (вище його вже прибрано для relay)
-    });
-  }
-
-  // Perfect Negotiation: консультант — impolite, клієнт — polite
-  const polite = (role !== 'consultant');
-
-  // ===== Елементи UI
+  // ---------- Елементи інтерфейсу ----------
+  const $ = (id) => document.getElementById(id);
   const els = {
-    local: document.getElementById('local'),
-    remote: document.getElementById('remote'),
-    start: document.getElementById('btnStart'),
-    mic: document.getElementById('btnMic'),
-    cam: document.getElementById('btnCam'),
-    screen: document.getElementById('btnScreen'),
-    fullRemote: document.getElementById('btnFullRemote'),
-    fullLocal: document.getElementById('btnFullLocal'),
-    status: document.getElementById('status'),
-    chatlog: document.getElementById('chatlog'),
-    msg: document.getElementById('msg'),
-    send: document.getElementById('send'),
-    hint: document.getElementById('hint'),
-    unmute: document.getElementById('btnUnmute'),
-    vwrap: document.getElementById('videoWrap'),
-    roomLabel: document.getElementById('roomLabel'),
-    roleLabel: document.getElementById('roleLabel'),
-    inviteNote: document.getElementById('inviteNote'),
+    start: $('btnStart'),
+    mic: $('btnMic'),
+    cam: $('btnCam'),
+    screen: $('btnScreen'),
+    fullRemote: $('btnFullRemote'),
+    fullLocal: $('btnFullLocal'),
+
+    vwrap: $('videoWrap'),
+    remote: $('remote'),
+    local:  $('local'),
+    unmute: $('btnUnmute'),
+
+    status: $('status'),
+    roomLabel: $('roomLabel'),
+    roleLabel: $('roleLabel'),
+
+    chatlog: $('chatlog'),
+    msg: $('msg'),
+    send: $('send'),
+    hint: $('hint'),
+    inviteNote: $('inviteNote'),
   };
 
-  if (els.roomLabel) els.roomLabel.textContent = `Кімната: ${room}`;
-  if (els.roleLabel) els.roleLabel.textContent = `Роль: ${role === 'consultant' ? 'консультант' : 'учасник'}`;
+  // Підіпишемо бейджики кімнати/ролі
+  if (els.roomLabel) els.roomLabel.textContent = 'Кімната: ' + room;
+  if (els.roleLabel) els.roleLabel.textContent = 'Роль: ' + (role === 'consultant' ? 'консультант' : 'учасник');
 
-  function setBadge(text, cls) {
+  // ---------- Утиліти для UI/логу ----------
+  function setBadge(text, type) {
     if (!els.status) return;
     els.status.textContent = text;
-    els.status.className = 'badge ' + (cls || '');
+    els.status.classList.remove('muted','ok','danger');
+    if (type) els.status.classList.add(type);
   }
 
-  function logChat(text, who = 'sys') {
+  function logChat(text, who) {
     if (!els.chatlog) return;
-    const item = document.createElement('div');
-    if (who === 'me') item.className = 'msg me';
-    else if (who === 'peer') item.className = 'msg peer';
-    else item.className = 'msg sys';
-
-    if (who === 'sys') {
-      item.textContent = text;
-    } else {
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = who === 'me' ? 'Я' : 'Співрозмовник';
-      const span = document.createElement('span');
-      span.textContent = text;
-      bubble.appendChild(name);
-      bubble.appendChild(span);
-      item.appendChild(bubble);
-    }
-    els.chatlog.appendChild(item);
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + (who || 'sys');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = String(text || '').replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s]));
+    wrap.appendChild(bubble);
+    els.chatlog.appendChild(wrap);
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
-  try {
-    const info = `[init] room="${room}", role="${role}", relay=${ICE_POLICY}, proto=${PROTO || 'any'}, signal=${SIGNAL_URL}`;
-    console.log(info);
-    console.log('videoApp.ICE_SERVERS (final) = ', ICE_SERVERS);
-    console.log(`servers=${ICE_SERVERS.length}`);
-    if (!ICE_SERVERS.length) {
-      console.warn('WARNING: ICE_SERVERS is empty — перевірте TURN/STUN і параметри relay/proto.');
-    }
-    logChat(info, 'sys');
-  } catch {}
+  // ---------- Експорт у глобальний app ----------
+  const app = (global.videoApp = global.videoApp || {});
+  app.qs = qs;
+  app.role = role;
+  app.room = room;
+  app.els = els;
+  app.setBadge = setBadge;
+  app.logChat = logChat;
+  app.SIGNAL_URL = SIGNAL_URL;
+  app.FORCE_RELAY = FORCE_RELAY;
+  app.UA_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  global.videoApp = {
-    qs, UA_MOBILE, FORCE_RELAY, ICE_POLICY, room, polite, SIGNAL_URL, role,
-    ICE_SERVERS,
-    els,
-    setBadge, logChat,
-    pc: null, txAudio: null, txVideo: null, dc: null,
-    startLocal: null, restartIce: null, bindDataChannel: null,
-    wsSend: null, wsReady: null
-  };
+  // Позначимо, хто "polite" (клієнт), щоб уникати колізій offer/offer
+  app.polite = (role === 'client');
+
+  // Фінальний список ICE-серверів для WebRTC-стека
+  app.ICE_SERVERS = ICE_SERVERS_RAW.slice();
+
+  // Трохи дебага в консоль
+  console.log('[init] room="%s", role="%s", relay=%s, proto=%s, signal=%s',
+    room, role, FORCE_RELAY ? 'relay' : 'all', proto, SIGNAL_URL);
+  console.log('videoApp.ICE_SERVERS (final) = ', app.ICE_SERVERS);
+  console.log('servers=' + (app.ICE_SERVERS || []).length);
+
 })(window);

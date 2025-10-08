@@ -35,16 +35,14 @@ primary_region = "fra"
     port = 443
 
 # --- UDP relay-порти coturn (49160–49180) ---
-# Потрібні, щоб публічний трафік на ці порти доходив до машини.
-# Якщо змінюватимеш MIN/MAX у coturn, віддзеркаль — додай/забери блоки нижче.
-
 [[services]]  # 49160/udp
   protocol = "udp"
   internal_port = 49160
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49160 }
+  [[services.ports]]
+    port = 49160
 
 [[services]]  # 49161/udp
   protocol = "udp"
@@ -52,7 +50,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49161 }
+  [[services.ports]]
+    port = 49161
 
 [[services]]  # 49162/udp
   protocol = "udp"
@@ -60,7 +59,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49162 }
+  [[services.ports]]
+    port = 49162
 
 [[services]]  # 49163/udp
   protocol = "udp"
@@ -68,7 +68,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49163 }
+  [[services.ports]]
+    port = 49163
 
 [[services]]  # 49164/udp
   protocol = "udp"
@@ -76,7 +77,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49164 }
+  [[services.ports]]
+    port = 49164
 
 [[services]]  # 49165/udp
   protocol = "udp"
@@ -84,7 +86,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49165 }
+  [[services.ports]]
+    port = 49165
 
 [[services]]  # 49166/udp
   protocol = "udp"
@@ -92,7 +95,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49166 }
+  [[services.ports]]
+    port = 49166
 
 [[services]]  # 49167/udp
   protocol = "udp"
@@ -100,7 +104,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49167 }
+  [[services.ports]]
+    port = 49167
 
 [[services]]  # 49168/udp
   protocol = "udp"
@@ -108,7 +113,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49168 }
+  [[services.ports]]
+    port = 49168
 
 [[services]]  # 49169/udp
   protocol = "udp"
@@ -116,7 +122,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49169 }
+  [[services.ports]]
+    port = 49169
 
 [[services]]  # 49170/udp
   protocol = "udp"
@@ -124,7 +131,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49170 }
+  [[services.ports]]
+    port = 49170
 
 [[services]]  # 49171/udp
   protocol = "udp"
@@ -132,7 +140,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49171 }
+  [[services.ports]]
+    port = 49171
 
 [[services]]  # 49172/udp
   protocol = "udp"
@@ -140,7 +149,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49172 }
+  [[services.ports]]
+    port = 49172
 
 [[services]]  # 49173/udp
   protocol = "udp"
@@ -148,7 +158,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49173 }
+  [[services.ports]]
+    port = 49173
 
 [[services]]  # 49174/udp
   protocol = "udp"
@@ -156,7 +167,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49174 }
+  [[services.ports]]
+    port = 49174
 
 [[services]]  # 49175/udp
   protocol = "udp"
@@ -164,7 +176,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49175 }
+  [[services.ports]]
+    port = 49175
 
 [[services]]  # 49176/udp
   protocol = "udp"
@@ -172,7 +185,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49176 }
+  [[services.ports]]
+    port = 49176
 
 [[services]]  # 49177/udp
   protocol = "udp"
@@ -180,7 +194,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49177 }
+  [[services.ports]]
+    port = 49177
 
 [[services]]  # 49178/udp
   protocol = "udp"
@@ -188,7 +203,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49178 }
+  [[services.ports]]
+    port = 49178
 
 [[services]]  # 49179/udp
   protocol = "udp"
@@ -196,7 +212,8 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49179 }
+  [[services.ports]]
+    port = 49179
 
 [[services]]  # 49180/udp
   protocol = "udp"
@@ -204,4 +221,5 @@ primary_region = "fra"
   auto_start_machines = true
   auto_stop_machines = false
   min_machines_running = 1
-  [[services.ports]] { port = 49180 }
+  [[services.ports]]
+    port = 49180

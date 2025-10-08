@@ -4,20 +4,20 @@
   const app = global.videoApp;
   const { els, room, SIGNAL_URL, FORCE_RELAY, setBadge, logChat } = app;
 
-  // Унікальний ідентифікатор цього табу (щоб не ловити власні WS-повідомлення)
+  // Унікальний id цього табу (щоб не ловити власні WS-повідомлення)
   const myId = Math.random().toString(36).slice(2);
 
-  // ---------- ICE servers / policy (можна підмінити власними через app.ICE_SERVERS) ----------
+  // ---------- ICE servers / policy ----------
+  // Якщо app.ICE_SERVERS не задано — використаємо публічні fallback-и
   const FALLBACK_ICE = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
-    // Публічний TURN на випадок тестів. Для продакшену постав свій.
     { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ];
   const ICE_SERVERS = Array.isArray(app.ICE_SERVERS) && app.ICE_SERVERS.length ? app.ICE_SERVERS : FALLBACK_ICE;
 
-  // Політика relay: ?relay=1 (тільки TURN) | ?relay=0 (усе) | інакше FORCE_RELAY | 'all'
+  // Політика relay: ?relay=1 (тільки TURN) | ?relay=0 (усе) | за замовчуванням береться FORCE_RELAY
   const qsRelay = app.qs && app.qs.get('relay');
   const ICE_POLICY =
     qsRelay === '1' ? 'relay' :
@@ -125,7 +125,6 @@
 
   // ---------- negotiationneeded ----------
   pc.onnegotiationneeded = async () => {
-    // Важливо: offer робить лише ініціатор (consultant). Polite-сторона чекає.
     if (makingOffer || pc.signalingState !== 'stable') return;
     if (app.polite) {
       logChat('Пропускаю negotiation: я polite (чекаю offer від співрозмовника)', 'sys');
@@ -147,7 +146,7 @@
       offerRetries = 0;
       clearTimeout(answerTimer);
 
-      // Показати обрану ICE-пару (чи реально через TURN)
+      // Показати обрану ICE-пару
       try {
         const stats = await pc.getStats();
         stats.forEach(r => {
@@ -232,11 +231,7 @@
 
   // ---------- Offer / Answer ----------
   async function createAndSendOffer() {
-    // Додатковий гард: тільки ініціатор створює перший offer
-    if (app.polite) {
-      logChat('Не створюю offer: я polite', 'sys');
-      return;
-    }
+    if (app.polite) { logChat('Не створюю offer: я polite', 'sys'); return; }
     if (pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
@@ -279,7 +274,6 @@
 
   // М’яка ресинхронізація, якщо answer прийшов не у have-local-offer
   async function acceptAnswer(answerDesc) {
-    // Нормальний шлях
     if (pc.signalingState === 'have-local-offer') {
       try {
         await pc.setRemoteDescription(answerDesc);
@@ -290,8 +284,6 @@
       }
       return;
     }
-
-    // Фолбек: отримали answer у "stable" чи іншому стані → ре-синхронізація
     logChat('Отримав answer у стані ' + pc.signalingState + ' — ігнорую та прошу повторне узгодження', 'sys');
     try {
       if (pc.signalingState !== 'closed') {
