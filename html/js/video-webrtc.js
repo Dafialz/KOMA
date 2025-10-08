@@ -107,11 +107,11 @@
     if (els.remote && els.remote.srcObject !== stream) {
       els.remote.srcObject = stream;
       els.remote.playsInline = true;
-      // за замовчуванням глушимо, щоб розблокувати кнопкою «Unmute»
+      // ВАЖЛИВО: запускаємо у muted, інакше мобільні/Chrome блокують автоплей
       els.remote.muted = true;
       const tryPlay = () => {
         if (els.remote.paused) {
-          els.remote.play().catch(()=>{}); // браузер міг заблокувати автоплей
+          els.remote.play().catch(()=>{}); // якщо заблоковано — розм’ютимо кнопкою
         }
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
@@ -121,7 +121,7 @@
     setBadge('З’єднано', 'ok');
   };
 
-  // ---------- ICE ----------
+  // ---------- ICE / states ----------
   pc.onicecandidate = ({ candidate }) => {
     if (candidate) wsSend({ type: 'ice', room, payload: candidate, from: myId });
   };
@@ -135,9 +135,28 @@
   pc.onsignalingstatechange = () => {
     logChat('Signaling: ' + pc.signalingState, 'sys');
   };
-  pc.onconnectionstatechange = () => {
+  pc.onconnectionstatechange = async () => {
     const st = pc.connectionState;
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
+    if (st === 'connected') {
+      try {
+        const stats = await pc.getStats();
+        stats.forEach(r => {
+          if (r.type === 'candidate-pair' && r.selected) {
+            const lp = stats.get(r.localCandidateId);
+            const rp = stats.get(r.remoteCandidateId);
+            logChat(`Selected pair: ${lp?.candidateType}(${lp?.protocol}) ⇄ ${rp?.candidateType}`, 'sys');
+          }
+        });
+      } catch {}
+    }
+  };
+
+  // Ініціатор робить офер сам, якщо браузер підняв negotiationneeded
+  pc.onnegotiationneeded = async () => {
+    if (app.polite) return;                 // лише ініціатор
+    if (pc.signalingState !== 'stable') return;
+    await createAndSendOffer();
   };
 
   // ---------- DataChannel ----------
@@ -245,7 +264,6 @@
   async function wsSend(obj) {
     if (!ws || ws.readyState !== 1) {
       outbox.push(obj);
-      // чекаємо відкриття, але не зриваємо виконання
       try { await app.wsReady; } catch {}
     }
     if (ws && ws.readyState === 1) {
