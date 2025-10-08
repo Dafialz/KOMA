@@ -77,8 +77,17 @@
 
     const a = localStream.getAudioTracks()[0] || null;
     const v = localStream.getVideoTracks()[0] || null;
-    if (a) await txAudio.sender.replaceTrack(a);
-    if (v) await txVideo.sender.replaceTrack(v);
+
+    if (a) {
+      await txAudio.sender.replaceTrack(a);
+      // КРИТИЧНО: вшиваємо MSID потоку
+      try { txAudio.sender.setStreams(localStream); } catch {}
+    }
+    if (v) {
+      await txVideo.sender.replaceTrack(v);
+      // КРИТИЧНО: вшиваємо MSID потоку
+      try { txVideo.sender.setStreams(localStream); } catch {}
+    }
 
     if (els.local) {
       els.local.srcObject = localStream;
@@ -114,7 +123,6 @@
       }
     };
     tryPlay();
-    // дубль страхувок
     setTimeout(tryPlay, 300);
     els.remote.addEventListener('loadeddata', tryPlay, { once: true });
   }
@@ -131,13 +139,10 @@
   }
 
   pc.ontrack = (ev) => {
-    // Варіант 1: браузер дав готовий stream
     const s = (ev.streams && ev.streams[0]) || null;
-
     if (s) {
       if (!remoteStream || remoteStream.id !== s.id) remoteStream = s;
     } else {
-      // Варіант 2: приходить лише трек — самі збираємо MediaStream
       if (!remoteStream) remoteStream = new MediaStream();
       if (ev.track && !remoteStream.getTracks().find(t => t.id === ev.track.id)) {
         remoteStream.addTrack(ev.track);
@@ -168,7 +173,7 @@
   pc.onsignalingstatechange = () => {
     logChat('Signaling: ' + pc.signalingState, 'sys');
   };
-  pc.onconnectionstatechange = async () => {
+  pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
   };
@@ -364,10 +369,8 @@
         if (r.type === 'outbound-rtp' && r.kind === 'video' && !r.isRemote) outV = r;
         if (r.type === 'inbound-rtp'  && r.kind === 'video' && !r.isRemote) inV = r;
       });
-      const rx = inV ? `↓ video: pkts=${inV.packetsReceived} kbps=${Math.round((inV.bytesReceived*8)/1000/ ( (inV.timestamp - (inV._ts||inV.timestamp-2000)) / 1000 ))}` : '↓ video: n/a';
-      const tx = outV ? `↑ video: pkts=${outV.packetsSent} kbps=${Math.round((outV.bytesSent*8)/1000/ ( (outV.timestamp - (outV._ts||outV.timestamp-2000)) / 1000 ))}` : '↑ video: n/a';
-      if (inV) inV._ts = inV.timestamp;
-      if (outV) outV._ts = outV.timestamp;
+      const rx = inV ? `↓ video: pkts=${inV.packetsReceived}` : '↓ video: n/a';
+      const tx = outV ? `↑ video: pkts=${outV.packetsSent}` : '↑ video: n/a';
 
       const recvStates = pc.getReceivers().map(r=>({
         kind: r.track?.kind, muted: r.track?.muted, enabled: r.track?.enabled,
@@ -375,7 +378,6 @@
       }));
       logChat(`${tx} | ${rx} | rxTracks=${JSON.stringify(recvStates)}`, 'sys');
 
-      // якщо відео «є», але DOM не рендерить — спробуємо підштовхнути
       if (els.remote && els.remote.srcObject && els.remote.readyState < 2) {
         tryAutoplayRemote();
       }
