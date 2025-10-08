@@ -8,7 +8,6 @@
   const myId = Math.random().toString(36).slice(2);
 
   // ---------- ICE servers / policy ----------
-  // Якщо app.ICE_SERVERS не задано — використаємо публічні fallback-и
   const FALLBACK_ICE = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
     { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -17,7 +16,6 @@
   ];
   const ICE_SERVERS = Array.isArray(app.ICE_SERVERS) && app.ICE_SERVERS.length ? app.ICE_SERVERS : FALLBACK_ICE;
 
-  // Політика relay: ?relay=1 (тільки TURN) | ?relay=0 (усе) | за замовчуванням береться FORCE_RELAY
   const qsRelay = app.qs && app.qs.get('relay');
   const ICE_POLICY =
     qsRelay === '1' ? 'relay' :
@@ -40,9 +38,9 @@
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
 
   let localStream, dc;
-  let makingOffer = false;                   // Perfect Negotiation
-  let isSettingRemoteAnswerPending = false;  // Perfect Negotiation
-  let ignoreOffer = false;                   // Perfect Negotiation
+  let makingOffer = false;
+  let isSettingRemoteAnswerPending = false;
+  let ignoreOffer = false;
   let isUnloading = false;
   let iceProbe = null;
 
@@ -62,7 +60,7 @@
           try {
             const offer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(offer);
-            wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
+            await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
             logChat('Надсилаю повторний offer (iceRestart)', 'sys');
             scheduleAnswerWaitProbe();
           } catch (e) {
@@ -108,11 +106,12 @@
     if (!stream) return;
 
     if (els.remote && els.remote.srcObject !== stream) {
+      // глушимо звук для автозапуску, а кнопкою "Розблокувати звук" дозволяємо
       els.remote.muted = true;
       els.remote.srcObject = stream;
       const tryPlay = () => {
         if (els.remote.paused) {
-          els.remote.play().catch(() => {});
+          els.remote.play().catch(() => {}); // блокує браузер — нехай спрацює кнопка Unmute
         }
         els.remote.removeEventListener('loadedmetadata', tryPlay);
       };
@@ -238,7 +237,7 @@
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
-      wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
+      await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
       offerRetries = 0;
       scheduleAnswerWaitProbe();
     } catch (err) {
@@ -264,7 +263,7 @@
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       logChat('Надіслав answer', 'sys');
-      wsSend({ type: 'answer', room, payload: pc.localDescription, from: myId });
+      await wsSend({ type: 'answer', room, payload: pc.localDescription, from: myId });
     } catch (err) {
       logChat('acceptOffer error: ' + (err.message || err.name), 'sys');
     } finally {
@@ -272,7 +271,6 @@
     }
   }
 
-  // М’яка ресинхронізація, якщо answer прийшов не у have-local-offer
   async function acceptAnswer(answerDesc) {
     if (pc.signalingState === 'have-local-offer') {
       try {
@@ -289,7 +287,7 @@
       if (pc.signalingState !== 'closed') {
         const offer = await pc.createOffer({ iceRestart: false });
         await pc.setLocalDescription(offer);
-        wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
+        await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
         logChat('Надіслав повторний offer для ресинхронізації', 'sys');
         scheduleAnswerWaitProbe();
       }
@@ -306,7 +304,7 @@
       if (pc.signalingState === 'closed') return;
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
-      wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
+      await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
       scheduleAnswerWaitProbe();
     } catch (e) {
       console.warn('ICE restart failed', e);
@@ -323,8 +321,24 @@
   }
   resetWsReady();
 
-  function wsSend(obj) {
-    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  // Черга на випадок, коли WS ще не відкрився / перепід’єднується
+  const outbox = [];
+  async function wsSend(obj) {
+    // чекаємо на відкрите з’єднання
+    if (!ws || ws.readyState !== 1) {
+      outbox.push(obj);
+      await app.wsReady.catch(() => {}); // якщо раптом відхилиться — просто мовчки
+    }
+    if (ws && ws.readyState === 1) {
+      try { ws.send(JSON.stringify(obj)); } catch { /* ignore */ }
+    }
+  }
+  function wsFlush() {
+    if (!outbox.length || !ws || ws.readyState !== 1) return;
+    while (outbox.length) {
+      const obj = outbox.shift();
+      try { ws.send(JSON.stringify(obj)); } catch { break; }
+    }
   }
 
   let reconnectTimer = null;
@@ -335,6 +349,7 @@
     ws.addEventListener('open', () => {
       wsReadyResolve?.();
       wsSend({ type: 'join', room, from: myId });
+      wsFlush();
       if (els.hint) els.hint.textContent = 'Під’єднуйтесь і чекайте на співрозмовника.';
       logChat('Під’єднано до сигналінгу', 'sys');
     });
@@ -378,10 +393,8 @@
     ws.addEventListener('close', () => {
       logChat('Сигналінг відключено', 'sys');
       if (!isUnloading) {
-        reconnectTimer = setTimeout(() => {
-          resetWsReady();
-          connectWS();
-        }, 1500);
+        resetWsReady();
+        reconnectTimer = setTimeout(() => connectWS(), 1500);
       }
     });
 
@@ -393,12 +406,11 @@
 
   // ---------- Допоміжне ----------
   function maybeShowUnmute() {
-    if (!app.UA_MOBILE || !els.vwrap) return;
+    if (!els.vwrap) return;
     els.vwrap.classList.add('has-unmute');
     if (els.unmute) {
       els.unmute.addEventListener('click', () => {
-        els.remote.muted = false;
-        els.remote.play().catch(() => {});
+        try { els.remote.muted = false; els.remote.play().catch(()=>{}); } catch {}
         els.vwrap.classList.remove('has-unmute');
       }, { once: true });
     }

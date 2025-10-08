@@ -2,54 +2,65 @@
 (function (global) {
   'use strict';
 
-  // ---------- Базові налаштування / оточення ----------
-  const qs = new URLSearchParams(location.search);
-  const role = (qs.get('role') || 'consultant').toLowerCase();         // consultant | client
+  // ---------- Параметри з URL ----------
+  const qs   = new URLSearchParams(location.search);
+  const role = (qs.get('role') || 'consultant').toLowerCase();           // consultant | client
   const room = (qs.get('room') || 'KOMA_demo').trim() || 'KOMA_demo';
 
-  // relay: 1 = тільки TURN, 0 = дозволити прямі (host/srflx)
-  const relayParam = qs.get('relay');
-  const FORCE_RELAY = relayParam === '1' ? true : (relayParam === '0' ? false : true);
+  // relay: 1 = тільки TURN, 0 = дозволити host/srflx; за замовчуванням ТІЛЬКИ relay
+  const relayParam  = (qs.get('relay') || '').toLowerCase();
+  const FORCE_RELAY = (relayParam === '0' || relayParam === 'false') ? false : true;
 
-  // proto: tcp|udp|both (за замовчуванням TCP, бо в тебе UDP часто блокується)
-  const proto = (qs.get('proto') || 'tcp').toLowerCase();
-  const WANT_TCP = proto === 'tcp' || proto === 'both' || proto === 'all';
-  const WANT_UDP = proto === 'udp' || proto === 'both' || proto === 'all';
+  // proto: tcp|udp|auto (або both/all) — за замовчуванням TCP (краще проходить фаєрволи)
+  const proto     = (qs.get('proto') || 'tcp').toLowerCase();
+  const WANT_TCP  = ['tcp','both','all','auto'].includes(proto);
+  const WANT_UDP  = ['udp','both','all','auto'].includes(proto);
 
-  // Сигналінг беремо з data-атрибуту підключеного скрипта
+  // ---------- Сигналінг ----------
   const scriptTag =
     document.currentScript ||
     Array.from(document.getElementsByTagName('script')).find(s => /video-config\.js/.test(s.src));
   let SIGNAL_URL = (scriptTag && scriptTag.dataset && scriptTag.dataset.signal) || '';
   if (!SIGNAL_URL) {
-    SIGNAL_URL = (location.hostname === 'localhost') ? 'ws://localhost:3000' : 'wss://koma-uaue.onrender.com';
+    SIGNAL_URL = (location.hostname === 'localhost')
+      ? 'ws://localhost:3000'
+      : 'wss://koma-uaue.onrender.com';
   }
 
   // ---------- Наш TURN на Fly.io ----------
+  // Публічний IPv4, який ти виділив на Fly
   const TURN_HOST = '37.16.30.199';
   const TURN_PORT = 3478;
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
   const ICE_SERVERS_RAW = [];
-  // TURN через UDP (може бути заблоковано в мережі — залишаємо опційно)
-  if (WANT_UDP) {
-    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS });
-  }
-  // TURN через TCP (дефолт)
+
+  // Пріоритет 443/tcp -> 3478/tcp -> 3478/udp
   if (WANT_TCP) {
-    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
-    // Проброс на 443/tcp -> 3478 (для суворих фаєрволів)
-    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
+    ICE_SERVERS_RAW.push(
+      { urls: `turn:${TURN_HOST}:443?transport=tcp`,   username: TURN_USER, credential: TURN_PASS },
+      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
+    );
+  }
+  if (WANT_UDP) {
+    ICE_SERVERS_RAW.push(
+      { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
+    );
   }
 
-  // Додатковий публічний fallback (увімкнути параметром ?fallback=1)
+  // Додатковий публічний fallback (увімкнути параметром ?fallback=1) — НЕ для продакшена
   if (qs.get('fallback') === '1') {
     ICE_SERVERS_RAW.push(
       { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     );
+  }
+
+  // Якщо раптом все відфільтрували і масив пустий — даємо хоча б 443/tcp
+  if (ICE_SERVERS_RAW.length === 0) {
+    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
   }
 
   // ---------- Елементи інтерфейсу ----------
@@ -78,11 +89,10 @@
     inviteNote: $('inviteNote'),
   };
 
-  // Підіпишемо бейджики кімнати/ролі
   if (els.roomLabel) els.roomLabel.textContent = 'Кімната: ' + room;
   if (els.roleLabel) els.roleLabel.textContent = 'Роль: ' + (role === 'consultant' ? 'консультант' : 'учасник');
 
-  // ---------- Утиліти для UI/логу ----------
+  // ---------- Утиліти для UI ----------
   function setBadge(text, type) {
     if (!els.status) return;
     els.status.textContent = text;
@@ -104,26 +114,24 @@
 
   // ---------- Експорт у глобальний app ----------
   const app = (global.videoApp = global.videoApp || {});
-  app.qs = qs;
-  app.role = role;
-  app.room = room;
-  app.els = els;
-  app.setBadge = setBadge;
-  app.logChat = logChat;
-  app.SIGNAL_URL = SIGNAL_URL;
-  app.FORCE_RELAY = FORCE_RELAY;
-  app.UA_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  app.qs          = qs;
+  app.role        = role;
+  app.room        = room;
+  app.els         = els;
+  app.setBadge    = setBadge;
+  app.logChat     = logChat;
+  app.SIGNAL_URL  = SIGNAL_URL;
+  app.FORCE_RELAY = FORCE_RELAY;             // true => iceTransportPolicy:'relay'
+  app.UA_MOBILE   = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  app.PROTO       = proto;                   // зручно бачити у логах/в UI
 
-  // Позначимо, хто "polite" (клієнт), щоб уникати колізій offer/offer
-  app.polite = (role === 'client');
-
-  // Фінальний список ICE-серверів для WebRTC-стека
+  // Фінальний список ICE-серверів
   app.ICE_SERVERS = ICE_SERVERS_RAW.slice();
 
-  // Трохи дебага в консоль
+  // Дебаг у консоль
   console.log('[init] room="%s", role="%s", relay=%s, proto=%s, signal=%s',
     room, role, FORCE_RELAY ? 'relay' : 'all', proto, SIGNAL_URL);
   console.log('videoApp.ICE_SERVERS (final) = ', app.ICE_SERVERS);
-  console.log('servers=' + (app.ICE_SERVERS || []).length);
+  console.log('servers=' + app.ICE_SERVERS.length);
 
 })(window);

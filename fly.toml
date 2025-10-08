@@ -14,7 +14,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# --- TURN 3478/TCP (fallback, коли UDP блокується) ---
+# --- TURN 3478/TCP (коли UDP блокується) ---
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -24,7 +24,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 3478
 
-# --- ДОДАТКОВО: TCP 443 -> 3478 (для суворих мереж) ---
+# --- ДОДАТКОВО: TCP 443 -> 3478 (для суворих мереж, БЕЗ TLS-термінації) ---
 [[services]]
   protocol = "tcp"
   internal_port = 3478
@@ -35,7 +35,8 @@ primary_region = "fra"
     port = 443
 
 # --- UDP relay-порти coturn (49160–49180) ---
-[[services]]  # 49160/udp
+# TURN через TCP теж виділяє UDP-реле адреси, тому тут достатньо лише UDP-діапазону.
+[[services]]
   protocol = "udp"
   internal_port = 49160
   auto_start_machines = true
@@ -44,7 +45,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49160
 
-[[services]]  # 49161/udp
+[[services]]
   protocol = "udp"
   internal_port = 49161
   auto_start_machines = true
@@ -53,7 +54,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49161
 
-[[services]]  # 49162/udp
+[[services]]
   protocol = "udp"
   internal_port = 49162
   auto_start_machines = true
@@ -62,7 +63,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49162
 
-[[services]]  # 49163/udp
+[[services]]
   protocol = "udp"
   internal_port = 49163
   auto_start_machines = true
@@ -71,7 +72,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49163
 
-[[services]]  # 49164/udp
+[[services]]
   protocol = "udp"
   internal_port = 49164
   auto_start_machines = true
@@ -80,7 +81,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49164
 
-[[services]]  # 49165/udp
+[[services]]
   protocol = "udp"
   internal_port = 49165
   auto_start_machines = true
@@ -89,7 +90,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49165
 
-[[services]]  # 49166/udp
+[[services]]
   protocol = "udp"
   internal_port = 49166
   auto_start_machines = true
@@ -98,7 +99,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49166
 
-[[services]]  # 49167/udp
+[[services]]
   protocol = "udp"
   internal_port = 49167
   auto_start_machines = true
@@ -107,7 +108,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49167
 
-[[services]]  # 49168/udp
+[[services]]
   protocol = "udp"
   internal_port = 49168
   auto_start_machines = true
@@ -116,7 +117,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49168
 
-[[services]]  # 49169/udp
+[[services]]
   protocol = "udp"
   internal_port = 49169
   auto_start_machines = true
@@ -125,7 +126,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49169
 
-[[services]]  # 49170/udp
+[[services]]
   protocol = "udp"
   internal_port = 49170
   auto_start_machines = true
@@ -134,7 +135,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49170
 
-[[services]]  # 49171/udp
+[[services]]
   protocol = "udp"
   internal_port = 49171
   auto_start_machines = true
@@ -143,7 +144,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49171
 
-[[services]]  # 49172/udp
+[[services]]
   protocol = "udp"
   internal_port = 49172
   auto_start_machines = true
@@ -152,7 +153,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49172
 
-[[services]]  # 49173/udp
+[[services]]
   protocol = "udp"
   internal_port = 49173
   auto_start_machines = true
@@ -161,7 +162,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49173
 
-[[services]]  # 49174/udp
+[[services]]
   protocol = "udp"
   internal_port = 49174
   auto_start_machines = true
@@ -170,7 +171,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49174
 
-[[services]]  # 49175/udp
+[[services]]
   protocol = "udp"
   internal_port = 49175
   auto_start_machines = true
@@ -179,7 +180,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49175
 
-[[services]]  # 49176/udp
+[[services]]
   protocol = "udp"
   internal_port = 49176
   auto_start_machines = true
@@ -188,7 +189,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49176
 
-[[services]]  # 49177/udp
+[[services]]
   protocol = "udp"
   internal_port = 49177
   auto_start_machines = true
@@ -197,7 +198,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49177
 
-[[services]]  # 49178/udp
+[[services]]
   protocol = "udp"
   internal_port = 49178
   auto_start_machines = true
@@ -206,7 +207,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49178
 
-[[services]]  # 49179/udp
+[[services]]
   protocol = "udp"
   internal_port = 49179
   auto_start_machines = true
@@ -215,7 +216,7 @@ primary_region = "fra"
   [[services.ports]]
     port = 49179
 
-[[services]]  # 49180/udp
+[[services]]
   protocol = "udp"
   internal_port = 49180
   auto_start_machines = true
