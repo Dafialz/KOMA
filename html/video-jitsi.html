@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Відеочат — KOMA (Jitsi)</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0b1320; color: #e8eefc; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .wrap { display: flex; flex-direction: column; height: 100%; }
+    header { padding: 10px 14px; background: #0f1a33; border-bottom: 1px solid #1e2a4a; display:flex; gap:12px; align-items:center; }
+    header .badge { padding:4px 8px; border-radius:999px; background:#21345e; font-size:12px; }
+    header a { color:#a6c8ff; text-decoration:none; }
+    #meet { flex: 1 1 auto; }
+    .toolbar { padding:8px 12px; background:#0f1a33; border-top:1px solid #1e2a4a; display:flex; gap:8px; align-items:center; }
+    .btn { background:#1b2b52; border:1px solid #2a4176; color:#e8eefc; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    .btn:hover { background:#213b72; }
+    input.link { flex:1; background:#0b1320; color:#e8eefc; border:1px solid #2a4176; border-radius:8px; padding:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <strong>KOMA</strong>
+      <span class="badge" id="roomBadge">room: —</span>
+      <span class="badge" id="nameBadge">you: —</span>
+      <span style="flex:1"></span>
+      <a href="#" id="copyInvite">скопіювати інвайт</a>
+    </header>
+
+    <div id="meet"></div>
+
+    <div class="toolbar">
+      <input id="inviteLink" class="link" readonly />
+      <button class="btn" id="btnCopy">Копіювати</button>
+    </div>
+  </div>
+
+  <!-- Jitsi External API -->
+  <script src="https://meet.jit.si/external_api.js"></script>
+  <script>
+    (function () {
+      const qs = new URLSearchParams(location.search);
+      // кімната — обов'язково: однакова для обох
+      const room = (qs.get('room') || 'KOMA_demo').trim() || 'KOMA_demo';
+      // ім'я користувача (для бейджу у дзвінку)
+      const name = (qs.get('name') || 'Guest').trim() || 'Guest';
+      // можна задати мову інтерфейсу (uk, en, ru, ...)
+      const lang = (qs.get('lang') || 'uk').toLowerCase();
+
+      document.getElementById('roomBadge').textContent = 'room: ' + room;
+      document.getElementById('nameBadge').textContent = 'you: ' + name;
+
+      const domain = 'meet.jit.si'; // публічний кластер Jitsi
+      const options = {
+        roomName: room,
+        parentNode: document.getElementById('meet'),
+        width: '100%',
+        height: '100%',
+        userInfo: { displayName: name },
+        configOverwrite: {
+          prejoinPageEnabled: false,   // одразу в кімнату
+          disableDeepLinking: true,
+          defaultLanguage: lang,
+        },
+        interfaceConfigOverwrite: {
+          MOBILE_APP_PROMO: false,
+          DEFAULT_REMOTE_DISPLAY_NAME: 'Співрозмовник',
+          SHOW_JITSI_WATERMARK: false,
+          SHOW_BRAND_WATERMARK: false,
+          SHOW_POWERED_BY: false
+        }
+      };
+
+      const api = new JitsiMeetExternalAPI(domain, options);
+
+      // інвайт-лінк
+      const invite = `${location.origin}${location.pathname}?room=${encodeURIComponent(room)}&name=Guest`;
+      const linkEl = document.getElementById('inviteLink');
+      linkEl.value = invite;
+      const copy = () => { linkEl.select(); document.execCommand('copy'); };
+      document.getElementById('btnCopy').onclick = copy;
+      document.getElementById('copyInvite').onclick = (e)=>{ e.preventDefault(); copy(); };
+
+      // автофулскрін на мобілках (опціонально)
+      api.addEventListener('videoConferenceJoined', () => {
+        // можна підставити будь-яку дод. логіку
+        console.log('Joined:', room, name);
+      });
+    })();
+  </script>
+</body>
+</html>
