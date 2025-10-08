@@ -11,8 +11,8 @@
   const relayParam  = (qs.get('relay') || '').toLowerCase();
   const FORCE_RELAY = (relayParam === '0' || relayParam === 'false') ? false : true;
 
-  // proto: tcp|udp|auto (або both/all) — за замовчуванням TCP (краще проходить фаєрволи)
-  const proto     = (qs.get('proto') || 'tcp').toLowerCase();
+  // proto: tcp|udp|auto (або both/all) — за замовчуванням AUTO (щоб було і tcp, і udp)
+  const proto     = (qs.get('proto') || 'auto').toLowerCase();
   const WANT_TCP  = ['tcp','both','all','auto'].includes(proto);
   const WANT_UDP  = ['udp','both','all','auto'].includes(proto);
 
@@ -28,7 +28,6 @@
   }
 
   // ---------- Наш TURN на Fly.io ----------
-  // Публічний IPv4 твого інстанса на Fly
   const TURN_HOST = '37.16.30.199';
   const TURN_PORT = 3478;
   const TURN_USER = 'myuser';
@@ -36,9 +35,10 @@
 
   const ICE_SERVERS_RAW = [];
 
-  // ТІЛЬКИ 3478 (без 443). Порядок: tcp -> udp
+  // Порядок: спершу TCP:443 (макс. прохідність), потім TCP:3478, потім UDP:3478
   if (WANT_TCP) {
     ICE_SERVERS_RAW.push(
+      { urls: `turn:${TURN_HOST}:443?transport=tcp`,  username: TURN_USER, credential: TURN_PASS },
       { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS },
     );
   }
@@ -48,7 +48,7 @@
     );
   }
 
-  // Додатковий публічний fallback (увімкнути параметром ?fallback=1) — тільки для дебага
+  // Додатковий публічний fallback (?fallback=1) — тільки для дебага
   if (qs.get('fallback') === '1') {
     ICE_SERVERS_RAW.push(
       { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -57,9 +57,9 @@
     );
   }
 
-  // Якщо все відфільтрували і масив пустий — підстрахуємось tcp:3478
+  // Якщо після фільтру масив порожній — підстрахуємось tcp:443
   if (ICE_SERVERS_RAW.length === 0) {
-    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
+    ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
   }
 
   // ---------- Елементи інтерфейсу ----------
@@ -123,7 +123,7 @@
   app.FORCE_RELAY = FORCE_RELAY;             // true => iceTransportPolicy:'relay'
   app.UA_MOBILE   = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   app.PROTO       = proto;                   // зручно бачити у логах/в UI
-  app.polite      = (role === 'client');     // клієнт приймає чужий offer; консультант ініціює
+  app.polite      = (role === 'client');     // клієнт приймає offer і шле answer
 
   // Фінальний список ICE-серверів
   app.ICE_SERVERS = ICE_SERVERS_RAW.slice();
