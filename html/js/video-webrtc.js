@@ -38,7 +38,7 @@
     bundlePolicy: 'max-bundle',
     rtcpMuxPolicy: 'require',
     iceCandidatePoolSize: 2,
-    sdpSemantics: 'unified-plan',          // гарантовано Unified Plan
+    sdpSemantics: 'unified-plan',
   });
 
   // Доступно з консолі
@@ -53,48 +53,19 @@
   let ignoreOffer = false;
   let isUnloading = false;
 
-  // Трансивери: фіксуємо порядок m-lines (audio -> video)
-  const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
-  const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
-
-  // Спроба пріоритезувати H264 (краще для iOS/Safari/деяких ПК)
-  try {
-    const caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
-    if (caps && caps.codecs && txVideo.setCodecPreferences) {
-      const h264 = caps.codecs.filter(c => /video\/h264/i.test(c.mimeType));
-      const rest = caps.codecs.filter(c => !/video\/h264/i.test(c.mimeType));
-      if (h264.length) txVideo.setCodecPreferences([...h264, ...rest]);
-      logChat(`Codec pref: H264 first (${h264.length})`, 'sys');
-    }
-  } catch {}
-
-  // ── Допоміжне: гарантуємо MSID на всіх sender-ах ───────────────────────────
-  function ensureSenderStreams() {
-    // Якщо є один спільний localStream — використовуємо його, інакше створимо моно-стріми.
-    const fallbackStreamFor = (track) => {
-      try { return new MediaStream(track ? [track] : []); } catch { return null; }
-    };
-    pc.getSenders().forEach(s => {
-      if (!s.track) return;
-      // Якщо setStreams є — прив’язуємо саме localStream (спільний MSID)
-      try {
-        if (localStream && localStream.getTracks().includes(s.track)) {
-          s.setStreams(localStream);
-        } else {
-          const m = fallbackStreamFor(s.track);
-          if (m) s.setStreams(m);
-        }
-      } catch {}
-    });
-  }
+  // Збережемо sender-и (щоб потім підміняти треки)
+  let audioSender = null;
+  let videoSender = null;
 
   // ---------- Local media ----------
   async function startLocal(constraints) {
     if (localStream) return localStream;
+
     const base = constraints || {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
     };
+
     try {
       localStream = await navigator.mediaDevices.getUserMedia(base);
     } catch (err) {
@@ -106,20 +77,16 @@
       }
     }
 
+    // КЛЮЧ: додаємо треки через addTrack(track, stream) — це гарантує a=msid
     const a = localStream.getAudioTracks()[0] || null;
     const v = localStream.getVideoTracks()[0] || null;
 
-    if (a) {
-      await txAudio.sender.replaceTrack(a);
-      try { txAudio.sender.setStreams(localStream); } catch {}
+    try {
+      if (a && !audioSender) audioSender = pc.addTrack(a, localStream);
+      if (v && !videoSender) videoSender = pc.addTrack(v, localStream);
+    } catch (e) {
+      logChat('addTrack error: ' + (e.message || e.name), 'sys');
     }
-    if (v) {
-      await txVideo.sender.replaceTrack(v);
-      try { txVideo.sender.setStreams(localStream); } catch {}
-    }
-
-    // Додаткова гарантія MSID (на випадок, якщо вище не спрацювало)
-    ensureSenderStreams();
 
     if (els.local) {
       els.local.srcObject = localStream;
@@ -169,7 +136,6 @@
 
   // ---------- Remote media attach ----------
   pc.ontrack = (ev) => {
-    // Інколи кадри приходять з затримкою: дочепимось до onunmute
     try { ev.track && (ev.track.onunmute = () => { tryAutoplayRemote(); ev.track.onunmute = null; }); } catch {}
 
     const s = (ev.streams && ev.streams[0]) || null;
@@ -217,8 +183,7 @@
     if (makingOffer || pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
-      await startLocal();
-      ensureSenderStreams();                    // <— ГАРАНТУЄМО a=msid
+      await startLocal();                    // гарантуємо треки ДО офера
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
@@ -236,7 +201,6 @@
     try {
       makingOffer = true;
       await startLocal();
-      ensureSenderStreams();                    // <— ГАРАНТУЄМО a=msid
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
@@ -249,7 +213,7 @@
   }
 
   async function acceptOffer(offerDesc) {
-    await startLocal();
+    await startLocal(); // треки ДО answer
     const offerCollision =
       makingOffer || pc.signalingState !== 'stable' || isSettingRemoteAnswerPending;
     ignoreOffer = !app.polite && offerCollision;
@@ -260,7 +224,6 @@
     try {
       isSettingRemoteAnswerPending = true;
       await pc.setRemoteDescription(offerDesc);
-      ensureSenderStreams();                    // <— ГАРАНТУЄМО a=msid у Answer
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       logChat('Надіслав answer', 'sys');
@@ -273,7 +236,6 @@
   }
 
   async function acceptAnswer(answerDesc) {
-    // Приймаємо лише коли ми в have-local-offer
     if (pc.signalingState !== 'have-local-offer') return;
     try {
       await pc.setRemoteDescription(answerDesc);
@@ -285,7 +247,6 @@
 
   async function restartIce() {
     try {
-      ensureSenderStreams();
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
@@ -429,13 +390,10 @@
 
   // ---------- Export ----------
   app.pc = pc;
-  app.txAudio = txAudio;
-  app.txVideo = txVideo;
   app.startLocal = startLocal;
   app.createAndSendOffer = createAndSendOffer;
   app.restartIce = restartIce;
   app.wsSend = wsSend;
-  app.bindDataChannel = bindDataChannel;
   app.ICE_POLICY = ICE_POLICY;
   app.ICE_SERVERS = ICE_SERVERS;
 
@@ -445,8 +403,8 @@
     clearInterval(statTimer);
     try { wsSend({ type: 'bye', room, from: myId }); } catch {}
     try { app.dc && app.dc.close(); } catch {}
-    try { app.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
-    try { app.pc.close(); } catch {}
+    try { pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
+    try { pc.close(); } catch {}
     try { ws && ws.close(); } catch {}
   });
 
