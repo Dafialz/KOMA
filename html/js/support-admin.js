@@ -23,6 +23,7 @@ const elMsgs    = document.getElementById('msgs');
 const elInput   = document.getElementById('input');
 const elSend    = document.getElementById('send');
 const elQ       = document.getElementById('q');
+const elJoin    = document.getElementById('joinThread');
 
 let currentThread = null; // {id, userName, userEmail, consultantEmail, topic, prio}
 let scope = 'all';        // all | mine
@@ -30,7 +31,7 @@ let scope = 'all';        // all | mine
 // Простенький індекс діалогів (заповнюємо з вхідних повідомлень)
 const threads = new Map(); // threadId -> meta { id, userName, userEmail, topic, prio, lastTs, unreadCnt, consultantEmail }
 
-// Витягуємо з локальної історії (після reload)
+// Відновити зі сховища
 restoreThreadsFromHistory();
 renderSidebar();
 
@@ -46,17 +47,7 @@ elTabs.addEventListener('click', (e)=>{
 document.getElementById('clear').onclick = ()=>{ elQ.value=''; renderSidebar(); };
 elQ.addEventListener('input', ()=>renderSidebar());
 
-document.getElementById('markAllRead').onclick = ()=>{
-  for (const t of threads.values()) t.unreadCnt = 0;
-  renderSidebar();
-  // позначимо read усі останні (лише в UI; серверні read шлемо контекстно під час відкриття)
-};
-
-document.getElementById('joinThread').onclick = ()=>{ if (currentThread) joinSelectedThread(); };
-document.getElementById('leaveThread').onclick = ()=>{ // просте очищення UI
-  currentThread = null; elTitle.textContent='Без вибраного діалогу';
-  elWhoTags.innerHTML=''; elMsgs.innerHTML=''; elInput.disabled=true; elSend.disabled=true;
-};
+elJoin.onclick = ()=>{ if (currentThread) joinSelectedThread(); };
 
 elSend.onclick = sendMessage;
 elInput.addEventListener('keydown', (e)=>{
@@ -103,7 +94,7 @@ function handleEvent(ev, payload){
   }
 
   if (ev === 'delivered' || ev === 'read'){
-    // можна оновити статуси у відкритому чаті (за бажанням відмітити галочками)
+    // оновити статуси у відкритому чаті (✓ / ✓✓)
     if (currentThread && payload.threadId === currentThread.id){
       const nodes = elMsgs.querySelectorAll(`[data-mid="${payload.mid}"] .meta`);
       nodes.forEach(n=>{
@@ -130,7 +121,6 @@ function upsertThreadFromMsg(m){
     topic, prio, lastTs: 0, unreadCnt: 0
   };
   curr.lastTs = Math.max(curr.lastTs, m.ts || m.serverTs || Date.now());
-  // якщо мітка кому адресовано — збережемо
   if (m.targetConsultant) curr.consultantEmail = String(m.targetConsultant).toLowerCase();
   threads.set(id, curr);
   renderSidebar();
@@ -151,9 +141,7 @@ function restoreThreadsFromHistory(){
   Object.keys(hist).forEach(id=>{
     const arr = hist[id];
     const last = arr[arr.length-1];
-    if (last) {
-      upsertThreadFromMsg(last);
-    }
+    if (last) upsertThreadFromMsg(last);
   });
 }
 

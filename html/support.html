@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ук">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -30,6 +30,10 @@
     .chat-head .tools{display:flex;gap:8px;align-items:center}
     .dot{display:inline-block;min-width:10px;height:10px;border-radius:999px;background:#10b981}
     .status-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;background:#fff;font-size:.8rem}
+    /* локальний журнал */
+    #sup_log .event{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff;cursor:pointer}
+    #sup_log .event:hover{box-shadow:var(--shadow-sm)}
+    #sup_log .small{color:#6b7280;font-size:.9rem}
   </style>
 </head>
 <body>
@@ -169,7 +173,7 @@
         </form>
       </div>
 
-      <!-- Живий чат (після надсилання зʼявляється/активується) -->
+      <!-- Живий чат -->
       <div class="chat-wrap">
         <div class="card chat-box">
           <div class="chat-head" style="padding:12px;border-bottom:1px solid var(--border)">
@@ -217,7 +221,13 @@
     const connTxt = document.getElementById('connText');
     const threadTag = document.getElementById('threadTag');
 
-    // префіл з guard
+    // Ініціалізація WS як "user"
+    const chat = new SupportChat({
+      role: 'user',
+      onEvent: handleEvent
+    });
+
+    // Префіл з guard
     (() => {
       const s = window.guard?.getSession?.();
       if (s?.email) {
@@ -230,12 +240,6 @@
       }
     })();
 
-    // Ініціалізація WS як "user"
-    const chat = new SupportChat({
-      role: 'user',
-      onEvent: handleEvent
-    });
-
     function setConn(state){
       if (state){ connDot.style.background = '#10b981'; connTxt.textContent = 'Онлайн'; }
       else { connDot.style.background = '#f59e0b'; connTxt.textContent = 'Підключення…'; }
@@ -243,7 +247,7 @@
 
     function handleEvent(ev, payload){
       if (ev === 'status'){ setConn(payload.connected); return; }
-      if (ev === 'chat'){ addMsg(payload); autoRead(payload); saveLocalList(); return; }
+      if (ev === 'chat'){ addMsg(payload); autoRead(payload); return; }
       if (ev === 'delivered' || ev === 'read'){ markTicks(payload); return; }
     }
 
@@ -275,38 +279,42 @@
 
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
-    // Локальний список звернень (простий)
-    function saveLocalList(){
-      try{
-        const L = JSON.parse(localStorage.getItem('koma_support_log')||'[]');
-        const top = {
-          name: document.getElementById('sup_name').value.trim(),
-          email: document.getElementById('sup_email').value.trim(),
-          topic: document.getElementById('sup_topic').value,
-          priority: document.getElementById('sup_priority').value,
-          message: document.getElementById('sup_message').value.trim(),
-          ts: Date.now()
-        };
-        L.unshift(top);
-        localStorage.setItem('koma_support_log', JSON.stringify(L.slice(0,20)));
-        renderLocal();
-      }catch{}
+    // ===== Локальний журнал (зберігаємо threadId і відкриваємо чат по кліку)
+    function getLocalList(){
+      try { return JSON.parse(localStorage.getItem('koma_support_log')||'[]'); }
+      catch { return []; }
+    }
+    function setLocalList(list){
+      try { localStorage.setItem('koma_support_log', JSON.stringify(list.slice(0,20))); } catch {}
     }
     function renderLocal(){
-      try{
-        const all = JSON.parse(localStorage.getItem('koma_support_log')||'[]');
-        logBox.innerHTML = all.length ? all.map(x => (
-          `<div class="event">
-            <strong>${escapeHtml(x.name)}</strong> &lt;${escapeHtml(x.email)}&gt; — <em>${escapeHtml(x.topic)}</em>
-            <div class="small">${new Date(x.ts).toLocaleString('uk-UA')}</div>
-            <div>${escapeHtml(x.message)}</div>
-          </div>`
-        )).join('') : '<div class="muted">Поки що немає записів.</div>';
-      }catch{ logBox.innerHTML=''; }
+      const all = getLocalList();
+      logBox.innerHTML = all.length ? all.map(x => (
+        `<div class="event" data-thread="${escapeHtml(x.threadId||'')}">
+          <strong>${escapeHtml(x.name)}</strong> &lt;${escapeHtml(x.email)}&gt; — <em>${escapeHtml(x.topic)}</em>
+          <div class="small">${new Date(x.ts).toLocaleString('uk-UA')}</div>
+          <div>${escapeHtml(x.message)}</div>
+        </div>`
+      )).join('') : '<div class="muted">Поки що немає записів.</div>';
+    }
+    function addLocalEntry(entry){
+      const list = getLocalList();
+      // якщо вже є цей threadId у топі — оновимо зверху
+      const rest = entry.threadId ? list.filter(x => x.threadId !== entry.threadId) : list;
+      setLocalList([entry, ...rest]);
+      renderLocal();
     }
     renderLocal();
 
-    // Поточний тред (створюємо після сабміту)
+    // Клік по картці локального журналу → відкрити чат цього треда
+    logBox.addEventListener('click', (e)=>{
+      const card = e.target.closest('.event');
+      if (!card) return;
+      const tid = card.getAttribute('data-thread');
+      if (tid) openThread(tid);
+    });
+
+    // Поточний тред
     let currentThread = null;
 
     function buildThreadId(payload, target){
@@ -316,7 +324,34 @@
       return `${u}__${c}__${t}`;
     }
 
-    // Submit форми => створити тред, приєднатися, відправити перше повідомлення
+    function openThread(threadId){
+      currentThread = { id: threadId };
+
+      // приєднатись у кімнату треда
+      chat.joinThread(threadId);
+
+      // показати бейдж
+      threadTag.textContent = `Тред: ${threadId}`;
+      threadTag.style.display='inline-flex';
+
+      // активувати інпут
+      inpChat.disabled=false; btnChat.disabled=false;
+
+      // підвантажити історію з локального буфера SupportChat і відмалювати
+      const list = chat.getThread(threadId);
+      msgsEl.innerHTML='';
+      list.forEach(m => addMsg(m));
+
+      // позначити прочитаним усі вхідні
+      list.filter(m=>m.role!=='user').forEach(m=>{
+        chat.markRead({ threadId, mid:m.mid, room:`support:thread:${threadId}` });
+      });
+
+      // прокрутити донизу
+      requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight + 9999; });
+    }
+
+    // Сабміт форми → створити тред і надіслати перше повідомлення у support:all / персональному / thread
     form.addEventListener('submit', (e)=>{
       e.preventDefault();
       errBox.style.display='none'; okBox.style.display='none';
@@ -332,22 +367,16 @@
         errBox.textContent = 'Заповніть обовʼязкові поля.'; errBox.style.display='block'; return;
       }
 
-      // Кому звернення
       const target = (document.querySelector('input[name="target"]:checked')?.value || 'support');
 
-      // Створюємо/обираємо тред
       const threadId = buildThreadId(payload, target);
       currentThread = { id: threadId, targetConsultant: (target==='support' ? '' : target) };
-
-      // приєднатись до кімнати треда + поставити бейдж
       chat.joinThread(threadId);
+
       threadTag.textContent = `Тред: ${threadId}`;
       threadTag.style.display='inline-flex';
-
-      // активуємо чат-ввід
       inpChat.disabled=false; btnChat.disabled=false;
 
-      // Перше повідомлення → у кімнату треда (видимі відповіді тут)
       const roomThread = `support:thread:${threadId}`;
       const meta = {
         userName: payload.name,
@@ -357,44 +386,32 @@
         targetConsultant: (target==='support' ? '' : target)
       };
 
-      // 1) У спільну кімнату support:all (щоб бачили всі консультанти)
-      chat.sendChat({
-        room: 'support:all',
-        threadId,
-        text: payload.message,
-        from: payload.email,
-        to: meta.targetConsultant || '',
-        extras: meta
-      });
+      // широкомовно всім консультантам
+      chat.sendChat({ room: 'support:all', threadId, text: payload.message, from: payload.email, to: meta.targetConsultant || '', extras: meta });
 
-      // 2) У персональну консультанта (якщо вибраний)
+      // персонально, якщо вибраний консультант
       if (meta.targetConsultant){
-        chat.sendChat({
-          room: `support:consultant:${meta.targetConsultant}`,
-          threadId,
-          text: payload.message,
-          from: payload.email,
-          to: meta.targetConsultant,
-          extras: meta
-        });
+        chat.sendChat({ room: `support:consultant:${meta.targetConsultant}`, threadId, text: payload.message, from: payload.email, to: meta.targetConsultant, extras: meta });
       }
 
-      // 3) У тред-кімнату (для вашої видимості тут і далі)
-      chat.sendChat({
-        room: roomThread,
-        threadId,
-        text: payload.message,
-        from: payload.email,
-        to: meta.targetConsultant || '',
-        extras: meta
-      });
+      // у власну кімнату треда
+      chat.sendChat({ room: roomThread, threadId, text: payload.message, from: payload.email, to: meta.targetConsultant || '', extras: meta });
 
       okBox.textContent = 'Звернення надіслано. Очікуйте відповідь у цьому чаті та/або на пошту.';
       okBox.style.display='block';
 
-      // не очищаю форму — щоб дані залишилися; очистимо лише поле повідомлення
+      // збережемо запис у локальному журналі з threadId
+      addLocalEntry({
+        threadId,
+        name: payload.name,
+        email: payload.email,
+        topic: payload.topic,
+        message: payload.message,
+        ts: Date.now()
+      });
+
+      // очистимо тільки поле повідомлення
       document.getElementById('sup_message').value = '';
-      saveLocalList();
     });
 
     // Надсилання наступних повідомлень з чат-вводу
