@@ -196,7 +196,7 @@
       <section style="margin-top:18px">
         <div class="card" style="padding:16px">
           <h3 style="margin:0 0 8px">Останні звернення (локально)</h3>
-          <div id="sup_log" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
+        <div id="sup_log" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
         </div>
       </section>
     </div>
@@ -206,7 +206,7 @@
 
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
-  <!-- додано: конфіг з URL бекенду/WS -->
+  <!-- конфіг з URL бекенду/WS -->
   <script src="js/config.js"></script>
   <script type="module" src="js/support-chat.js"></script>
   <script type="module">
@@ -225,6 +225,7 @@
 
     const chat = new SupportChat({ role: 'user', onEvent: handleEvent });
 
+    // Префіл з guard
     (() => {
       const s = window.guard?.getSession?.();
       if (s?.email) {
@@ -271,6 +272,7 @@
     }
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
+    // ===== Локальний журнал
     function getLocalList(){ try { return JSON.parse(localStorage.getItem('koma_support_log')||'[]'); } catch { return []; } }
     function setLocalList(list){ try { localStorage.setItem('koma_support_log', JSON.stringify(list.slice(0,20))); } catch {} }
     function renderLocal(){
@@ -278,7 +280,7 @@
       logBox.innerHTML = all.length ? all.map(x => (
         `<div class="event" data-thread="${escapeHtml(x.threadId||'')}">
           <strong>${escapeHtml(x.name)}</strong> &lt;${escapeHtml(x.email)}&gt; — <em>${escapeHtml(x.topic)}</em>
-          <div class="small">${new Date(x.ts).toLocaleString('uk-UA')}</div>
+          <div class="small">${new Date(x.ts).toLocaleString('ук-UA')}</div>
           <div>${escapeHtml(x.message)}</div>
         </div>`
       )).join('') : '<div class="muted">Поки що немає записів.</div>';
@@ -298,6 +300,7 @@
       if (tid) openThread(tid);
     });
 
+    // ===== Чат
     let currentThread = null;
     function buildThreadId(payload, target){
       const u = (payload.email || 'user').toLowerCase();
@@ -305,6 +308,7 @@
       const t = (payload.topic || 'topic').toLowerCase().slice(0,24);
       return `${u}__${c}__${t}`;
     }
+
     function openThread(threadId){
       currentThread = { id: threadId };
       chat.joinThread(threadId);
@@ -320,6 +324,7 @@
       requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight + 9999; });
     }
 
+    // Надсилання форми
     form.addEventListener('submit', (e)=>{
       e.preventDefault();
       errBox.style.display='none'; okBox.style.display='none';
@@ -354,11 +359,37 @@
         targetConsultant: (target==='support' ? '' : target)
       };
 
-      chat.sendChat({ room: 'support:all', threadId, text: payload.message, from: payload.email, to: meta.targetConsultant || '', extras: meta });
+      // 🔔 Сповіщення для адмінів — НЕ зберігати локально
+      chat.sendChat({
+        room: 'support:all',
+        threadId,
+        text: payload.message,
+        from: payload.email,
+        to: meta.targetConsultant || '',
+        extras: meta,
+        noStore: true
+      });
       if (meta.targetConsultant){
-        chat.sendChat({ room: `support:consultant:${meta.targetConsultant}`, threadId, text: payload.message, from: payload.email, to: meta.targetConsultant, extras: meta });
+        chat.sendChat({
+          room: `support:consultant:${meta.targetConsultant}`,
+          threadId,
+          text: payload.message,
+          from: payload.email,
+          to: meta.targetConsultant,
+          extras: meta,
+          noStore: true
+        });
       }
-      chat.sendChat({ room: roomThread, threadId, text: payload.message, from: payload.email, to: meta.targetConsultant || '', extras: meta });
+
+      // ✅ Реальне повідомлення користувача — тільки у свій тред (відмалюється один раз)
+      chat.sendChat({
+        room: roomThread,
+        threadId,
+        text: payload.message,
+        from: payload.email,
+        to: meta.targetConsultant || '',
+        extras: meta
+      });
 
       okBox.textContent = 'Звернення надіслано. Очікуйте відповідь у цьому чаті та/або на пошту.';
       okBox.style.display='block';
@@ -367,6 +398,7 @@
       document.getElementById('sup_message').value = '';
     });
 
+    // Надсилання наступних реплік
     btnChat.addEventListener('click', sendChatMsg);
     inpChat.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(); }
