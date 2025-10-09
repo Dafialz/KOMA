@@ -114,11 +114,11 @@
   function tryAutoplayRemote(retries = 6) {
     if (!els.remote) return;
     const attempt = () => {
-      if (!els.remote) return;
+      if (!els.remote || !els.remote.srcObject) return;
+      if (els.remote.readyState >= 2 && els.remote.videoWidth > 0) return; // уже грає
       els.remote.play().catch(()=>{});
     };
     attempt();
-    // кілька спроб через невеличкі паузи
     for (let i = 1; i <= retries; i++) setTimeout(attempt, 150 * i);
     els.remote.addEventListener('loadedmetadata', attempt, { once: true });
     els.remote.addEventListener('loadeddata', attempt, { once: true });
@@ -319,6 +319,13 @@
       try { msg = JSON.parse(e.data); } catch { return; }
       if (!msg || (msg.room && msg.room !== room)) return;
       if (msg.from && msg.from === myId) return;
+
+      if (msg.type === 'join-ack') {
+        const count = typeof msg.count === 'number' ? msg.count : undefined;
+        if (count === 1) setBadge('Очікуємо співрозмовника…', 'muted');
+        if (count === 2) setBadge('Співрозмовник у кімнаті — встановлюємо з’єднання…', 'muted');
+        return;
+      }
 
       if (msg.type === 'offer') { await acceptOffer(new RTCSessionDescription(msg.payload)); return; }
       if (msg.type === 'answer') { await acceptAnswer(new RTCSessionDescription(msg.payload)); return; }

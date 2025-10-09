@@ -5,30 +5,33 @@
   const { els, setBadge, UA_MOBILE } = app;
   const role = app.role;           // 'consultant' | 'client'
   const room = app.room;
-  const isConsultant = role === 'consultant';
   const isPolite = !!app.polite;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function safe(el, fn){ if (el) try { fn(); } catch {} }
   function oppositeRole(r){ return r === 'consultant' ? 'client' : 'consultant'; }
   function makeLink(r){
+    // Використовуємо генератор інвайтів із config, якщо він є
+    if (typeof app.makeInvite === 'function') {
+      return app.makeInvite(r);
+    }
     const u = new URL(location.href);
     u.searchParams.set('room', room);
     u.searchParams.set('role', r);
-    u.searchParams.set('autostart','1');
+    if (r === 'client') u.searchParams.set('autostart','1');
     return u.toString();
   }
   function toast(msg, cls='muted'){ app.logChat(msg, 'sys'); setBadge(msg, cls); }
   function logObj(title, o) { try { app.logChat(title + ': ' + JSON.stringify(o), 'sys'); } catch {} }
   const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
 
-  // Чекаємо поки локальні треки реально з’являться (особливо важливо для консультанта)
+  // Чекаємо поки локальні треки реально з’являться (особливо важливо для ініціатора)
   async function waitForLocal(kind = 'video', timeoutMs = 2500){
     const t0 = Date.now();
     while (Date.now() - t0 < timeoutMs) {
       try {
         const ls = els.local && els.local.srcObject;
-        const hasByEl = !!(ls && ((kind==='video'?ls.getVideoTracks():ls.getAudioTracks)()?.[0]));
+        const hasByEl = !!(ls && ((kind==='video'?ls.getVideoTracks:ls.getAudioTracks)?.call(ls)?.[0]));
         const senders = (app.pc && app.pc.getSenders) ? app.pc.getSenders() : [];
         const s = senders.find(s => s.track && s.track.kind === kind);
         const hasBySender = !!(s && s.track && s.track.readyState === 'live');
@@ -39,7 +42,7 @@
     return false;
   }
 
-  // ── Старт з’єднання (рефактор у функцію) ─────────────────────────────────
+  // ── Старт з’єднання ───────────────────────────────────────────────────────
   let starting = false;
   let waitTipTimer = null;
 
@@ -55,7 +58,7 @@
       // 2) Локальні пристрої
       await app.startLocal();
 
-      // 2.1) Для консультанта гарантуємо наявність живого відео-треку ДО offer
+      // 2.1) Для ініціатора (не polite) гарантуємо відео-трек ДО offer
       if (!isPolite) {
         const ok = await waitForLocal('video', 2500);
         app.logChat(`waitForLocal(video)=${ok}`, 'sys');
@@ -63,8 +66,10 @@
 
       // якщо DC ще нема — створимо і прив’яжемо
       if (!app.dc || app.dc.readyState === 'closed') {
-        app.dc = app.pc.createDataChannel('chat');
-        app.bindDataChannel();
+        try {
+          app.dc = app.pc.createDataChannel('chat');
+          app.bindDataChannel && app.bindDataChannel();
+        } catch {}
       }
 
       // ініціатор (не polite) шле перший offer ТІЛЬКИ після локальних треків
@@ -89,7 +94,7 @@
       }, 9000);
 
     } catch (err) {
-      setBadge('Помилка: ' + (err.message || err.name), 'danger');
+      setBadge('Помилка: ' + (err?.message || err?.name || 'Unknown'), 'danger');
       starting = false;
       safe(els.start, () => { els.start.disabled = false; els.start.classList.remove('active'); });
     }
@@ -97,6 +102,22 @@
 
   // Кнопка «Під’єднатися»
   safe(els.start, () => els.start.onclick = startOnce);
+
+  // Дублююче оновлення статусу з боку UI (щоб у консультанта не «висів» очікувальний стан)
+  try {
+    if (app.pc) {
+      app.pc.addEventListener('connectionstatechange', () => {
+        const st = app.pc.connectionState;
+        setBadge(
+          st === 'connected' ? 'З’єднано'
+          : st === 'connecting' ? 'З’єднуємо…'
+          : st === 'failed' ? 'Помилка з’єднання'
+          : 'Статус: ' + st,
+          st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted')
+        );
+      });
+    }
+  } catch {}
 
   // ── Мікрофон ──────────────────────────────────────────────────────────────
   safe(els.mic, () => els.mic.onclick = () => {
@@ -179,7 +200,6 @@
       // Повернення до камери після завершення
       screenTrack.onended = async () => {
         try {
-          // Гарантуємо локальний потік з камерою
           const loc = await app.startLocal();
           const camTrack = loc.getVideoTracks()[0] || null;
 
