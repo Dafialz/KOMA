@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ук">
+<html lang="uk">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -206,6 +206,8 @@
 
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
+  <!-- додано: конфіг з URL бекенду/WS -->
+  <script src="js/config.js"></script>
   <script type="module" src="js/support-chat.js"></script>
   <script type="module">
     import { SupportChat } from './js/support-chat.js';
@@ -221,13 +223,8 @@
     const connTxt = document.getElementById('connText');
     const threadTag = document.getElementById('threadTag');
 
-    // Ініціалізація WS як "user"
-    const chat = new SupportChat({
-      role: 'user',
-      onEvent: handleEvent
-    });
+    const chat = new SupportChat({ role: 'user', onEvent: handleEvent });
 
-    // Префіл з guard
     (() => {
       const s = window.guard?.getSession?.();
       if (s?.email) {
@@ -244,13 +241,11 @@
       if (state){ connDot.style.background = '#10b981'; connTxt.textContent = 'Онлайн'; }
       else { connDot.style.background = '#f59e0b'; connTxt.textContent = 'Підключення…'; }
     }
-
     function handleEvent(ev, payload){
       if (ev === 'status'){ setConn(payload.connected); return; }
       if (ev === 'chat'){ addMsg(payload); autoRead(payload); return; }
       if (ev === 'delivered' || ev === 'read'){ markTicks(payload); return; }
     }
-
     function addMsg(m){
       const div = document.createElement('div');
       const mine = (m.role === 'user');
@@ -262,7 +257,6 @@
       msgsEl.appendChild(div);
       requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight + 9999; });
     }
-
     function markTicks(p){
       const node = msgsEl.querySelector(`[data-mid="${p.mid}"] .meta`);
       if (!node) return;
@@ -270,23 +264,15 @@
       if (p.type==='delivered' && !/✓/.test(t)) node.textContent = t + ' · ✓ доставлено';
       if (p.type==='read' && !/✓✓/.test(t)) node.textContent = t.replace('✓ доставлено','') + ' · ✓✓ прочитано';
     }
-
     function autoRead(m){
       if (m.role !== 'user' && currentThread){
         chat.markRead({ threadId: currentThread.id, mid: m.mid, room: `support:thread:${currentThread.id}` });
       }
     }
-
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
-    // ===== Локальний журнал (зберігаємо threadId і відкриваємо чат по кліку)
-    function getLocalList(){
-      try { return JSON.parse(localStorage.getItem('koma_support_log')||'[]'); }
-      catch { return []; }
-    }
-    function setLocalList(list){
-      try { localStorage.setItem('koma_support_log', JSON.stringify(list.slice(0,20))); } catch {}
-    }
+    function getLocalList(){ try { return JSON.parse(localStorage.getItem('koma_support_log')||'[]'); } catch { return []; } }
+    function setLocalList(list){ try { localStorage.setItem('koma_support_log', JSON.stringify(list.slice(0,20))); } catch {} }
     function renderLocal(){
       const all = getLocalList();
       logBox.innerHTML = all.length ? all.map(x => (
@@ -299,14 +285,12 @@
     }
     function addLocalEntry(entry){
       const list = getLocalList();
-      // якщо вже є цей threadId у топі — оновимо зверху
       const rest = entry.threadId ? list.filter(x => x.threadId !== entry.threadId) : list;
       setLocalList([entry, ...rest]);
       renderLocal();
     }
     renderLocal();
 
-    // Клік по картці локального журналу → відкрити чат цього треда
     logBox.addEventListener('click', (e)=>{
       const card = e.target.closest('.event');
       if (!card) return;
@@ -314,44 +298,28 @@
       if (tid) openThread(tid);
     });
 
-    // Поточний тред
     let currentThread = null;
-
     function buildThreadId(payload, target){
       const u = (payload.email || 'user').toLowerCase();
       const c = (target || 'support').toLowerCase();
       const t = (payload.topic || 'topic').toLowerCase().slice(0,24);
       return `${u}__${c}__${t}`;
     }
-
     function openThread(threadId){
       currentThread = { id: threadId };
-
-      // приєднатись у кімнату треда
       chat.joinThread(threadId);
-
-      // показати бейдж
       threadTag.textContent = `Тред: ${threadId}`;
       threadTag.style.display='inline-flex';
-
-      // активувати інпут
       inpChat.disabled=false; btnChat.disabled=false;
-
-      // підвантажити історію з локального буфера SupportChat і відмалювати
       const list = chat.getThread(threadId);
       msgsEl.innerHTML='';
       list.forEach(m => addMsg(m));
-
-      // позначити прочитаним усі вхідні
       list.filter(m=>m.role!=='user').forEach(m=>{
         chat.markRead({ threadId, mid:m.mid, room:`support:thread:${threadId}` });
       });
-
-      // прокрутити донизу
       requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight + 9999; });
     }
 
-    // Сабміт форми → створити тред і надіслати перше повідомлення у support:all / персональному / thread
     form.addEventListener('submit', (e)=>{
       e.preventDefault();
       errBox.style.display='none'; okBox.style.display='none';
@@ -386,40 +354,23 @@
         targetConsultant: (target==='support' ? '' : target)
       };
 
-      // широкомовно всім консультантам
       chat.sendChat({ room: 'support:all', threadId, text: payload.message, from: payload.email, to: meta.targetConsultant || '', extras: meta });
-
-      // персонально, якщо вибраний консультант
       if (meta.targetConsultant){
         chat.sendChat({ room: `support:consultant:${meta.targetConsultant}`, threadId, text: payload.message, from: payload.email, to: meta.targetConsultant, extras: meta });
       }
-
-      // у власну кімнату треда
       chat.sendChat({ room: roomThread, threadId, text: payload.message, from: payload.email, to: meta.targetConsultant || '', extras: meta });
 
       okBox.textContent = 'Звернення надіслано. Очікуйте відповідь у цьому чаті та/або на пошту.';
       okBox.style.display='block';
 
-      // збережемо запис у локальному журналі з threadId
-      addLocalEntry({
-        threadId,
-        name: payload.name,
-        email: payload.email,
-        topic: payload.topic,
-        message: payload.message,
-        ts: Date.now()
-      });
-
-      // очистимо тільки поле повідомлення
+      addLocalEntry({ threadId, name: payload.name, email: payload.email, topic: payload.topic, message: payload.message, ts: Date.now() });
       document.getElementById('sup_message').value = '';
     });
 
-    // Надсилання наступних повідомлень з чат-вводу
     btnChat.addEventListener('click', sendChatMsg);
     inpChat.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(); }
     });
-
     function sendChatMsg(){
       if (!currentThread) return;
       const text = inpChat.value.trim();

@@ -1,12 +1,14 @@
 // js/config.js
 (function (w) {
-  // Вкажи тут точний домен свого бекенду на Render
-  // приклад: https://koma-uuae.onrender.com
-  const PROD = 'https://koma-uaue.onrender.com';
+  // HTTP база бекенду (Render)
+  // !!! якщо домен інший — заміни обидва значення нижче
+  const PROD_HTTP = 'https://koma-uaue.onrender.com';
+  const PROD_WS   = 'wss://koma-uaue.onrender.com';
 
-  // Якщо тимчасово хочеш вимкнути бекенд — постав '', і фронт піде на поточний origin
-  w.API_BASE = PROD;
+  // Використовуємо прод
+  w.API_BASE   = PROD_HTTP;
+  w.SIGNAL_URL = PROD_WS;
 
-  // На майбутнє: спільний таймаут для фетчів (якщо знадобиться)
+  // Опційно: таймаут для фетчів
   w.API_TIMEOUT = 15000;
 })(window);
