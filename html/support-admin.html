@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Служба підтримки (адмін) — КОМА</title>
+  <link rel="icon" href="icon/favicon.ico" />
+  <meta name="theme-color" content="#0f5257" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/zapis.css" />
+  <style>
+    .support-admin{max-width:1200px;margin:24px auto;padding:0 20px}
+    .layout{display:grid;grid-template-columns:320px 1fr;gap:16px}
+    @media (max-width:960px){.layout{grid-template-columns:1fr}}
+    .sidebar{padding:18px}
+    .search{display:flex;gap:8px}
+    .list{margin-top:12px;display:grid;gap:8px;max-height:68vh;overflow:auto}
+    .thread{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;cursor:pointer}
+    .thread:hover{box-shadow:var(--shadow-sm)}
+    .thread .meta{font-size:.82rem;color:#6b7280}
+    .badge-new{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:999px;background:#0f5257;color:#fff;font-size:.78rem;font-weight:800;padding:0 6px}
+    .pill-tab{display:inline-flex;gap:8px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:#fff;cursor:pointer}
+    .pill-tab.active{border-color:#0f5257;box-shadow:var(--ring)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+    .who{display:flex;align-items:center;gap:8px}
+    .who .tag{background:#eef2f7}
+    .chat-head .tools{gap:6px}
+    .split{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px}
+  </style>
+</head>
+<body>
+  <div data-include="partials/header.html"></div>
+
+  <section class="section">
+    <div class="support-admin">
+      <div class="grid">
+        <div class="card layout">
+          <!-- Sidebar -->
+          <aside class="sidebar">
+            <div class="split">
+              <h2 style="margin:0">Діалоги</h2>
+              <button id="markAllRead" class="btn small gray" title="Позначити все прочитаним">Прочитано</button>
+            </div>
+            <div class="tabs" id="tabs">
+              <button class="pill-tab active" data-scope="all">Всі <span id="allCnt" class="badge-new" style="display:none">0</span></button>
+              <button class="pill-tab" data-scope="mine">Мої <span id="myCnt" class="badge-new" style="display:none">0</span></button>
+            </div>
+            <div class="search">
+              <input id="q" class="input" placeholder="Пошук за ім’ям/темою/поштою">
+              <button id="clear" class="btn gray small">Очистити</button>
+            </div>
+            <div id="threads" class="list" aria-live="polite"></div>
+          </aside>
+
+          <!-- Chat panel -->
+          <main>
+            <div class="chat chat-box">
+              <div class="chat-head card" style="padding:10px 12px;border-bottom-left-radius:0;border-bottom-right-radius:0">
+                <div class="split">
+                  <div class="who">
+                    <strong id="title">Без вибраного діалогу</strong>
+                    <span id="whoTags"></span>
+                  </div>
+                  <div class="tools">
+                    <button id="joinThread" class="btn small" title="Увійти в кімнату">Приєднатись</button>
+                    <button id="leaveThread" class="btn small gray" title="Вийти">Вийти</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="msgs" class="chat-msgs" aria-live="polite"></div>
+
+              <div class="chat-input">
+                <textarea id="input" placeholder="Напишіть відповідь…" disabled></textarea>
+                <button id="send" class="btn" disabled>Надіслати</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div data-include="partials/footer.html"></div>
+
+  <script src="js/guard.js"></script>
+  <script type="module" src="js/partials.js"></script>
+  <script type="module" src="js/support-chat.js"></script>
+  <script type="module" src="js/support-admin.js"></script>
+</body>
+</html>

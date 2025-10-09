@@ -27,8 +27,8 @@
     'Кома — не час здаватися'
   ];
 
-  // ✅ ведемо на /support (без /partials/)
-  const SUPPORT_URL = '/support';
+  // ✅ ведемо на /support.html (а не /support)
+  const SUPPORT_URL = '/support.html';
 
   // Почекати на елемент (partials можуть вантажитись асинхронно)
   function waitFor(sel, { timeout = 10000 } = {}) {

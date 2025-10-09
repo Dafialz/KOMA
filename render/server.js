@@ -1,9 +1,13 @@
 // server.js
 // ─────────────────────────────────────────────────────────────────────────────
 // 1) WebSocket-сигналінг (join / offer / answer / ice / bye) для багатьох кімнат
-//    з подіями peer-join / peer-leave і лімітом 2 peer/room
-// 2) REST API бронювань із файлами (multer) → bookings.json
-// 3) Статика з /html
+//    з подіями peer-join / peer-leave і лімітом 2 peer/room для відео
+// 2) Служба підтримки (чат):
+//    - кімнати: support:all, support:consultant:<email>, support:thread:<id>
+//    - типи: chat / delivered / read
+//    - багатокімнатні підписки на одному з’єднанні
+// 3) REST API бронювань із файлами (multer) → bookings.json
+// 4) Статика з /html
 // + Keepalive для WS (ping/pong)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -20,7 +24,7 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*"; // напр.: "https:/
 const DATA_DIR   = process.env.DATA_DIR || ".";
 const BOOK_FILE  = path.join(DATA_DIR, "bookings.json");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
-const MAX_ROOM_PEERS = 2; // важливо: не більше 2-х у кімнаті
+const MAX_ROOM_PEERS = 2; // важливо: не більше 2-х у відеокімнаті
 
 // Гарантуємо наявність директорій
 try { fs.mkdirSync(DATA_DIR,   { recursive: true }); } catch {}
@@ -66,16 +70,32 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use("/uploads", express.static(UPLOAD_DIR));
 
-// ── Сигналінг (кімнати) ──────────────────────────────────────────────────────
+// ── Сигналінг + Підтримка: кімнати ───────────────────────────────────────────
+/**
+ * rooms: Map<roomId, Set<ws>>
+ * для ws: ws.rooms = Set<roomId>  (підтримка множинних кімнат)
+ * зворотна сумісність: ws.room (перший join для відео)
+ */
 const rooms = new Map(); // Map<roomId, Set<ws>>
 
 function wsId() { return Math.random().toString(36).slice(2); }
+function now() { return Date.now(); }
+
+function isSupportRoom(roomId = "") {
+  return String(roomId).startsWith("support:");
+}
 
 function roomSet(roomId) {
   if (!rooms.has(roomId)) rooms.set(roomId, new Set());
   return rooms.get(roomId);
 }
 
+function countInRoom(roomId) {
+  const set = rooms.get(roomId);
+  return set ? set.size : 0;
+}
+
+// універсальна розсилка в межах кімнати
 function broadcast(roomId, message, exceptWs = null) {
   const set = rooms.get(roomId);
   if (!set) return;
@@ -87,23 +107,37 @@ function broadcast(roomId, message, exceptWs = null) {
   }
 }
 
+// приєднання до кімнати (для support:* — без ліміту)
 function joinRoom(ws, roomId) {
   const set = roomSet(roomId);
-  if (set.size >= MAX_ROOM_PEERS) {
+
+  // ліміт лише для НЕ support кімнат (тобто для відео)
+  if (!isSupportRoom(roomId) && set.size >= MAX_ROOM_PEERS) {
     try { ws.send(JSON.stringify({ type: "full", room: roomId })); } catch {}
     return false;
   }
+
   set.add(ws);
-  ws.room = roomId;
+  if (!ws.rooms) ws.rooms = new Set();
+  ws.rooms.add(roomId);
+
+  // для зворотної сумісності із відеочатом (одна активна)
+  if (!isSupportRoom(roomId) && !ws.room) ws.room = roomId;
+
   return true;
 }
 
-function leaveRoom(ws) {
-  if (!ws.room) return;
-  const set = rooms.get(ws.room);
-  if (!set) return;
-  set.delete(ws);
-  if (set.size === 0) rooms.delete(ws.room);
+function leaveAllRooms(ws) {
+  if (!ws.rooms) return;
+  for (const r of ws.rooms) {
+    const set = rooms.get(r);
+    if (set) {
+      set.delete(ws);
+      if (set.size === 0) rooms.delete(r);
+    }
+  }
+  ws.rooms.clear();
+  ws.room = null;
 }
 
 // WS keepalive (ping/pong)
@@ -119,27 +153,33 @@ const wsPingInterval = setInterval(() => {
   });
 }, PING_INTERVAL_MS);
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
   ws.isAlive = true;
   ws.id = wsId();
+  ws.rooms = new Set();
   ws.on("pong", () => { ws.isAlive = true; });
+
+  // автоджойн через ?rooms=a,b,c
+  try {
+    const u = new URL(req.url, "http://localhost");
+    const qsRooms = u.searchParams.get("rooms");
+    if (qsRooms) {
+      qsRooms.split(",").map(s => s.trim()).filter(Boolean).forEach(r => joinRoom(ws, r));
+    }
+  } catch {}
 
   ws.on("message", (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
+    const type = msg?.type;
 
     // JOIN ───────────────────────────────────────────────────────────────────
-    if (msg.type === "join") {
+    if (type === "join") {
       const roomId = String(msg.room || "").trim();
       if (!roomId) return;
+      if (!joinRoom(ws, roomId)) return;
 
-      if (!joinRoom(ws, roomId)) {
-        // кімната повна
-        return;
-      }
-
-      const set = rooms.get(roomId);
-      const count = set ? set.size : 0;
+      const count = countInRoom(roomId);
 
       // Підтвердження для новачка
       try {
@@ -147,30 +187,91 @@ wss.on("connection", (ws) => {
       } catch {}
 
       // Сповістити інших у кімнаті
+      // peer-join має сенс лише для відео-кімнат, але не зашкодить і підтримці
       broadcast(roomId, { type: "peer-join", count }, ws);
       return;
     }
 
-    // Сигналінг ──────────────────────────────────────────────────────────────
-    if (ws.room && (msg.type === "offer" || msg.type === "answer" || msg.type === "ice")) {
-      broadcast(ws.room, { ...msg, room: ws.room }, ws);
+    // Сигналінг (відео) ──────────────────────────────────────────────────────
+    if ((type === "offer" || type === "answer" || type === "ice")) {
+      // гарантуємо членство для сумісності
+      const r = String(msg.room || ws.room || "").trim();
+      if (!r) return;
+      if (!ws.rooms?.has(r)) joinRoom(ws, r);
+      broadcast(r, { ...msg, room: r }, ws);
       return;
     }
 
-    // Явний вихід користувача
-    if (msg.type === "bye") {
-      if (ws.room) {
-        broadcast(ws.room, { type: "peer-leave" }, ws);
-      }
+    if (type === "bye") {
+      // явний вихід користувача
+      if (ws.room) broadcast(ws.room, { type: "peer-leave" }, ws);
       return;
     }
+
+    // Служба підтримки (чат) ────────────────────────────────────────────────
+    // Очікуємо:
+    //   { type:'chat', room, threadId, from, to, role, text, ts, mid }
+    //   { type:'delivered'|'read', room, threadId, mid, from }
+    if (type === "chat") {
+      const room = String(msg.room || "").trim();
+      if (room) {
+        if (!ws.rooms?.has(room)) joinRoom(ws, room);
+      }
+
+      const payload = {
+        ...msg,
+        serverTs: now(),
+      };
+      const data = JSON.stringify(payload);
+
+      // 1) основна кімната
+      if (room) broadcast(room, payload);
+
+      // 2) глобальна кімната консультантів
+      broadcast("support:all", payload);
+
+      // 3) кімната конкретного треда (якщо є)
+      if (msg.threadId) broadcast(`support:thread:${msg.threadId}`, payload);
+
+      // миттєва квитанція "delivered" назад від сервера відправнику
+      try {
+        const ack = {
+          type: "delivered",
+          room,
+          threadId: msg.threadId || null,
+          mid: msg.mid,
+          to: msg.from,
+          serverTs: now(),
+        };
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(ack));
+      } catch {}
+
+      return;
+    }
+
+    if (type === "delivered" || type === "read") {
+      const room = String(msg.room || "").trim();
+      if (room && !ws.rooms?.has(room)) joinRoom(ws, room);
+
+      const payload = { ...msg, serverTs: now() };
+
+      if (room) broadcast(room, payload, ws);
+      if (msg.threadId) broadcast(`support:thread:${msg.threadId}`, payload, ws);
+      return;
+    }
+
+    // інші службові події — за потреби
   });
 
   ws.on("close", () => {
-    if (ws.room) {
-      broadcast(ws.room, { type: "peer-leave" }, ws);
+    // для кожної кімнати, де доречно, повідомляємо peer-leave
+    if (ws.rooms && ws.rooms.size) {
+      for (const r of ws.rooms) {
+        // повідомлення корисне для відеокімнат
+        if (!isSupportRoom(r)) broadcast(r, { type: "peer-leave" }, ws);
+      }
     }
-    leaveRoom(ws);
+    leaveAllRooms(ws);
   });
 
   ws.on("error", () => {

@@ -4,151 +4,419 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Служба підтримки — КОМА</title>
-  <link rel="icon" href="icon/favicon.ico" />
+  <meta name="description" content="Напишіть у службу підтримки «КОМА». Ми відповімо якнайшвидше." />
+  <link rel="icon" href="icon/favicon.ico" type="image/x-icon" />
   <meta name="theme-color" content="#0f5257" />
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/zapis.css" />
   <style>
-    .support-wrap{max-width:880px;margin:24px auto;padding:0 20px}
+    .support-wrap{max-width:980px;margin:24px auto;padding:0 20px}
     .support-form{padding:22px}
-    textarea.input{min-height:160px;resize:vertical}
-    .log{margin-top:18px}
-    .log-item{padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    textarea.input{min-height:140px;resize:vertical}
+    .accordion{border:1px solid var(--border);border-radius:12px;background:#fff}
+    .accordion summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:700}
+    .accordion summary::-webkit-details-marker{display:none}
+    .acc-body{padding:0 14px 14px}
+    .consultants{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    @media (max-width:800px){.consultants{grid-template-columns:1fr 1fr}}
+    @media (max-width:520px){.consultants{grid-template-columns:1fr}}
+    .c-item{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:10px}
+    .c-item img{width:40px;height:40px;border-radius:10px;object-fit:cover;background:#eef2f7}
+    .c-item .meta{font-size:.86rem;color:#6b7280}
+    .radio{accent-color:var(--brand)}
+    .hint-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .mutetiny{color:#6b7280;font-size:.9rem}
+    .chat-wrap{margin-top:16px}
+    .chat-head .tools{display:flex;gap:8px;align-items:center}
+    .dot{display:inline-block;min-width:10px;height:10px;border-radius:999px;background:#10b981}
+    .status-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;background:#fff;font-size:.8rem}
   </style>
 </head>
 <body>
   <div data-include="partials/header.html"></div>
 
-  <section class="section">
+  <main class="section">
     <div class="support-wrap">
       <div class="card support-form">
-        <h1>Служба підтримки</h1>
+        <h1 style="margin:0 0 10px">Служба підтримки</h1>
         <p class="lead">Опишіть проблему чи запит. Ми відповімо на вказану вами електронну пошту.</p>
 
-        <div id="err" class="error"></div>
-        <div id="ok" class="ok"></div>
+        <div id="sup_err" class="error" role="alert" style="display:none;margin-top:8px"></div>
+        <div id="sup_ok" class="ok" role="status" style="display:none;margin-top:8px"></div>
 
-        <form id="f" novalidate>
-          <div class="grid" style="grid-template-columns:1fr 1fr">
+        <form id="supportForm" novalidate>
+          <div class="grid grid-2">
             <div>
               <label>Ваше ім’я</label>
-              <input id="name" class="input" placeholder="Ім’я та прізвище">
+              <input id="sup_name" class="input" type="text" placeholder="Ім’я та прізвище" required>
             </div>
             <div>
               <label>Ел. пошта</label>
-              <input id="email" class="input" type="email" placeholder="you@example.com" required>
+              <input id="sup_email" class="input" type="email" placeholder="you@example.com" required>
             </div>
+
             <div>
               <label>Тема</label>
-              <select id="topic" class="input">
-                <option>Технічна проблема</option>
-                <option>Запит щодо навчання</option>
-                <option>Запит щодо консультацій</option>
-                <option>Побажання / ідея</option>
-                <option>Інше</option>
+              <select id="sup_topic" class="input">
+                <option value="Технічна проблема">Технічна проблема</option>
+                <option value="Питання по запису">Питання по запису</option>
+                <option value="Оплата">Оплата</option>
+                <option value="Запит щодо консультацій">Запит щодо консультацій</option>
+                <option value="Побажання / ідея">Побажання / ідея</option>
+                <option value="Інше">Інше</option>
               </select>
             </div>
+
             <div>
               <label>Пріоритет</label>
-              <select id="prio" class="input">
-                <option>Звичайний</option>
-                <option>Високий</option>
-                <option>Низький</option>
+              <select id="sup_priority" class="input">
+                <option value="Звичайний">Звичайний</option>
+                <option value="Високий">Високий</option>
+                <option value="Терміновий">Терміновий</option>
               </select>
             </div>
           </div>
 
-          <label style="margin-top:10px">Повідомлення</label>
-          <textarea id="msg" class="input" placeholder="Опишіть ситуацію максимально конкретно…" required></textarea>
+          <!-- Звернутись до... -->
+          <div style="margin-top:12px">
+            <label>Звернутись до…</label>
+            <div class="accordion">
+              <details id="acc" open>
+                <summary>Вибір отримувача</summary>
+                <div class="acc-body">
+                  <div class="hint-row" style="margin-bottom:8px">
+                    <label class="c-item" style="border-style:dashed">
+                      <input class="radio" type="radio" name="target" value="support" checked>
+                      <img src="icon/logo.png" alt="">
+                      <div>
+                        <div><strong>Служба підтримки</strong> <span class="meta">— опція за замовчуванням</span></div>
+                        <div class="mutetiny">Якщо конкретного консультанта не вибрано — звернення піде сюди і стане видимим усім консультантам.</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="consultants">
+                    <!-- 6 консультантів -->
+                    <label class="c-item">
+                      <input class="radio" type="radio" name="target" value="oksanakokoten@gmail.com">
+                      <img src="icon/consultants/oksana.jpg" alt="">
+                      <div>
+                        <div><strong>Оксана Кокотень</strong></div>
+                        <div class="meta">Консультант-психолог</div>
+                      </div>
+                    </label>
+
+                    <label class="c-item">
+                      <input class="radio" type="radio" name="target" value="sergiyoyovych@gmail.com">
+                      <img src="icon/consultants/sergi.jpg" alt="">
+                      <div>
+                        <div><strong>Сергій Ойович</strong></div>
+                        <div class="meta">Душеопікун, капелан</div>
+                      </div>
+                    </label>
+
+                    <label class="c-item">
+                      <input class="radio" type="radio" name="target" value="anastasiyoyovych@gmail.com">
+                      <img src="icon/consultants/nastya.jpg" alt="">
+                      <div>
+                        <div><strong>Анастасія Ойович</strong></div>
+                        <div class="meta">Психолог, КПТ</div>
+                      </div>
+                    </label>
+
+                    <label class="c-item">
+                      <input class="radio" type="radio" name="target" value="oleksandrtkachuk@gmail.com">
+                      <img src="icon/consultants/sasha.jpg" alt="">
+                      <div>
+                        <div><strong>Олександр Ткачук</strong></div>
+                        <div class="meta">Дитячий та підлітковий психолог</div>
+                      </div>
+                    </label>
+
+                    <label class="c-item">
+                      <input class="radio" type="radio" name="target" value="tetianamakovska@gmail.com">
+                      <img src="icon/consultants/tanya.jpg" alt="">
+                      <div>
+                        <div><strong>Тетяна Маковська</strong></div>
+                        <div class="meta">Сімейний консультант</div>
+                      </div>
+                    </label>
+
+                    <label class="c-item">
+                      <input class="radio" type="radio" name="target" value="kristinakokoten@gmail.com">
+                      <img src="icon/consultants/kris.jpg" alt="">
+                      <div>
+                        <div><strong>Христина Кокотень</strong></div>
+                        <div class="meta">Психотерапевт</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </details>
+            </div>
+            <div class="mutetiny" style="margin-top:6px">Якщо ви нічого не вибрали — звернення піде в <b>Службу підтримки</b> і буде видимим усім консультантам.</div>
+          </div>
+
+          <div class="col-span-2" style="margin-top:12px">
+            <label>Повідомлення</label>
+            <textarea id="sup_message" class="input" placeholder="Опишіть ситуацію максимально конкретно…" required></textarea>
+          </div>
 
           <div class="row" style="margin-top:12px">
-            <button class="btn" type="submit">Надіслати</button>
-            <button class="btn gray" type="button" id="clearLog">Очистити журнал</button>
+            <button id="sup_send" class="btn" type="submit">Надіслати</button>
+            <button class="btn gray" type="reset">Очистити</button>
           </div>
         </form>
       </div>
 
-      <div class="card log">
-        <h3>Останні звернення (локально)</h3>
-        <div id="logList" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
+      <!-- Живий чат (після надсилання зʼявляється/активується) -->
+      <div class="chat-wrap">
+        <div class="card chat-box">
+          <div class="chat-head" style="padding:12px;border-bottom:1px solid var(--border)">
+            <div class="row" style="justify-content:space-between;align-items:center">
+              <div class="status-badge" id="connBadge"><span class="dot" id="connDot"></span> <span id="connText">Підключення…</span></div>
+              <div class="tools">
+                <span class="tag" id="threadTag" style="display:none"></span>
+              </div>
+            </div>
+          </div>
+          <div id="msgs" class="chat-msgs" aria-live="polite"></div>
+          <div class="chat-input">
+            <textarea id="chatInput" placeholder="Напишіть повідомлення…" disabled></textarea>
+            <button id="chatSend" class="btn" disabled>Надіслати</button>
+          </div>
+        </div>
       </div>
+
+      <!-- Локальні історії -->
+      <section style="margin-top:18px">
+        <div class="card" style="padding:16px">
+          <h3 style="margin:0 0 8px">Останні звернення (локально)</h3>
+          <div id="sup_log" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
+        </div>
+      </section>
     </div>
-  </section>
+  </main>
 
   <div data-include="partials/footer.html"></div>
 
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
-  <script>
-    const err = document.getElementById('err');
-    const ok  = document.getElementById('ok');
-    const LKEY = 'koma_support_outbox';
+  <script type="module" src="js/support-chat.js"></script>
+  <script type="module">
+    import { SupportChat } from './js/support-chat.js';
 
-    function showErr(t){ err.textContent=t; err.style.display='block'; ok.style.display='none'; }
-    function showOk(t){ ok.textContent=t; ok.style.display='block'; err.style.display='none'; }
+    const form    = document.getElementById('supportForm');
+    const okBox   = document.getElementById('sup_ok');
+    const errBox  = document.getElementById('sup_err');
+    const logBox  = document.getElementById('sup_log');
+    const msgsEl  = document.getElementById('msgs');
+    const inpChat = document.getElementById('chatInput');
+    const btnChat = document.getElementById('chatSend');
+    const connDot = document.getElementById('connDot');
+    const connTxt = document.getElementById('connText');
+    const threadTag = document.getElementById('threadTag');
 
-    // Підставляємо імʼя/пошту (залогінений консультант або гість)
-    (function prefill(){
-      try{
-        const s = window.guard?.getSession?.();
-        if (s?.email) {
-          document.getElementById('email').value = s.email;
-          const nm = window.guard?.emailToName?.(s.email);
-          if (nm) document.getElementById('name').value = nm;
-          return;
-        }
+    // префіл з guard
+    (() => {
+      const s = window.guard?.getSession?.();
+      if (s?.email) {
+        document.getElementById('sup_email').value = s.email;
+        const nm = window.guard?.emailToName?.(s.email);
+        if (nm) document.getElementById('sup_name').value = nm;
+      } else {
         const g = window.guard?.getGuest?.();
-        if (g) {
-          if (g.name) document.getElementById('name').value = g.name;
-        }
-      }catch{}
+        if (g?.name) document.getElementById('sup_name').value = g.name;
+      }
     })();
 
-    // Журнал в localStorage
-    function readLog(){ try{ return JSON.parse(localStorage.getItem(LKEY)||'[]'); }catch{ return []; } }
-    function writeLog(arr){ localStorage.setItem(LKEY, JSON.stringify(arr.slice(-20))); }
-    function renderLog(){
-      const list = document.getElementById('logList');
-      list.innerHTML = '';
-      readLog().slice().reverse().forEach(i=>{
-        const div = document.createElement('div');
-        div.className='log-item';
-        div.innerHTML = `<strong>${i.topic}</strong> • ${i.email} • <span class="muted">${new Date(i.ts).toLocaleString('uk-UA')}</span><br>${i.msg}`;
-        list.appendChild(div);
-      });
-    }
-    renderLog();
-
-    document.getElementById('clearLog').onclick = ()=>{
-      localStorage.removeItem(LKEY);
-      renderLog();
-      showOk('Журнал очищено.');
-    };
-
-    // Надсилання
-    document.getElementById('f').addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const name = document.getElementById('name').value.trim();
-      const email= document.getElementById('email').value.trim();
-      const topic= document.getElementById('topic').value;
-      const prio = document.getElementById('prio').value;
-      const msg  = document.getElementById('msg').value.trim();
-
-      if(!email || !msg){ showErr('Вкажіть email і заповніть повідомлення.'); return; }
-
-      // лог локально
-      const rec = { name, email, topic:`${topic} (${prio})`, msg, ts: Date.now() };
-      const log = readLog(); log.push(rec); writeLog(log); renderLog();
-
-      // mailto (поставиш бойовий e-mail підтримки)
-      const to = 'info@nacc.example';
-      const subject = encodeURIComponent(`[КОМА] ${topic} (${prio}) — ${name||'користувач'}`);
-      const body = encodeURIComponent(`Від: ${name||'-'} <${email}>\nТема: ${topic}\nПріоритет: ${prio}\n\n${msg}\n\n— надіслано зі сторінки служби підтримки`);
-      const url = `mailto:${to}?subject=${subject}&body=${body}`;
-      window.location.href = url;
-
-      showOk('Чернетку листа відкрито у вашому поштовому клієнті. Звернення також збережено локально.');
-      e.target.reset();
+    // Ініціалізація WS як "user"
+    const chat = new SupportChat({
+      role: 'user',
+      onEvent: handleEvent
     });
+
+    function setConn(state){
+      if (state){ connDot.style.background = '#10b981'; connTxt.textContent = 'Онлайн'; }
+      else { connDot.style.background = '#f59e0b'; connTxt.textContent = 'Підключення…'; }
+    }
+
+    function handleEvent(ev, payload){
+      if (ev === 'status'){ setConn(payload.connected); return; }
+      if (ev === 'chat'){ addMsg(payload); autoRead(payload); saveLocalList(); return; }
+      if (ev === 'delivered' || ev === 'read'){ markTicks(payload); return; }
+    }
+
+    function addMsg(m){
+      const div = document.createElement('div');
+      const mine = (m.role === 'user');
+      div.className = `msg ${mine ? 'me' : 'them'}`;
+      div.dataset.mid = m.mid;
+      const ts = new Date(m.ts || m.serverTs || Date.now()).toLocaleString('uk-UA');
+      const who = mine ? 'Ви' : (m.consultantName || 'Консультант');
+      div.innerHTML = `${escapeHtml(m.text)}<div class="meta">${who} · ${ts}</div>`;
+      msgsEl.appendChild(div);
+      requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight + 9999; });
+    }
+
+    function markTicks(p){
+      const node = msgsEl.querySelector(`[data-mid="${p.mid}"] .meta`);
+      if (!node) return;
+      const t = node.textContent;
+      if (p.type==='delivered' && !/✓/.test(t)) node.textContent = t + ' · ✓ доставлено';
+      if (p.type==='read' && !/✓✓/.test(t)) node.textContent = t.replace('✓ доставлено','') + ' · ✓✓ прочитано';
+    }
+
+    function autoRead(m){
+      if (m.role !== 'user' && currentThread){
+        chat.markRead({ threadId: currentThread.id, mid: m.mid, room: `support:thread:${currentThread.id}` });
+      }
+    }
+
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+    // Локальний список звернень (простий)
+    function saveLocalList(){
+      try{
+        const L = JSON.parse(localStorage.getItem('koma_support_log')||'[]');
+        const top = {
+          name: document.getElementById('sup_name').value.trim(),
+          email: document.getElementById('sup_email').value.trim(),
+          topic: document.getElementById('sup_topic').value,
+          priority: document.getElementById('sup_priority').value,
+          message: document.getElementById('sup_message').value.trim(),
+          ts: Date.now()
+        };
+        L.unshift(top);
+        localStorage.setItem('koma_support_log', JSON.stringify(L.slice(0,20)));
+        renderLocal();
+      }catch{}
+    }
+    function renderLocal(){
+      try{
+        const all = JSON.parse(localStorage.getItem('koma_support_log')||'[]');
+        logBox.innerHTML = all.length ? all.map(x => (
+          `<div class="event">
+            <strong>${escapeHtml(x.name)}</strong> &lt;${escapeHtml(x.email)}&gt; — <em>${escapeHtml(x.topic)}</em>
+            <div class="small">${new Date(x.ts).toLocaleString('uk-UA')}</div>
+            <div>${escapeHtml(x.message)}</div>
+          </div>`
+        )).join('') : '<div class="muted">Поки що немає записів.</div>';
+      }catch{ logBox.innerHTML=''; }
+    }
+    renderLocal();
+
+    // Поточний тред (створюємо після сабміту)
+    let currentThread = null;
+
+    function buildThreadId(payload, target){
+      const u = (payload.email || 'user').toLowerCase();
+      const c = (target || 'support').toLowerCase();
+      const t = (payload.topic || 'topic').toLowerCase().slice(0,24);
+      return `${u}__${c}__${t}`;
+    }
+
+    // Submit форми => створити тред, приєднатися, відправити перше повідомлення
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      errBox.style.display='none'; okBox.style.display='none';
+
+      const payload = {
+        name: document.getElementById('sup_name').value.trim(),
+        email: document.getElementById('sup_email').value.trim(),
+        topic: document.getElementById('sup_topic').value,
+        priority: document.getElementById('sup_priority').value,
+        message: document.getElementById('sup_message').value.trim()
+      };
+      if(!payload.name || !payload.email || !payload.message){
+        errBox.textContent = 'Заповніть обовʼязкові поля.'; errBox.style.display='block'; return;
+      }
+
+      // Кому звернення
+      const target = (document.querySelector('input[name="target"]:checked')?.value || 'support');
+
+      // Створюємо/обираємо тред
+      const threadId = buildThreadId(payload, target);
+      currentThread = { id: threadId, targetConsultant: (target==='support' ? '' : target) };
+
+      // приєднатись до кімнати треда + поставити бейдж
+      chat.joinThread(threadId);
+      threadTag.textContent = `Тред: ${threadId}`;
+      threadTag.style.display='inline-flex';
+
+      // активуємо чат-ввід
+      inpChat.disabled=false; btnChat.disabled=false;
+
+      // Перше повідомлення → у кімнату треда (видимі відповіді тут)
+      const roomThread = `support:thread:${threadId}`;
+      const meta = {
+        userName: payload.name,
+        userEmail: payload.email,
+        topic: payload.topic,
+        prio: payload.priority,
+        targetConsultant: (target==='support' ? '' : target)
+      };
+
+      // 1) У спільну кімнату support:all (щоб бачили всі консультанти)
+      chat.sendChat({
+        room: 'support:all',
+        threadId,
+        text: payload.message,
+        from: payload.email,
+        to: meta.targetConsultant || '',
+        extras: meta
+      });
+
+      // 2) У персональну консультанта (якщо вибраний)
+      if (meta.targetConsultant){
+        chat.sendChat({
+          room: `support:consultant:${meta.targetConsultant}`,
+          threadId,
+          text: payload.message,
+          from: payload.email,
+          to: meta.targetConsultant,
+          extras: meta
+        });
+      }
+
+      // 3) У тред-кімнату (для вашої видимості тут і далі)
+      chat.sendChat({
+        room: roomThread,
+        threadId,
+        text: payload.message,
+        from: payload.email,
+        to: meta.targetConsultant || '',
+        extras: meta
+      });
+
+      okBox.textContent = 'Звернення надіслано. Очікуйте відповідь у цьому чаті та/або на пошту.';
+      okBox.style.display='block';
+
+      // не очищаю форму — щоб дані залишилися; очистимо лише поле повідомлення
+      document.getElementById('sup_message').value = '';
+      saveLocalList();
+    });
+
+    // Надсилання наступних повідомлень з чат-вводу
+    btnChat.addEventListener('click', sendChatMsg);
+    inpChat.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(); }
+    });
+
+    function sendChatMsg(){
+      if (!currentThread) return;
+      const text = inpChat.value.trim();
+      if (!text) return;
+      const email = document.getElementById('sup_email').value.trim();
+      chat.sendChat({
+        room: `support:thread:${currentThread.id}`,
+        threadId: currentThread.id,
+        text,
+        from: email,
+        to: currentThread.targetConsultant || ''
+      });
+      inpChat.value = '';
+    }
   </script>
 </body>
 </html>
