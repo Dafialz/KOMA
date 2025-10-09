@@ -4,17 +4,16 @@
   const app = global.videoApp;
   const { els, room, SIGNAL_URL, FORCE_RELAY, setBadge, logChat } = app;
 
-  // Унікальний id цього табу (щоб не ловити власні WS-повідомлення)
   const myId = Math.random().toString(36).slice(2);
 
-  // ---------- wsReady: гарантований Promise для video-ui ----------
+  // ---------- wsReady ----------
   let wsReadyResolve;
   function resetWsReady() {
     app.wsReady = new Promise((r) => (wsReadyResolve = r));
   }
   resetWsReady();
 
-  // ---------- ICE servers / policy ----------
+  // ---------- ICE ----------
   const FALLBACK_ICE = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
     { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -41,7 +40,6 @@
     sdpSemantics: 'unified-plan',
   });
 
-  // Доступно з консолі
   global.pc = pc;
   global.app = app;
 
@@ -53,11 +51,24 @@
   let ignoreOffer = false;
   let isUnloading = false;
 
-  // ---------- Трансивери (фіксуємо порядок m-lines: audio -> video) ----------
+  // ---------- Transceivers (fix m-line order: audio -> video) ----------
   const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
   const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
   app.txAudio = txAudio;
   app.txVideo = txVideo;
+
+  // Prefer H264 (Safari/iOS та деякі ПК цього потребують)
+  try {
+    const caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
+    if (caps && caps.codecs && txVideo.setCodecPreferences) {
+      const h264 = caps.codecs.filter(c => /video\/h264/i.test(c.mimeType));
+      const rest = caps.codecs.filter(c => !/video\/h264/i.test(c.mimeType));
+      if (h264.length) {
+        txVideo.setCodecPreferences([...h264, ...rest]);
+        logChat(`Codec pref: H264 first (${h264.length})`, 'sys');
+      }
+    }
+  } catch {}
 
   // ---------- Local media ----------
   async function startLocal(constraints) {
@@ -79,7 +90,7 @@
     const a = localStream.getAudioTracks()[0] || null;
     const v = localStream.getVideoTracks()[0] || null;
 
-    // ВАЖЛИВО: embed MSID у SDP — setStreams(stream) поруч із replaceTrack
+    // ВАЖЛИВО: replaceTrack + setStreams гарантує a=msid: у SDP
     if (a) {
       try { await txAudio.sender.replaceTrack(a); } catch {}
       try { txAudio.sender.setStreams(localStream); } catch {}
@@ -108,7 +119,7 @@
     if (!els.remote) return;
     els.remote.playsInline = true;
     els.remote.autoplay = true;
-    els.remote.muted = true; // для автоплею; розм’ютити кнопкою
+    els.remote.muted = true; // для автоплею; юзер потім розм’ютить
   }
   ensureRemoteVideoElementSetup();
 
@@ -296,7 +307,7 @@
     };
   }
 
-  // ---------- Signaling (WS) з reconnection та outbox ----------
+  // ---------- Signaling (WS) ----------
   let ws;
   const outbox = [];
   function wsFlush() {
@@ -390,7 +401,7 @@
   }
   connectWS();
 
-  // ---------- Debug stats (кожні 2с) ----------
+  // ---------- Debug stats ----------
   const statTimer = setInterval(async () => {
     try {
       const stats = await pc.getStats();
@@ -441,4 +452,3 @@
   });
 
 })(window);
-//123
