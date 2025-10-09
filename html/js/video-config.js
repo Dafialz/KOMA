@@ -11,10 +11,13 @@
   const relayParam  = (qs.get('relay') || '').toLowerCase();
   const FORCE_RELAY = (relayParam === '0' || relayParam === 'false') ? false : true;
 
-  // proto: tcp|udp|auto (або both/all) — за замовчуванням AUTO (щоб було і tcp, і udp)
+  // proto: tcp|udp|auto (або both/all) — за замовчуванням AUTO (і tcp, і udp)
   const proto     = (qs.get('proto') || 'auto').toLowerCase();
   const WANT_TCP  = ['tcp','both','all','auto'].includes(proto);
   const WANT_UDP  = ['udp','both','all','auto'].includes(proto);
+
+  // Прапорець: показувати системні логи в чаті?
+  const DEBUG_CHAT = qs.get('debug') === '1';
 
   // ---------- Сигналінг ----------
   const scriptTag =
@@ -27,15 +30,13 @@
       : 'wss://koma-uaue.onrender.com';
   }
 
-  // ---------- Наш TURN на Fly.io ----------
+  // ---------- Наш TURN ----------
   const TURN_HOST = '37.16.30.199';
   const TURN_PORT = 3478;
   const TURN_USER = 'myuser';
   const TURN_PASS = 'very-strong-pass';
 
   const ICE_SERVERS_RAW = [];
-
-  // Порядок: спершу TCP:443 (макс. прохідність), потім TCP:3478, потім UDP:3478
   if (WANT_TCP) {
     ICE_SERVERS_RAW.push(
       { urls: `turn:${TURN_HOST}:443?transport=tcp`,  username: TURN_USER, credential: TURN_PASS },
@@ -47,8 +48,6 @@
       { urls: `turn:${TURN_HOST}:${TURN_PORT}?transport=udp`, username: TURN_USER, credential: TURN_PASS },
     );
   }
-
-  // Додатковий публічний fallback (?fallback=1) — тільки для дебага
   if (qs.get('fallback') === '1') {
     ICE_SERVERS_RAW.push(
       { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -56,8 +55,6 @@
       { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     );
   }
-
-  // Якщо після фільтру масив порожній — підстрахуємось tcp:443
   if (ICE_SERVERS_RAW.length === 0) {
     ICE_SERVERS_RAW.push({ urls: `turn:${TURN_HOST}:443?transport=tcp`, username: TURN_USER, credential: TURN_PASS });
   }
@@ -100,9 +97,14 @@
   }
 
   function logChat(text, who) {
+    // Системні повідомлення — лише в console, якщо DEBUG_CHAT не увімкнено
+    if (who === 'sys' && !DEBUG_CHAT) {
+      try { console.log(text); } catch {}
+      return;
+    }
     if (!els.chatlog) return;
     const wrap = document.createElement('div');
-    wrap.className = 'msg ' + (who || 'sys');
+    wrap.className = 'msg ' + (who || 'peer');
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.innerHTML = String(text || '').replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s]));
@@ -111,7 +113,7 @@
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
-  // ---------- Експорт у глобальний app ----------
+  // ---------- Експорт ----------
   const app = (global.videoApp = global.videoApp || {});
   app.qs          = qs;
   app.role        = role;
@@ -120,18 +122,16 @@
   app.setBadge    = setBadge;
   app.logChat     = logChat;
   app.SIGNAL_URL  = SIGNAL_URL;
-  app.FORCE_RELAY = FORCE_RELAY;             // true => iceTransportPolicy:'relay'
+  app.FORCE_RELAY = FORCE_RELAY;
   app.UA_MOBILE   = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  app.PROTO       = proto;                   // зручно бачити у логах/в UI
-  app.polite      = (role === 'client');     // клієнт приймає offer і шле answer
+  app.PROTO       = proto;
+  app.polite      = (role === 'client');
+  app.DEBUG_CHAT  = DEBUG_CHAT;
 
-  // Фінальний список ICE-серверів
   app.ICE_SERVERS = ICE_SERVERS_RAW.slice();
 
-  // Дебаг у консоль
   console.log('[init] room="%s", role="%s", relay=%s, proto=%s, signal=%s',
     room, role, FORCE_RELAY ? 'relay' : 'all', proto, SIGNAL_URL);
   console.log('videoApp.ICE_SERVERS (final) = ', app.ICE_SERVERS);
   console.log('servers=' + app.ICE_SERVERS.length);
-
 })(window);
