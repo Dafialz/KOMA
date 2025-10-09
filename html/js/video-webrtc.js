@@ -8,9 +8,7 @@
 
   // ---------- wsReady ----------
   let wsReadyResolve;
-  function resetWsReady() {
-    app.wsReady = new Promise((r) => (wsReadyResolve = r));
-  }
+  function resetWsReady() { app.wsReady = new Promise((r) => (wsReadyResolve = r)); }
   resetWsReady();
 
   // ---------- ICE ----------
@@ -40,6 +38,7 @@
     sdpSemantics: 'unified-plan',
   });
 
+  // Експортуємо для консолі
   global.pc = pc;
   global.app = app;
 
@@ -51,26 +50,11 @@
   let ignoreOffer = false;
   let isUnloading = false;
 
-  // ---------- Transceivers (fix m-line order: audio -> video) ----------
-  const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
-  const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
-  app.txAudio = txAudio;
-  app.txVideo = txVideo;
+  // Збережемо sender-и (може знадобитися для replaceTrack при шерингу)
+  let audioSender = null;
+  let videoSender = null;
 
-  // Prefer H264 (Safari/iOS та деякі ПК цього потребують)
-  try {
-    const caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
-    if (caps && caps.codecs && txVideo.setCodecPreferences) {
-      const h264 = caps.codecs.filter(c => /video\/h264/i.test(c.mimeType));
-      const rest = caps.codecs.filter(c => !/video\/h264/i.test(c.mimeType));
-      if (h264.length) {
-        txVideo.setCodecPreferences([...h264, ...rest]);
-        logChat(`Codec pref: H264 first (${h264.length})`, 'sys');
-      }
-    }
-  } catch {}
-
-  // ---------- Local media ----------
+  // ---------- Local media (ДОДАЄМО ЧЕРЕЗ addTrack => гарантія a=msid) ----------
   async function startLocal(constraints) {
     if (localStream) return localStream;
 
@@ -90,14 +74,11 @@
     const a = localStream.getAudioTracks()[0] || null;
     const v = localStream.getVideoTracks()[0] || null;
 
-    // ВАЖЛИВО: replaceTrack + setStreams гарантує a=msid: у SDP
-    if (a) {
-      try { await txAudio.sender.replaceTrack(a); } catch {}
-      try { txAudio.sender.setStreams(localStream); } catch {}
-    }
-    if (v) {
-      try { await txVideo.sender.replaceTrack(v); } catch {}
-      try { txVideo.sender.setStreams(localStream); } catch {}
+    try {
+      if (a && !audioSender) audioSender = pc.addTrack(a, localStream); // <-- addTrack гарантує a=msid
+      if (v && !videoSender) videoSender = pc.addTrack(v, localStream); // <-- addTrack гарантує a=msid
+    } catch (e) {
+      logChat('addTrack error: ' + (e.message || e.name), 'sys');
     }
 
     if (els.local) {
@@ -119,7 +100,7 @@
     if (!els.remote) return;
     els.remote.playsInline = true;
     els.remote.autoplay = true;
-    els.remote.muted = true; // для автоплею; юзер потім розм’ютить
+    els.remote.muted = true; // для автоплею; розм’ютити кнопкою
   }
   ensureRemoteVideoElementSetup();
 
@@ -244,26 +225,13 @@
   }
 
   async function acceptAnswer(answerDesc) {
-    if (pc.signalingState === 'have-local-offer') {
-      try {
-        await pc.setRemoteDescription(answerDesc);
-        logChat('Прийняв answer', 'sys');
-        setBadge('Отримано відповідь — з’єднуємо…', 'muted');
-      } catch (err) {
-        logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
-      }
-      return;
-    }
-    // Фолбек: якщо answer прийшов у «нестандартному» стані — робимо ресинхронізацію
-    logChat('Answer у стані ' + pc.signalingState + ' — форсую повторний offer', 'sys');
+    if (pc.signalingState !== 'have-local-offer') return;
     try {
-      if (pc.signalingState !== 'closed') {
-        const offer = await pc.createOffer({ iceRestart: false });
-        await pc.setLocalDescription(offer);
-        await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
-      }
-    } catch (e) {
-      logChat('Resync offer error: ' + (e?.message || e?.name), 'sys');
+      await pc.setRemoteDescription(answerDesc);
+      logChat('Прийняв answer', 'sys');
+      setBadge('Отримано відповідь — з’єднуємо…', 'muted');
+    } catch (err) {
+      logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
     }
   }
 
@@ -372,8 +340,6 @@
         setBadge('Кімната заповнена', 'danger');
         return;
       }
-
-      // Пізнє підключення другого — ініціатор шле свіжий offer
       if (msg.type === 'peer-join') {
         if (!app.polite && pc.signalingState === 'stable') {
           logChat('Peer join → надсилаю новий offer', 'sys');
@@ -430,15 +396,15 @@
 
   // ---------- Export ----------
   app.pc = pc;
-  app.txAudio = txAudio;
-  app.txVideo = txVideo;
   app.startLocal = startLocal;
   app.createAndSendOffer = createAndSendOffer;
   app.restartIce = restartIce;
   app.wsSend = wsSend;
   app.ICE_POLICY = ICE_POLICY;
   app.ICE_SERVERS = ICE_SERVERS;
-  app.bindDataChannel = bindDataChannel;
+  // на випадок шерингу у video-ui:
+  app.txAudio = { sender: audioSender };
+  app.txVideo = { sender: videoSender };
 
   // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
