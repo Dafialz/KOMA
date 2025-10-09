@@ -67,6 +67,20 @@
     }
   } catch {}
 
+  // ------ helpers: гарантуємо MSID у SDP (критично) ------
+  function ensureMsidOnSenders(stream) {
+    try {
+      const s = stream || localStream;
+      if (!s) return;
+      pc.getSenders().forEach(sender => {
+        if (sender.track && sender.setStreams) {
+          // важливо: саме MediaStream, а не пустий список
+          sender.setStreams(s);
+        }
+      });
+    } catch {}
+  }
+
   // ---------- Local media ----------
   async function startLocal(constraints) {
     if (localStream) return localStream;
@@ -89,17 +103,20 @@
     const v = localStream.getVideoTracks()[0] || null;
 
     if (a) {
+      try { a.contentHint = 'speech'; } catch {}
       await txAudio.sender.replaceTrack(a);
-      try { txAudio.sender.setStreams(localStream); } catch {}
     }
     if (v) {
+      try { v.contentHint = 'motion'; } catch {}
       await txVideo.sender.replaceTrack(v);
-      try { txVideo.sender.setStreams(localStream); } catch {}
     }
+
+    // КРИТИЧНО: вшиваємо потік у всі сендери (щоб з’явився a=msid:)
+    ensureMsidOnSenders(localStream);
 
     if (els.local) {
       els.local.srcObject = localStream;
-      els.local.muted = true;
+      els.local.muted = true;           // автоплей
       els.local.playsInline = true;
       els.local.autoplay = true;
       try { await els.local.play(); } catch {}
@@ -120,16 +137,23 @@
   }
   ensureRemoteVideoElementSetup();
 
-  function tryAutoplayRemote() {
+  function tryAutoplayRemote(forceReload=false) {
     if (!els.remote) return;
+    if (forceReload) {
+      // інколи Chrome «залипає» з чорним екраном — пере-призначення srcObject оживляє
+      const s = els.remote.srcObject;
+      els.remote.srcObject = null;
+      els.remote.srcObject = s;
+    }
     const tryPlay = () => {
       if (els.remote.paused) {
         els.remote.play().catch(() => {/* чекаємо на клік Unmute */});
       }
     };
     tryPlay();
-    setTimeout(tryPlay, 300);
+    setTimeout(tryPlay, 200);
     els.remote.addEventListener('loadeddata', tryPlay, { once: true });
+    els.remote.addEventListener('resize', () => { /* як тільки пішли кадри */ }, { once:true });
   }
 
   function maybeShowUnmute() {
@@ -147,7 +171,7 @@
   pc.ontrack = (ev) => {
     const s = (ev.streams && ev.streams[0]) || null;
     if (s) {
-      if (!remoteStream || remoteStream.id !== s.id) remoteStream = s;
+      remoteStream = !remoteStream || remoteStream.id !== s.id ? s : remoteStream;
     } else {
       if (!remoteStream) remoteStream = new MediaStream();
       if (ev.track && !remoteStream.getTracks().find(t => t.id === ev.track.id)) {
@@ -158,7 +182,7 @@
     if (els.remote && els.remote.srcObject !== remoteStream) {
       els.remote.srcObject = remoteStream;
       ensureRemoteVideoElementSetup();
-      tryAutoplayRemote();
+      tryAutoplayRemote(true);
     }
 
     maybeShowUnmute();
@@ -185,12 +209,13 @@
 
   // ---------- Perfect negotiation ----------
   pc.onnegotiationneeded = async () => {
-    // ЛИШЕ ініціатор робить офер, і лише зі stable
+    // ЛИШЕ ініціатор робить офер зі stable
     if (app.polite) return;
     if (makingOffer || pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
       await startLocal();
+      ensureMsidOnSenders(); // гарантія перед офером
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
@@ -208,6 +233,7 @@
     try {
       makingOffer = true;
       await startLocal();
+      ensureMsidOnSenders(); // гарантія перед офером
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
@@ -221,6 +247,7 @@
 
   async function acceptOffer(offerDesc) {
     await startLocal();
+    ensureMsidOnSenders(); // перед формуванням answer
     const offerCollision =
       makingOffer || pc.signalingState !== 'stable' || isSettingRemoteAnswerPending;
     ignoreOffer = !app.polite && offerCollision;
@@ -243,11 +270,12 @@
   }
 
   async function acceptAnswer(answerDesc) {
-    // Приймаємо лише коли ми в have-local-offer (без «ресинхронізацій»)
     if (pc.signalingState !== 'have-local-offer') return;
     try {
       await pc.setRemoteDescription(answerDesc);
       logChat('Прийняв answer', 'sys');
+      // якщо раптом remote не намалювався — підштовхнемо
+      tryAutoplayRemote(true);
     } catch (err) {
       logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
     }
@@ -255,6 +283,7 @@
 
   async function restartIce() {
     try {
+      ensureMsidOnSenders();
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
@@ -390,8 +419,9 @@
         logChat(`${tx} | ${rx} | rxTracks=${JSON.stringify(recvStates)}`, 'sys');
       }
 
-      if (els.remote && els.remote.srcObject && els.remote.readyState < 2) {
-        tryAutoplayRemote();
+      // якщо ще не намалювався — підштрикнути автоплей
+      if (els.remote && els.remote.srcObject && (els.remote.videoWidth === 0 || els.remote.readyState < 2)) {
+        tryAutoplayRemote(true);
       }
     } catch {}
   }, 2000);
@@ -420,4 +450,3 @@
   });
 
 })(window);
-//123
