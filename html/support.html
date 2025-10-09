@@ -196,7 +196,7 @@
       <section style="margin-top:18px">
         <div class="card" style="padding:16px">
           <h3 style="margin:0 0 8px">Останні звернення (локально)</h3>
-        <div id="sup_log" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
+          <div id="sup_log" class="grid" style="grid-template-columns:1fr;gap:10px"></div>
         </div>
       </section>
     </div>
@@ -206,7 +206,6 @@
 
   <script src="js/guard.js"></script>
   <script type="module" src="js/partials.js"></script>
-  <!-- конфіг з URL бекенду/WS -->
   <script src="js/config.js"></script>
   <script type="module" src="js/support-chat.js"></script>
   <script type="module">
@@ -276,14 +275,18 @@
     function getLocalList(){ try { return JSON.parse(localStorage.getItem('koma_support_log')||'[]'); } catch { return []; } }
     function setLocalList(list){ try { localStorage.setItem('koma_support_log', JSON.stringify(list.slice(0,20))); } catch {} }
     function renderLocal(){
-      const all = getLocalList();
-      logBox.innerHTML = all.length ? all.map(x => (
-        `<div class="event" data-thread="${escapeHtml(x.threadId||'')}">
-          <strong>${escapeHtml(x.name)}</strong> &lt;${escapeHtml(x.email)}&gt; — <em>${escapeHtml(x.topic)}</em>
-          <div class="small">${new Date(x.ts).toLocaleString('ук-UA')}</div>
-          <div>${escapeHtml(x.message)}</div>
-        </div>`
-      )).join('') : '<div class="muted">Поки що немає записів.</div>';
+      try{
+        const all = getLocalList();
+        logBox.innerHTML = all.length ? all.map(x => (
+          `<div class="event" data-thread="${escapeHtml(x.threadId||'')}">
+            <strong>${escapeHtml(x.name)}</strong> &lt;${escapeHtml(x.email)}&gt; — <em>${escapeHtml(x.topic)}</em>
+            <div class="small">${new Date(x.ts).toLocaleString('uk-UA')}</div>
+            <div>${escapeHtml(x.message)}</div>
+          </div>`
+        )).join('') : '<div class="muted">Поки що немає записів.</div>';
+      }catch{
+        logBox.innerHTML = '<div class="muted">Поки що немає записів.</div>';
+      }
     }
     function addLocalEntry(entry){
       const list = getLocalList();
@@ -401,7 +404,7 @@
     // Надсилання наступних реплік
     btnChat.addEventListener('click', sendChatMsg);
     inpChat.addEventListener('keydown', (e)=>{
-      if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(); }
+      if (e.key === 'Enter' && !е.shiftKey){ e.preventDefault(); sendChatMsg(); }
     });
     function sendChatMsg(){
       if (!currentThread) return;
