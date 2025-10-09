@@ -3,20 +3,43 @@
   'use strict';
 
   // ---------- Параметри з URL ----------
-  const qs   = new URLSearchParams(location.search);
-  const role = (qs.get('role') || 'consultant').toLowerCase();           // consultant | client
-  const room = (qs.get('room') || 'KOMA_demo').trim() || 'KOMA_demo';
+  const qs = new URLSearchParams(location.search);
 
-  // relay: 1 = тільки TURN, 0 = дозволити host/srflx; за замовчуванням ТІЛЬКИ relay
+  // Роль: consultant | client
+  const role = (qs.get('role') || 'consultant').toLowerCase();
+
+  // Нормалізація рядка під room (лише [a-z0-9:_-], до 64 симв.)
+  function slugRoom(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9:_-]+/g, '-')
+      .slice(0, 64) || 'room';
+  }
+
+  // Витягуємо кімнату:
+  // 1) ?room=...       — пріоритет
+  // 2) ?consultant=... — зручний синонім (людське ім’я/нік)
+  // 3) ?consultantEmail=... або ?c=... — перетворимо в slug
+  // Якщо нічого немає — залишимо "KOMA_demo"
+  let room =
+    qs.get('room')
+    || (qs.get('consultant') && `consultant:${qs.get('consultant')}`)
+    || (qs.get('consultantEmail') && `consultant:${qs.get('consultantEmail')}`)
+    || (qs.get('c') && `consultant:${qs.get('c')}`)
+    || 'KOMA_demo';
+
+  room = slugRoom(room);
+
+  // relay: 1 = тільки TURN, 0/false = дозволити host/srflx; за замовчуванням ТІЛЬКИ relay
   const relayParam  = (qs.get('relay') || '').toLowerCase();
   const FORCE_RELAY = (relayParam === '0' || relayParam === 'false') ? false : true;
 
-  // proto: tcp|udp|auto (або both/all) — за замовчуванням AUTO (і tcp, і udp)
+  // proto: tcp|udp|auto (both/all) — за замовчуванням AUTO (і tcp, і udp)
   const proto     = (qs.get('proto') || 'auto').toLowerCase();
   const WANT_TCP  = ['tcp','both','all','auto'].includes(proto);
   const WANT_UDP  = ['udp','both','all','auto'].includes(proto);
 
-  // Прапорець: показувати системні логи в чаті?
+  // Прапорець: показувати системні логи в чаті (за замовчуванням — НІ)
   const DEBUG_CHAT = qs.get('debug') === '1';
 
   // ---------- Сигналінг ----------
@@ -30,7 +53,7 @@
       : 'wss://koma-uaue.onrender.com';
   }
 
-  // ---------- Наш TURN ----------
+  // ---------- Наш TURN (кастомний + опц. фолбек) ----------
   const TURN_HOST = '37.16.30.199';
   const TURN_PORT = 3478;
   const TURN_USER = 'myuser';
@@ -97,7 +120,7 @@
   }
 
   function logChat(text, who) {
-    // Системні повідомлення — лише в console, якщо DEBUG_CHAT не увімкнено
+    // Системні повідомлення — тільки в console, якщо DEBUG_CHAT не увімкнено
     if (who === 'sys' && !DEBUG_CHAT) {
       try { console.log(text); } catch {}
       return;
@@ -113,19 +136,32 @@
     els.chatlog.scrollTop = els.chatlog.scrollHeight;
   }
 
+  // Зручний генератор інвайт-лінків (використовується у video-ui.js)
+  function makeInviteLink(targetRole) {
+    const u = new URL(location.href);
+    u.searchParams.set('room', room);
+    u.searchParams.set('role', String(targetRole || (role === 'consultant' ? 'client' : 'consultant')));
+    // Для клієнта корисно автозапуск
+    if ((targetRole || '').toLowerCase() === 'client') u.searchParams.set('autostart','1');
+    return u.toString();
+  }
+
   // ---------- Експорт ----------
   const app = (global.videoApp = global.videoApp || {});
   app.qs          = qs;
   app.role        = role;
   app.room        = room;
+  app.makeInvite  = makeInviteLink;
+
   app.els         = els;
   app.setBadge    = setBadge;
   app.logChat     = logChat;
+
   app.SIGNAL_URL  = SIGNAL_URL;
   app.FORCE_RELAY = FORCE_RELAY;
   app.UA_MOBILE   = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   app.PROTO       = proto;
-  app.polite      = (role === 'client');
+  app.polite      = (role === 'client');      // клієнт — "polite"
   app.DEBUG_CHAT  = DEBUG_CHAT;
 
   app.ICE_SERVERS = ICE_SERVERS_RAW.slice();

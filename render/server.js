@@ -1,6 +1,7 @@
 // server.js
 // ─────────────────────────────────────────────────────────────────────────────
-// 1) WebSocket-сигналінг (join / offer / answer / ice / bye) з лімітом 2 peer/room
+// 1) WebSocket-сигналінг (join / offer / answer / ice / bye) для багатьох кімнат
+//    з подіями peer-join / peer-leave і лімітом 2 peer/room
 // 2) REST API бронювань із файлами (multer) → bookings.json
 // 3) Статика з /html
 // + Keepalive для WS (ping/pong)
@@ -68,40 +69,41 @@ app.use("/uploads", express.static(UPLOAD_DIR));
 // ── Сигналінг (кімнати) ──────────────────────────────────────────────────────
 const rooms = new Map(); // Map<roomId, Set<ws>>
 
-function broadcast(room, message, exceptWs) {
-  const set = rooms.get(room);
+function wsId() { return Math.random().toString(36).slice(2); }
+
+function roomSet(roomId) {
+  if (!rooms.has(roomId)) rooms.set(roomId, new Set());
+  return rooms.get(roomId);
+}
+
+function broadcast(roomId, message, exceptWs = null) {
+  const set = rooms.get(roomId);
   if (!set) return;
-  const data = JSON.stringify(message);
+  const data = JSON.stringify({ ...message, room: roomId });
   for (const client of set) {
-    if (client !== exceptWs && client.readyState === WebSocket.OPEN) {
-      try { client.send(data); } catch {}
-    }
+    if (client.readyState !== WebSocket.OPEN) continue;
+    if (exceptWs && client === exceptWs) continue;
+    try { client.send(data); } catch {}
   }
 }
 
 function joinRoom(ws, roomId) {
-  if (!rooms.has(roomId)) rooms.set(roomId, new Set());
-  const set = rooms.get(roomId);
-
-  // обмеження 2 peer
+  const set = roomSet(roomId);
   if (set.size >= MAX_ROOM_PEERS) {
-    try {
-      ws.send(JSON.stringify({ type: "full", room: roomId }));
-    } catch {}
+    try { ws.send(JSON.stringify({ type: "full", room: roomId })); } catch {}
     return false;
   }
-
   set.add(ws);
   ws.room = roomId;
   return true;
 }
 
 function leaveRoom(ws) {
-  if (ws.room && rooms.has(ws.room)) {
-    const set = rooms.get(ws.room);
-    set.delete(ws);
-    if (set.size === 0) rooms.delete(ws.room);
-  }
+  if (!ws.room) return;
+  const set = rooms.get(ws.room);
+  if (!set) return;
+  set.delete(ws);
+  if (set.size === 0) rooms.delete(ws.room);
 }
 
 // WS keepalive (ping/pong)
@@ -119,45 +121,54 @@ const wsPingInterval = setInterval(() => {
 
 wss.on("connection", (ws) => {
   ws.isAlive = true;
+  ws.id = wsId();
   ws.on("pong", () => { ws.isAlive = true; });
 
   ws.on("message", (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
+    // JOIN ───────────────────────────────────────────────────────────────────
     if (msg.type === "join") {
       const roomId = String(msg.room || "").trim();
       if (!roomId) return;
 
-      // якщо кімната переповнена — відповідаємо full і НЕ додаємо клієнта
-      if (!joinRoom(ws, roomId)) return;
+      if (!joinRoom(ws, roomId)) {
+        // кімната повна
+        return;
+      }
 
-      // опціонально: можна повідомити, що в кімнаті тепер N учасників
-      // broadcast(roomId, { type: "peers", room: roomId, count: rooms.get(roomId).size }, null);
+      const set = rooms.get(roomId);
+      const count = set ? set.size : 0;
+
+      // Підтвердження для новачка
+      try {
+        ws.send(JSON.stringify({ type: "join-ack", room: roomId, count }));
+      } catch {}
+
+      // Сповістити інших у кімнаті
+      broadcast(roomId, { type: "peer-join", count }, ws);
       return;
     }
 
-    // транзит сигналінгу в межах кімнати
+    // Сигналінг ──────────────────────────────────────────────────────────────
     if (ws.room && (msg.type === "offer" || msg.type === "answer" || msg.type === "ice")) {
-      // пробросимо "room" для зручності на боці клієнта
-      msg.room = ws.room;
-      broadcast(ws.room, msg, ws);
+      broadcast(ws.room, { ...msg, room: ws.room }, ws);
       return;
     }
 
+    // Явний вихід користувача
     if (msg.type === "bye") {
-      // клієнт свідомо йде — повідомимо пару
       if (ws.room) {
-        broadcast(ws.room, { type: "bye", room: ws.room }, ws);
+        broadcast(ws.room, { type: "peer-leave" }, ws);
       }
       return;
     }
   });
 
   ws.on("close", () => {
-    // при закритті сесії — повідомимо пару й приберемо із кімнати
     if (ws.room) {
-      broadcast(ws.room, { type: "bye", room: ws.room }, ws);
+      broadcast(ws.room, { type: "peer-leave" }, ws);
     }
     leaveRoom(ws);
   });
