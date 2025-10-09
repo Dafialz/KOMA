@@ -53,11 +53,11 @@
   let ignoreOffer = false;
   let isUnloading = false;
 
-  // Збережемо sender-и (щоб підміняти треки згодом) і віддамо їх у app.txAudio/txVideo
-  let audioSender = null;
-  let videoSender = null;
-  app.txAudio = { sender: null };
-  app.txVideo = { sender: null };
+  // ---------- Трансивери (фіксуємо порядок m-lines: audio -> video) ----------
+  const txAudio = pc.addTransceiver('audio', { direction: 'sendrecv' });
+  const txVideo = pc.addTransceiver('video', { direction: 'sendrecv' });
+  app.txAudio = txAudio;
+  app.txVideo = txVideo;
 
   // ---------- Local media ----------
   async function startLocal(constraints) {
@@ -76,21 +76,17 @@
       catch { localStream = new MediaStream(); }
     }
 
-    // КЛЮЧ: додаємо треки через addTrack(track, stream) — це гарантує a=msid
     const a = localStream.getAudioTracks()[0] || null;
     const v = localStream.getVideoTracks()[0] || null;
 
-    try {
-      if (a && !audioSender) {
-        audioSender = pc.addTrack(a, localStream);
-        app.txAudio.sender = audioSender; // ← для video-ui (шерінг екрану/мікрофона)
-      }
-      if (v && !videoSender) {
-        videoSender = pc.addTrack(v, localStream);
-        app.txVideo.sender = videoSender; // ← для video-ui (replaceTrack під час share)
-      }
-    } catch (e) {
-      logChat('addTrack error: ' + (e.message || e.name), 'sys');
+    // ВАЖЛИВО: embed MSID у SDP — setStreams(stream) поруч із replaceTrack
+    if (a) {
+      try { await txAudio.sender.replaceTrack(a); } catch {}
+      try { txAudio.sender.setStreams(localStream); } catch {}
+    }
+    if (v) {
+      try { await txVideo.sender.replaceTrack(v); } catch {}
+      try { txVideo.sender.setStreams(localStream); } catch {}
     }
 
     if (els.local) {
@@ -237,13 +233,26 @@
   }
 
   async function acceptAnswer(answerDesc) {
-    if (pc.signalingState !== 'have-local-offer') return;
+    if (pc.signalingState === 'have-local-offer') {
+      try {
+        await pc.setRemoteDescription(answerDesc);
+        logChat('Прийняв answer', 'sys');
+        setBadge('Отримано відповідь — з’єднуємо…', 'muted');
+      } catch (err) {
+        logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
+      }
+      return;
+    }
+    // Фолбек: якщо answer прийшов у «нестандартному» стані — робимо ресинхронізацію
+    logChat('Answer у стані ' + pc.signalingState + ' — форсую повторний offer', 'sys');
     try {
-      await pc.setRemoteDescription(answerDesc);
-      logChat('Прийняв answer', 'sys');
-      setBadge('Отримано відповідь — з’єднуємо…', 'muted');
-    } catch (err) {
-      logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
+      if (pc.signalingState !== 'closed') {
+        const offer = await pc.createOffer({ iceRestart: false });
+        await pc.setLocalDescription(offer);
+        await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
+      }
+    } catch (e) {
+      logChat('Resync offer error: ' + (e?.message || e?.name), 'sys');
     }
   }
 
@@ -353,7 +362,7 @@
         return;
       }
 
-      // ВАЖЛИВО: коли інший клієнт приєднується пізніше — ініціатор шле свіжий offer
+      // Пізнє підключення другого — ініціатор шле свіжий offer
       if (msg.type === 'peer-join') {
         if (!app.polite && pc.signalingState === 'stable') {
           logChat('Peer join → надсилаю новий offer', 'sys');
@@ -410,13 +419,15 @@
 
   // ---------- Export ----------
   app.pc = pc;
+  app.txAudio = txAudio;
+  app.txVideo = txVideo;
   app.startLocal = startLocal;
   app.createAndSendOffer = createAndSendOffer;
   app.restartIce = restartIce;
   app.wsSend = wsSend;
   app.ICE_POLICY = ICE_POLICY;
   app.ICE_SERVERS = ICE_SERVERS;
-  app.bindDataChannel = bindDataChannel; // ← ПОВЕРНУЛИ для video-ui
+  app.bindDataChannel = bindDataChannel;
 
   // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
