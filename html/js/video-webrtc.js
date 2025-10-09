@@ -53,7 +53,7 @@
   let ignoreOffer = false;
   let isUnloading = false;
 
-  // Збережемо sender-и (щоб потім підміняти треки)
+  // Збережемо sender-и (щоб підміняти треки згодом)
   let audioSender = null;
   let videoSender = null;
 
@@ -70,11 +70,8 @@
       localStream = await navigator.mediaDevices.getUserMedia(base);
     } catch (err) {
       logChat('Помилка доступу до камери/мікрофона: ' + (err.message || err.name), 'sys');
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } catch {
-        localStream = new MediaStream();
-      }
+      try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }
+      catch { localStream = new MediaStream(); }
     }
 
     // КЛЮЧ: додаємо треки через addTrack(track, stream) — це гарантує a=msid
@@ -162,15 +159,9 @@
   pc.onicecandidate = ({ candidate }) => {
     if (candidate) wsSend({ type: 'ice', room, payload: candidate, from: myId });
   };
-  pc.onicegatheringstatechange = () => {
-    logChat('ICE gathering: ' + pc.iceGatheringState, 'sys');
-  };
-  pc.oniceconnectionstatechange = () => {
-    logChat('ICE: ' + pc.iceConnectionState, 'sys');
-  };
-  pc.onsignalingstatechange = () => {
-    logChat('Signaling: ' + pc.signalingState, 'sys');
-  };
+  pc.onicegatheringstatechange = () => { logChat('ICE gathering: ' + pc.iceGatheringState, 'sys'); };
+  pc.oniceconnectionstatechange = () => { logChat('ICE: ' + pc.iceConnectionState, 'sys'); };
+  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
     setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
@@ -178,12 +169,11 @@
 
   // ---------- Perfect negotiation ----------
   pc.onnegotiationneeded = async () => {
-    // ЛИШЕ ініціатор робить офер, і лише зі stable
-    if (app.polite) return;
+    if (app.polite) return;                         // офер лише від ініціатора
     if (makingOffer || pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
-      await startLocal();                    // гарантуємо треки ДО офера
+      await startLocal();                           // треки ДО offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       logChat('Відправив offer', 'sys');
