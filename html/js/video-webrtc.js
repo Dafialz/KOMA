@@ -4,14 +4,15 @@
   const app = global.videoApp;
   const { els, room, SIGNAL_URL, FORCE_RELAY, setBadge, logChat } = app;
 
+  // Унікальний id цього табу (щоб не ловити власні WS-повідомлення)
   const myId = Math.random().toString(36).slice(2);
 
-  // ---------- wsReady ----------
+  // ---------- wsReady: гарантований Promise для video-ui ----------
   let wsReadyResolve;
   function resetWsReady() { app.wsReady = new Promise((r) => (wsReadyResolve = r)); }
   resetWsReady();
 
-  // ---------- ICE ----------
+  // ---------- ICE servers / policy ----------
   const FALLBACK_ICE = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
     { urls: 'turn:global.relay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
@@ -26,8 +27,6 @@
     qsRelay === '0' ? 'all'   :
     (FORCE_RELAY ? 'relay' : 'all');
 
-  logChat(`ICE policy=${ICE_POLICY}; servers=${(ICE_SERVERS||[]).length}`, 'sys');
-
   // ---------- RTCPeerConnection ----------
   const pc = new RTCPeerConnection({
     iceServers: ICE_SERVERS,
@@ -38,7 +37,7 @@
     sdpSemantics: 'unified-plan',
   });
 
-  // Експортуємо для консолі
+  // Доступно з консолі
   global.pc = pc;
   global.app = app;
 
@@ -50,11 +49,13 @@
   let ignoreOffer = false;
   let isUnloading = false;
 
-  // Збережемо sender-и (може знадобитися для replaceTrack при шерингу)
+  // Сендери для подальшого replaceTrack (шерінг)
   let audioSender = null;
   let videoSender = null;
+  app.txAudio = { sender: null };
+  app.txVideo = { sender: null };
 
-  // ---------- Local media (ДОДАЄМО ЧЕРЕЗ addTrack => гарантія a=msid) ----------
+  // ---------- Local media (addTrack => гарантія a=msid) ----------
   async function startLocal(constraints) {
     if (localStream) return localStream;
 
@@ -75,8 +76,14 @@
     const v = localStream.getVideoTracks()[0] || null;
 
     try {
-      if (a && !audioSender) audioSender = pc.addTrack(a, localStream); // <-- addTrack гарантує a=msid
-      if (v && !videoSender) videoSender = pc.addTrack(v, localStream); // <-- addTrack гарантує a=msid
+      if (a && !audioSender) {
+        audioSender = pc.addTrack(a, localStream);
+        app.txAudio.sender = audioSender;
+      }
+      if (v && !videoSender) {
+        videoSender = pc.addTrack(v, localStream);
+        app.txVideo.sender = videoSender;
+      }
     } catch (e) {
       logChat('addTrack error: ' + (e.message || e.name), 'sys');
     }
@@ -104,16 +111,17 @@
   }
   ensureRemoteVideoElementSetup();
 
-  function tryAutoplayRemote() {
+  function tryAutoplayRemote(retries = 6) {
     if (!els.remote) return;
-    const tryPlay = () => {
-      if (els.remote.paused) {
-        els.remote.play().catch(() => {/* чекаємо на клік Unmute */});
-      }
+    const attempt = () => {
+      if (!els.remote) return;
+      els.remote.play().catch(()=>{});
     };
-    tryPlay();
-    setTimeout(tryPlay, 300);
-    els.remote.addEventListener('loadeddata', tryPlay, { once: true });
+    attempt();
+    // кілька спроб через невеличкі паузи
+    for (let i = 1; i <= retries; i++) setTimeout(attempt, 150 * i);
+    els.remote.addEventListener('loadedmetadata', attempt, { once: true });
+    els.remote.addEventListener('loadeddata', attempt, { once: true });
   }
 
   function maybeShowUnmute() {
@@ -155,15 +163,18 @@
   pc.onicecandidate = ({ candidate }) => {
     if (candidate) wsSend({ type: 'ice', room, payload: candidate, from: myId });
   };
-  pc.onicegatheringstatechange = () => { logChat('ICE gathering: ' + pc.iceGatheringState, 'sys'); };
+  pc.onicegatheringstatechange = () => { /* тихо */ };
   pc.oniceconnectionstatechange = () => {
-    logChat('ICE: ' + pc.iceConnectionState, 'sys');
-    if (pc.iceConnectionState === 'connected') setBadge('З’єднано', 'ok');
+    if (pc.iceConnectionState === 'connected') {
+      setBadge('З’єднано', 'ok');
+      tryAutoplayRemote(); // ще раз після встановлення ICE
+    }
   };
-  pc.onsignalingstatechange = () => { logChat('Signaling: ' + pc.signalingState, 'sys'); };
+  pc.onsignalingstatechange = () => { /* тихо */ };
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
-    setBadge('Статус: ' + st, st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
+    setBadge(st === 'connected' ? 'З’єднано' : ('Статус: ' + st), st === 'connected' ? 'ok' : (st === 'failed' ? 'danger' : 'muted'));
+    if (st === 'connected') tryAutoplayRemote();
   };
 
   // ---------- Perfect negotiation ----------
@@ -172,10 +183,9 @@
     if (makingOffer || pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
-      await startLocal();                           // треки ДО offer
+      await startLocal();                           // треки ДО offer (=> a=msid в офері)
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      logChat('Відправив offer', 'sys');
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
     } catch (e) {
       logChat('onnegotiationneeded error: ' + (e.message || e.name), 'sys');
@@ -189,10 +199,9 @@
     if (makingOffer || pc.signalingState !== 'stable') return;
     try {
       makingOffer = true;
-      await startLocal();
+      await startLocal();                           // ГАРАНТУЄМО треки ДО offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      logChat('Відправив offer', 'sys');
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
     } catch (err) {
       logChat('createOffer error: ' + (err.message || err.name), 'sys');
@@ -215,8 +224,8 @@
       await pc.setRemoteDescription(offerDesc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      logChat('Надіслав answer', 'sys');
       await wsSend({ type: 'answer', room, payload: pc.localDescription, from: myId });
+      setBadge('Отримано пропозицію — відповідаю…', 'muted');
     } catch (err) {
       logChat('acceptOffer error: ' + (err.message || err.name), 'sys');
     } finally {
@@ -228,8 +237,8 @@
     if (pc.signalingState !== 'have-local-offer') return;
     try {
       await pc.setRemoteDescription(answerDesc);
-      logChat('Прийняв answer', 'sys');
-      setBadge('Отримано відповідь — з’єднуємо…', 'muted');
+      setBadge('Відповідь прийнята — встановлюємо медіа…', 'muted');
+      tryAutoplayRemote();
     } catch (err) {
       logChat('setRemoteDescription(answer) error: ' + (err.message || err.name), 'sys');
     }
@@ -240,7 +249,6 @@
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       await wsSend({ type: 'offer', room, payload: pc.localDescription, from: myId });
-      logChat('ICE restart: надіслав новий offer', 'sys');
     } catch (e) {
       logChat('ICE restart failed: ' + (e.message || e.name), 'sys');
     }
@@ -261,21 +269,19 @@
   function bindDataChannel() {
     if (!dc || dc._bound) return;
     dc._bound = true;
-    dc.onmessage = (e) => logChat(e.data, 'peer');
+    dc.onmessage = (e) => {/* не спамимо чат логами */};
     dc.onopen = () => {
       if (els.hint) els.hint.textContent = 'Чат підключено';
       if (els.msg)  els.msg.disabled = false;
       if (els.send) els.send.disabled = false;
-      logChat('Чат підключено', 'sys');
     };
     dc.onclose = () => {
       if (els.msg)  els.msg.disabled = true;
       if (els.send) els.send.disabled = true;
-      logChat('Чат закрито', 'sys');
     };
   }
 
-  // ---------- Signaling (WS) ----------
+  // ---------- Signaling (WS) з reconnection та outbox ----------
   let ws;
   const outbox = [];
   function wsFlush() {
@@ -305,7 +311,7 @@
       wsReadyResolve?.();
       wsSend({ type: 'join', room, from: myId });
       wsFlush();
-      logChat('Під’єднано до сигналінгу', 'sys');
+      setBadge('Під’єднано до сигналінгу', 'muted');
     });
 
     ws.addEventListener('message', async (e) => {
@@ -314,38 +320,23 @@
       if (!msg || (msg.room && msg.room !== room)) return;
       if (msg.from && msg.from === myId) return;
 
-      if (msg.type === 'offer') {
-        logChat('Отримав offer', 'sys');
-        await acceptOffer(new RTCSessionDescription(msg.payload));
-        return;
-      }
-      if (msg.type === 'answer') {
-        await acceptAnswer(new RTCSessionDescription(msg.payload));
-        return;
-      }
-      if (msg.type === 'ice') {
-        if (!msg.payload) return;
-        try { await pc.addIceCandidate(msg.payload); } catch {}
-        return;
-      }
+      if (msg.type === 'offer') { await acceptOffer(new RTCSessionDescription(msg.payload)); return; }
+      if (msg.type === 'answer') { await acceptAnswer(new RTCSessionDescription(msg.payload)); return; }
+      if (msg.type === 'ice') { if (!msg.payload) return; try { await pc.addIceCandidate(msg.payload); } catch {} return; }
+
       if (msg.type === 'bye') {
         if (els.remote) els.remote.srcObject = null;
         remoteStream = null;
-        logChat('Співрозмовник покинув кімнату', 'sys');
         setBadge('Співрозмовник вийшов. Очікуємо…', 'muted');
         return;
       }
       if (msg.type === 'full') {
-        logChat('Кімната заповнена (2/2). Закрийте зайві вкладки.', 'sys');
         setBadge('Кімната заповнена', 'danger');
         return;
       }
       if (msg.type === 'peer-join') {
-        if (!app.polite && pc.signalingState === 'stable') {
-          logChat('Peer join → надсилаю новий offer', 'sys');
-          await createAndSendOffer();
-        }
-        setBadge('Співрозмовник приєднався — встановлюємо з’єднання…', 'muted');
+        if (!app.polite && pc.signalingState === 'stable') await createAndSendOffer();
+        setBadge('Співрозмовник приєднався — з’єдную…', 'muted');
         return;
       }
       if (msg.type === 'peer-leave') {
@@ -357,40 +348,23 @@
     });
 
     ws.addEventListener('close', () => {
-      logChat('Сигналінг відключено', 'sys');
       if (!isUnloading) {
         resetWsReady();
         reconnectTimer = setTimeout(connectWS, 1500);
       }
+      setBadge('Сигналінг відключено', 'muted');
     });
     ws.addEventListener('error', () => { try { ws.close(); } catch {} });
   }
   connectWS();
 
-  // ---------- Debug stats ----------
+  // ---------- Debug stats (кожні 2с, коротко) ----------
   const statTimer = setInterval(async () => {
     try {
       const stats = await pc.getStats();
-      let outV = null, inV = null, pair;
-      stats.forEach(r => {
-        if (r.type === 'outbound-rtp' && r.kind === 'video' && !r.isRemote) outV = r;
-        if (r.type === 'inbound-rtp'  && r.kind === 'video' && !r.isRemote) inV = r;
-        if (r.type === 'candidate-pair' && r.selected) pair = r;
-      });
-      const rx = inV ? `↓ video: pkts=${inV.packetsReceived}` : '↓ video: n/a';
-      const tx = outV ? `↑ video: pkts=${outV.packetsSent}`   : '↑ video: n/a';
-      const recvStates = pc.getReceivers().map(r=>({kind:r.track?.kind, state:r.track?.readyState, muted:r.track?.muted}));
-      if (pair) {
-        const lp = stats.get(pair.localCandidateId);
-        const rp = stats.get(pair.remoteCandidateId);
-        logChat(`${tx} | ${rx} | rxTracks=${JSON.stringify(recvStates)} | ICE=${lp?.candidateType}/${lp?.protocol}⇄${rp?.candidateType}`, 'sys');
-      } else {
-        logChat(`${tx} | ${rx} | rxTracks=${JSON.stringify(recvStates)}`, 'sys');
-      }
-
-      if (els.remote && els.remote.srcObject && els.remote.readyState < 2) {
-        tryAutoplayRemote();
-      }
+      let inV = null;
+      stats.forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'video' && !r.isRemote) inV = r; });
+      if (inV && inV.packetsReceived > 0) tryAutoplayRemote();
     } catch {}
   }, 2000);
 
@@ -402,9 +376,7 @@
   app.wsSend = wsSend;
   app.ICE_POLICY = ICE_POLICY;
   app.ICE_SERVERS = ICE_SERVERS;
-  // на випадок шерингу у video-ui:
-  app.txAudio = { sender: audioSender };
-  app.txVideo = { sender: videoSender };
+  app.bindDataChannel = bindDataChannel;
 
   // ---------- При закритті вкладки ----------
   window.addEventListener('beforeunload', () => {
